@@ -1,0 +1,73 @@
+@import "tailwindcss";
+@source "../../../../packages/ui/src";
+
+/* Paleta tirada do flyer: azul royal, amarelo e vermelho, com o verde do WhatsApp. */
+@theme {
+  --color-azul-50: #eef3ff;
+  --color-azul-100: #dbe5ff;
+  --color-azul-200: #b9cbff;
+  --color-azul-500: #1f5bea;
+  --color-azul-600: #1747c9;
+  --color-azul-700: #0f379f;
+  --color-azul-800: #0c2c80;
+  --color-azul-900: #0a2266;
+
+  --color-amarelo-200: #fff1a8;
+  --color-amarelo-300: #ffe45c;
+  --color-amarelo-400: #ffd400;
+  --color-amarelo-500: #f5bf00;
+
+  --color-vermelho-500: #e5262b;
+  --color-vermelho-600: #c81d22;
+  --color-vermelho-700: #a5171b;
+
+  --color-zap-50: #e8f8ee;
+  --color-zap-600: #12a150;
+  --color-zap-700: #0c7f3e;
+
+  --color-tinta: #14213d;
+  --color-fundo: #f4f7fd;
+
+  --font-display: var(--font-baloo), ui-rounded, system-ui, sans-serif;
+  --font-sans: var(--font-nunito), system-ui, sans-serif;
+
+  --animate-carrossel: carrossel 40s linear infinite;
+
+  @keyframes carrossel {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
+
+body {
+  background: var(--color-fundo);
+  color: var(--color-tinta);
+}
+
+/* Faixa diagonal amarela do flyer. */
+.faixa-pincel {
+  background: var(--color-amarelo-400);
+  clip-path: polygon(1% 8%, 99% 0, 100% 88%, 0 100%);
+}
+
+/* Fundo azul com raios suaves, inspirado no topo do flyer. */
+.fundo-raios {
+  background:
+    radial-gradient(circle at 85% 10%, rgb(255 255 255 / 0.18), transparent 40%),
+    repeating-conic-gradient(from 0deg at 80% 0%, rgb(255 255 255 / 0.05) 0 8deg, transparent 8deg 16deg),
+    linear-gradient(160deg, var(--color-azul-500), var(--color-azul-800));
+}
+
+/* Espaço para a barra fixa de contato do perfil não cobrir o rodapé. */
+@media (width < 64rem) {
+  body:has(.barra-contato) footer {
+    padding-bottom: 5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-carrossel {
+    animation: none;
+  }
+}

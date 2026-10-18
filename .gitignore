@@ -1,0 +1,11 @@
+# Documentos do projeto (especificações, propostas) — não versionar
+docs/
+
+# Dependências e build
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Variáveis de ambiente
+.env*
