@@ -21,6 +21,8 @@ export const metadata: Metadata = {
   },
   description:
     "Encontre eletricistas, diaristas, bombeiros hidráulicos, restaurantes, farmácias e muito mais em Rio das Ostras. Fale direto pelo WhatsApp.",
+  // ANTES DA ABERTURA: o site de teste não deve aparecer no Google. Remover em 27/11/2026.
+  robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
