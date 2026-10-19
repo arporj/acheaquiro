@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Icone, classesBotao } from "@acheaqui/ui";
+import { Icone, IconeCategoria, classesBotao } from "@acheaqui/ui";
 import type { Categoria } from "@acheaqui/types";
 
 export function LateralResultados({ relacionadas }: { relacionadas: Categoria[] }) {
@@ -15,7 +15,7 @@ export function LateralResultados({ relacionadas }: { relacionadas: Categoria[] 
                   href={`/${categoria.slugLista}`}
                   className="inline-flex items-center gap-1 rounded-full bg-fundo px-3 py-1 text-sm font-semibold hover:bg-azul-50 hover:text-azul-700"
                 >
-                  <span aria-hidden="true">{categoria.icone}</span>
+                  <IconeCategoria nome={categoria.icone} className="size-4 text-slate-500" />
                   {categoria.nome}
                 </Link>
               </li>

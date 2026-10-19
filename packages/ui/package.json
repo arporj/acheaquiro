@@ -10,6 +10,7 @@
     "react": "^19"
   },
   "dependencies": {
-    "@acheaqui/types": "*"
+    "@acheaqui/types": "*",
+    "lucide-react": "^1.59.0"
   }
 }

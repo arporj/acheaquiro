@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { IconeCategoria } from "@acheaqui/ui";
 import { Topo } from "@/components/anuncios/Topo";
 import { LateralResultados } from "@/components/resultados/LateralResultados";
 import { ListaResultados } from "@/components/resultados/ListaResultados";
@@ -53,7 +54,7 @@ async function Resultados({ searchParams }: { searchParams: PageProps<"/busca">[
               href={`/${categoria.slugLista}`}
               className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm font-bold text-azul-700 ring-1 ring-azul-100 hover:bg-azul-50"
             >
-              <span aria-hidden="true">{categoria.icone}</span>
+              <IconeCategoria nome={categoria.icone} className="size-4" />
               {categoria.nomePlural}
             </Link>
           ))}

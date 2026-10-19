@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { EtiquetaAberto, EtiquetaFundador, FotoMarcador, Icone, Selo } from "@acheaqui/ui";
+import { EtiquetaAberto, EtiquetaFundador, FotoMarcador, Icone, IconeCategoria, Selo } from "@acheaqui/ui";
 import type { Anunciante, AnuncianteComercio, AnuncianteProfissional, Categoria, FormaPagamento } from "@acheaqui/types";
 import { Topo } from "@/components/anuncios/Topo";
 import { BotaoCompartilhar } from "@/components/BotaoCompartilhar";
@@ -104,7 +104,7 @@ export default async function PaginaPerfil({ params }: PageProps<"/perfil/[slug]
                         i === 0 ? "bg-azul-600 text-white" : "bg-azul-50 text-azul-700 hover:bg-azul-100"
                       }`}
                     >
-                      <span aria-hidden="true">{c.icone}</span>
+                      <IconeCategoria nome={c.icone} className="size-4" />
                       {c.nome}
                     </Link>
                   ))}
@@ -239,7 +239,7 @@ function ConteudoComercio({ anunciante, categoria }: { anunciante: AnuncianteCom
             {anunciante.encartes.map((encarte) => (
               <li key={encarte.id} className="w-56 shrink-0 snap-start">
                 <div className="relative overflow-hidden rounded-2xl ring-1 ring-black/5">
-                  <FotoMarcador foto={encarte.imagem} icone="🏷️" cor="#E5262B" className="aspect-[3/4] w-full" tamanhoIcone="text-5xl" />
+                  <FotoMarcador foto={encarte.imagem} icone="tag" cor="#E5262B" className="aspect-[3/4] w-full" tamanhoIcone="text-5xl" />
                   <span className="absolute top-2 right-2 rounded-full bg-amarelo-400 px-2.5 py-0.5 text-xs font-extrabold text-azul-900">
                     Até {dataCurta(encarte.validoAte)}
                   </span>

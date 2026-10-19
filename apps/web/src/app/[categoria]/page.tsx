@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Icone } from "@acheaqui/ui";
+import { Icone, IconeCategoria } from "@acheaqui/ui";
 import { Topo } from "@/components/anuncios/Topo";
 import { BotaoCompartilhar } from "@/components/BotaoCompartilhar";
 import { LateralResultados } from "@/components/resultados/LateralResultados";
@@ -46,11 +46,11 @@ export default async function PaginaCategoria({ params }: PageProps<"/[categoria
         <div className="mt-2 mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span
-              className="grid size-14 shrink-0 place-items-center rounded-2xl text-3xl shadow-md"
+              className="grid size-14 shrink-0 place-items-center rounded-2xl text-white shadow-md"
               style={{ backgroundColor: categoria.cor }}
               aria-hidden="true"
             >
-              {categoria.icone}
+              <IconeCategoria nome={categoria.icone} className="size-7" strokeWidth={2} />
             </span>
             <div>
               <h1 className="font-display text-2xl leading-tight font-extrabold text-azul-900 sm:text-3xl">

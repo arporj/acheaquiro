@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Icone, classesBotao } from "@acheaqui/ui";
+import { Icone, IconeCategoria, classesBotao } from "@acheaqui/ui";
 import { Topo } from "@/components/anuncios/Topo";
 import { FormBusca } from "@/components/FormBusca";
 import { categoriasAtalho, categoriasPorGrupo } from "@/dados/consultas";
@@ -62,8 +62,8 @@ export default function PaginaInicial() {
                   style={{ backgroundColor: categoria.cor }}
                 >
                   <span className="absolute -top-6 -right-6 size-20 rounded-full bg-white/20" aria-hidden="true" />
-                  <span className="grid flex-1 place-items-center text-4xl drop-shadow-md transition group-hover:scale-110 sm:text-5xl" aria-hidden="true">
-                    {categoria.icone}
+                  <span className="grid flex-1 place-items-center text-white drop-shadow-sm transition group-hover:scale-110">
+                    <IconeCategoria nome={categoria.icone} className="size-10 sm:size-12" />
                   </span>
                   <span className="bg-black/25 px-1.5 py-1.5 text-center font-display text-[0.8rem] leading-tight font-bold text-white sm:text-base">
                     {categoria.nome}
@@ -140,7 +140,7 @@ export default function PaginaInicial() {
               <details key={grupo} className="group rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 open:shadow-md">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-display text-lg font-bold text-azul-900">
                   <span className="flex items-center gap-2">
-                    <span aria-hidden="true">{categorias[0].icone}</span>
+                    <IconeCategoria nome={categorias[0].icone} className="size-5 text-azul-600" />
                     {grupo}
                     <span className="text-sm font-semibold text-slate-400">({categorias.length})</span>
                   </span>
@@ -153,7 +153,7 @@ export default function PaginaInicial() {
                         href={`/${categoria.slugLista}`}
                         className="inline-flex items-center gap-1 rounded-full bg-fundo px-3 py-1 text-sm font-semibold text-tinta hover:bg-azul-50 hover:text-azul-700"
                       >
-                        <span aria-hidden="true">{categoria.icone}</span>
+                        <IconeCategoria nome={categoria.icone} className="size-4 text-slate-500" />
                         {categoria.nome}
                       </Link>
                     </li>

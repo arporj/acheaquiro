@@ -1,6 +1,7 @@
 // Ocupa o lugar das fotos enquanto não houver Storage: fundo na cor da
 // categoria com o ícone dela. Quando a foto existir, mostra a imagem.
 import type { Foto } from "@acheaqui/types";
+import { IconeCategoria } from "./IconeCategoria";
 
 function variacao(semente: string): number {
   let soma = 0;
@@ -44,8 +45,8 @@ export function FotoMarcador({
         className="absolute -right-4 -bottom-6 size-24 rounded-full bg-white/15"
         style={{ transform: `scale(${1 + (semente % 5) / 4})` }}
       />
-      <span aria-hidden="true" className={`relative drop-shadow-md ${tamanhoIcone}`}>
-        {icone}
+      <span className={`relative text-white/90 drop-shadow-sm ${tamanhoIcone}`}>
+        <IconeCategoria nome={icone} className="size-[1em]" strokeWidth={1.5} />
       </span>
     </div>
   );

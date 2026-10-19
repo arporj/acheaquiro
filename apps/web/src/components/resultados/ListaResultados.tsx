@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Icone, classesBotao } from "@acheaqui/ui";
+import { Icone, IconeCategoria, classesBotao } from "@acheaqui/ui";
 import type { Bairro } from "@acheaqui/types";
 import type { ItemResultado } from "@/dados/consultas";
 import { CardResultado } from "./CardResultado";
@@ -136,9 +136,9 @@ export function ListaResultados({
 
       {filtrados.length === 0 && (
         <div className="mt-4 rounded-3xl border-2 border-dashed border-azul-100 bg-white px-6 py-10 text-center">
-          <p className="text-4xl" aria-hidden="true">
-            🔎
-          </p>
+          <span className="mx-auto grid size-14 place-items-center rounded-full bg-azul-50 text-azul-600">
+            <IconeCategoria nome="search-x" className="size-7" />
+          </span>
           {temFiltro && abas.find((a) => a.id === aba)!.total > 0 ? (
             <>
               <p className="mt-2 font-display text-xl font-bold text-azul-900">Nenhum resultado com esses filtros</p>

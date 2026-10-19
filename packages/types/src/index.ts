@@ -33,6 +33,7 @@ export interface Categoria {
   grupo: string;
   /** Outros nomes pelos quais a categoria é procurada. */
   sinonimos: string[];
+  /** Nome do ícone de traço (ver IconeCategoria em packages/ui). */
   icone: string;
   cor: string;
   /** Saúde e veterinário mostram o registro no conselho profissional. */

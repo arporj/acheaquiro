@@ -89,7 +89,7 @@ function paraItem(anunciante: Anunciante, patrocinado = false): ItemResultado {
     tipo: anunciante.tipo,
     nome: anunciante.nome,
     categoriaNome: categoria?.nome ?? "",
-    icone: categoria?.icone ?? "📍",
+    icone: categoria?.icone ?? "map-pin",
     cor: categoria?.cor ?? "#2563EB",
     selo: planoPorId(anunciante.planoId)?.selo ?? "nenhum",
     fundador: anunciante.fundador,
