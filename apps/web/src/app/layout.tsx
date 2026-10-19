@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Baloo_2, Nunito } from "next/font/google";
-import { ProvedorAnuncios } from "@/components/prototipo/ProvedorAnuncios";
-import { SeletorAnuncios } from "@/components/prototipo/SeletorAnuncios";
 import { Rodape } from "@/components/Rodape";
 import "./globals.css";
 
@@ -33,11 +31,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="pt-BR" className={`${baloo.variable} ${nunito.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
-        <ProvedorAnuncios>
-          {children}
-          <Rodape />
-          <SeletorAnuncios />
-        </ProvedorAnuncios>
+        {children}
+        <Rodape />
       </body>
     </html>
   );

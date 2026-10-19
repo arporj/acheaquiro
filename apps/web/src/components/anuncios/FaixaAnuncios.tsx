@@ -1,9 +1,8 @@
-"use client";
-
+// Versão escolhida no protótipo (B): faixas completas na página inicial e
+// compactas, em uma linha, nos resultados e nos perfis.
 import Link from "next/link";
 import { FotoMarcador, Icone, Selo } from "@acheaqui/ui";
 import type { ItemResultado } from "@/dados/consultas";
-import { useModoAnuncios } from "@/components/prototipo/ProvedorAnuncios";
 
 type Destaque = { item: ItemResultado; descricao: string; bairro: string };
 
@@ -16,8 +15,7 @@ export function FaixaAnuncios({
   destaque?: Destaque;
   superDestaques: ItemResultado[];
 }) {
-  const { modo } = useModoAnuncios();
-  const compacta = modo === "compactas-todas" || (modo === "compactas-internas" && pagina === "interna");
+  const compacta = pagina === "interna";
 
   return (
     <section aria-label="Anunciantes em destaque" className={compacta ? "bg-white pb-2 shadow-sm" : "pb-2"}>
