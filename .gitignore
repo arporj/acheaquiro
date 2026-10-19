@@ -16,3 +16,7 @@ coverage/
 
 # Arquivos de execução do Claude Code
 .claude/*.lock
+
+# Build da Cloudflare (OpenNext e Wrangler)
+.open-next/
+.wrangler/

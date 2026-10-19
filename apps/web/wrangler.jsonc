@@ -1,0 +1,19 @@
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "acheaqui",
+	"compatibility_date": "2026-10-01",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"services": [
+		{
+			// O nome do serviço precisa ser igual ao do worker (cache do OpenNext).
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "acheaqui"
+		}
+	]
+	// Cache em R2 e otimização de imagens entram depois de conferidos os limites gratuitos.
+}
