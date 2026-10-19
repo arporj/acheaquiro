@@ -1,6 +1,8 @@
 "use client";
 
 // TEMPORÁRIO: painel flutuante para alternar as versões das faixas de anúncio.
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Icone } from "@acheaqui/ui";
 import { useModoAnuncios, type ModoAnuncios } from "./ProvedorAnuncios";
@@ -12,8 +14,11 @@ const opcoes: { modo: ModoAnuncios; rotulo: string }[] = [
 ];
 
 export function SeletorAnuncios() {
-  const { modo, mudarModo } = useModoAnuncios();
+  const { modo, mudarModo, fixadoPelaUrl } = useModoAnuncios();
   const [aberto, setAberto] = useState(false);
+  const caminho = usePathname();
+
+  if (fixadoPelaUrl || caminho.startsWith("/prototipo")) return null;
 
   return (
     <div className="fixed bottom-24 left-3 z-50 flex flex-col items-start gap-2 lg:bottom-4">
@@ -39,6 +44,13 @@ export function SeletorAnuncios() {
               </button>
             ))}
           </div>
+          <Link
+            href="/prototipo/faixas"
+            className="mt-2 flex items-center justify-center gap-1 rounded-xl bg-amarelo-400 px-3 py-2 text-sm font-extrabold text-azul-900 hover:bg-amarelo-300"
+          >
+            Comparar lado a lado
+            <Icone nome="direita" className="size-4" />
+          </Link>
           <p className="mt-2 text-[0.7rem] leading-snug text-slate-500">
             Dados fictícios. Este painel sai depois da escolha.
           </p>

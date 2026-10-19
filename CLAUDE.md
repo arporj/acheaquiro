@@ -4,6 +4,14 @@
 
 Site aberto ao público que liga moradores e visitantes de Rio das Ostras a profissionais autônomos e comércios da cidade. O visitante busca e entra em contato sem criar conta; anunciantes, representantes e administradores têm conta com login.
 
+Calendário: pré-cadastro dos Fundadores de 09/11 a 26/11/2026, feito pela equipe e pelos representantes. Abertura ao público e início da cobrança em 27/11/2026 (Black Friday), sem período gratuito: os Fundadores pagam desde a abertura, com o desconto deles.
+
+## Cobrança e representantes
+
+- Na abertura, o pagamento é por Pix, mensal ou anual: o anunciante envia o comprovante pela sua área e a equipe confere e confirma na administração, o que ativa o plano com a validade correspondente. O pagamento automático pelo site (Pix e cartão, com renovação automática) vem depois da abertura.
+- Plano vencido sem pagamento: o perfil do autônomo fica escondido, sem ser apagado, e o comércio passa para o plano Gratuito.
+- Representantes atuam desde o pré-cadastro dos Fundadores. A comissão é calculada sobre o valor efetivamente pago, já com descontos.
+
 ## Documentação
 
 - A especificação funcional fica em /docs. Antes de propor qualquer solução, leia a versão de número mais alto.
@@ -48,7 +56,7 @@ Site aberto ao público que liga moradores e visitantes de Rio das Ostras a prof
 - Limite de requisições no cadastro, na denúncia e nos cliques de contato. Cliques repetidos do mesmo visitante no mesmo perfil, em intervalo curto, contam uma vez só, para não inflar as métricas.
 - A comparação de médias entre planos só exibe a média de um plano numa categoria com pelo menos 3 anunciantes desse plano.
 - LGPD: coletar só os dados previstos na especificação, registrar data e versão do aceite dos Termos e da Política de Privacidade, e permitir a exclusão do cadastro com remoção das fotos no Storage.
-- Log de auditoria para ações administrativas: aprovar, recusar, suspender, alterar plano ou extra, marcar Fundador e registrar pagamento de comissão.
+- Log de auditoria para ações administrativas: aprovar, recusar, suspender, alterar plano ou extra, marcar Fundador, confirmar ou recusar pagamento por Pix e registrar pagamento de comissão.
 
 ## Regras de negócio com testes obrigatórios
 
@@ -60,7 +68,8 @@ Cada regra abaixo fica em packages/domain e tem testes automatizados:
 - Ordenação por distância em "Mais perto de mim", mantendo os patrocinados no topo.
 - Cálculo da comissão do representante, no plano mensal e no anual.
 - Limites de cada plano e extra.
-- Desconto de Fundador.
+- Desconto de Fundador e perda da condição de Fundador quando a assinatura vence e não é paga em até 7 dias.
+- Vencimento das assinaturas e efeito no perfil (autônomo escondido, comércio no plano Gratuito).
 
 ## Forma de trabalhar neste projeto
 
