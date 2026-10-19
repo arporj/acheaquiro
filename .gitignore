@@ -10,3 +10,9 @@ out/
 # Variáveis de ambiente
 .env*
 !.env.example
+
+# Relatórios de cobertura de testes
+coverage/
+
+# Arquivos de execução do Claude Code
+.claude/*.lock

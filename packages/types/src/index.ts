@@ -155,3 +155,22 @@ export type MotivoDenuncia =
   | "servico_nao_prestado"
   | "conteudo_improprio"
   | "outro";
+
+// Contrato padrão das operações de domínio (especificação técnica, seção 4.2).
+// A mensagem é para o usuário final; detalhes técnicos vão só para o log.
+export type CodigoErro =
+  | "NAO_AUTENTICADO"
+  | "SEM_PERMISSAO"
+  | "VERIFICACAO_DUAS_ETAPAS_EXIGIDA"
+  | "DADOS_INVALIDOS"
+  | "NAO_ENCONTRADO"
+  | "CONFLITO"
+  | "LIMITE_DO_PLANO"
+  | "LIMITE_DE_REQUISICOES"
+  | "VERIFICACAO_ROBO_FALHOU"
+  | "ARQUIVO_INVALIDO"
+  | "ERRO_INTERNO";
+
+export type Resultado<T> =
+  | { ok: true; dados: T }
+  | { ok: false; erro: { codigo: CodigoErro; mensagem: string; campos?: Record<string, string> } };

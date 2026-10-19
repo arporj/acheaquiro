@@ -64,7 +64,7 @@ Cada regra abaixo fica em packages/domain e tem testes automatizados:
 
 - Ordem da lista de resultados por grupo de plano, com alternância dentro de cada grupo.
 - Sorteio dos links patrocinados nas 3 primeiras posições, com peso dobrado para o Patrocinado Plus.
-- Vaga rotativa a cada 10 posições para os planos de entrada, com peso dobrado para o Básico.
+- Vaga rotativa a cada 10 posições para os dois planos de entrada, com peso dobrado para o mais caro dos dois (autônomos: Profissional; comércios: Básico).
 - Ordenação por distância em "Mais perto de mim", mantendo os patrocinados no topo.
 - Cálculo da comissão do representante, no plano mensal e no anual.
 - Limites de cada plano e extra.
