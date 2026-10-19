@@ -47,11 +47,11 @@ export function SeletorAnuncios() {
       <button
         type="button"
         onClick={() => setAberto(!aberto)}
-        className="flex items-center gap-1.5 rounded-full bg-tinta px-3 py-2 text-xs font-bold text-white shadow-lg ring-2 ring-white"
+        className="flex items-center gap-2 rounded-full bg-vermelho-500 px-4 py-2.5 text-sm font-extrabold text-white shadow-xl ring-4 ring-amarelo-400 hover:bg-vermelho-600"
         aria-expanded={aberto}
       >
-        <Icone nome="filtro" className="size-3.5" />
-        {aberto ? "Fechar" : "Protótipo"}
+        <Icone nome={aberto ? "fechar" : "megafone"} className="size-4" />
+        {aberto ? "Fechar" : "Testar faixas de anúncio"}
       </button>
     </div>
   );
