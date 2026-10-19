@@ -7,6 +7,8 @@ import {
   efeitoDoVencimento,
   perdeCondicaoFundador,
   situacaoAssinatura,
+  tornaFundador,
+  type ValoresExtra,
   type ValoresPlano,
 } from "./cobranca";
 
@@ -65,12 +67,68 @@ describe("calcularCobrancaPlano", () => {
 });
 
 describe("calcularCobrancaExtra", () => {
-  it("não tem desconto de Fundador", () => {
-    expect(calcularCobrancaExtra(8990)).toEqual({
+  const pacoteDeFotos: ValoresExtra = {
+    valorMensalCentavos: 490,
+    mesesCobradosNoAnual: 10,
+    aceitaDescontoFundador: true,
+    permiteAnual: true,
+  };
+  const superDestaque: ValoresExtra = { ...pacoteDeFotos, valorMensalCentavos: 8990, aceitaDescontoFundador: false };
+  const destaqueExclusivo: ValoresExtra = { ...superDestaque, valorMensalCentavos: 50000, permiteAnual: false };
+
+  it("pacote com Fundador tem 50% de desconto", () => {
+    expect(calcularCobrancaExtra(pacoteDeFotos, "mensal", comFundador)).toEqual({
+      valorCheioCentavos: 490,
+      descontoFundadorCentavos: 245,
+      valorDevidoCentavos: 245,
+    });
+  });
+
+  it("pacote sem Fundador paga o valor cheio", () => {
+    expect(calcularCobrancaExtra(pacoteDeFotos, "mensal", semFundador).valorDevidoCentavos).toBe(490);
+  });
+
+  it("destaque não tem desconto, mesmo para Fundador", () => {
+    expect(calcularCobrancaExtra(superDestaque, "mensal", comFundador)).toEqual({
       valorCheioCentavos: 8990,
       descontoFundadorCentavos: 0,
       valorDevidoCentavos: 8990,
     });
+  });
+
+  it("vendido junto com a assinatura anual, custa 10 mensalidades", () => {
+    expect(calcularCobrancaExtra(pacoteDeFotos, "anual", comFundador).valorDevidoCentavos).toBe(2450);
+    expect(calcularCobrancaExtra(superDestaque, "anual", semFundador).valorDevidoCentavos).toBe(89900);
+  });
+
+  it("o Destaque Exclusivo do Mês não pode ser anual", () => {
+    expect(() => calcularCobrancaExtra(destaqueExclusivo, "anual", semFundador)).toThrow(RangeError);
+    expect(calcularCobrancaExtra(destaqueExclusivo, "mensal", comFundador).valorDevidoCentavos).toBe(50000);
+  });
+});
+
+describe("tornaFundador", () => {
+  const anualNoPrazo = {
+    periodicidade: "anual" as const,
+    valorMensalPlanoCentavos: 5990,
+    comprovanteEnviadoEm: "2026-11-26",
+    prazoFundador: "2026-11-26",
+  };
+
+  it("vira Fundador com o anual pago até o último dia do prazo", () => {
+    expect(tornaFundador(anualNoPrazo)).toBe(true);
+  });
+
+  it("não vira Fundador no plano mensal", () => {
+    expect(tornaFundador({ ...anualNoPrazo, periodicidade: "mensal" })).toBe(false);
+  });
+
+  it("não vira Fundador depois do prazo", () => {
+    expect(tornaFundador({ ...anualNoPrazo, comprovanteEnviadoEm: "2026-11-27" })).toBe(false);
+  });
+
+  it("não vira Fundador no plano Gratuito do comércio", () => {
+    expect(tornaFundador({ ...anualNoPrazo, valorMensalPlanoCentavos: 0 })).toBe(false);
   });
 });
 

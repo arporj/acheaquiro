@@ -1,4 +1,4 @@
-// Valor da cobrança, desconto de Fundador e vencimento (item 6.1 e 4.15;
+// Valor da cobrança, desconto de Fundador e vencimento (itens 4.15, 4.16 e 6.1;
 // Especificação Técnica, seções 8.3 e 8.5). Valores sempre em centavos.
 import type { TipoAnunciante } from "@acheaqui/types";
 import { somarDias, somarMeses, type DataISO } from "./datas";
@@ -29,26 +29,68 @@ export function aplicarPercentual(centavos: number, percentual: number): number 
   return Math.floor((centavos * percentual + 50) / 100);
 }
 
+export interface DescontoFundador {
+  fundador: boolean;
+  /** Percentual vindo da tabela de configurações (hoje, 50). */
+  percentualFundador: number;
+}
+
 /**
- * O desconto de Fundador vale só para os planos; os extras não têm desconto.
  * O valor devido é arredondado e o desconto é a diferença, para que os dois
  * sempre somem o valor cheio.
  */
-export function calcularCobrancaPlano(
-  plano: ValoresPlano,
-  periodicidade: Periodicidade,
-  desconto: { fundador: boolean; percentualFundador: number },
-): Cobranca {
-  const meses = periodicidade === "anual" ? plano.mesesCobradosNoAnual : 1;
-  const valorCheioCentavos = plano.valorMensalCentavos * meses;
-  const valorDevidoCentavos = desconto.fundador
-    ? aplicarPercentual(valorCheioCentavos, 100 - desconto.percentualFundador)
-    : valorCheioCentavos;
+function calcular(valorMensalCentavos: number, meses: number, percentualDesconto: number): Cobranca {
+  const valorCheioCentavos = valorMensalCentavos * meses;
+  const valorDevidoCentavos =
+    percentualDesconto > 0 ? aplicarPercentual(valorCheioCentavos, 100 - percentualDesconto) : valorCheioCentavos;
   return { valorCheioCentavos, descontoFundadorCentavos: valorCheioCentavos - valorDevidoCentavos, valorDevidoCentavos };
 }
 
-export function calcularCobrancaExtra(valorMensalCentavos: number): Cobranca {
-  return { valorCheioCentavos: valorMensalCentavos, descontoFundadorCentavos: 0, valorDevidoCentavos: valorMensalCentavos };
+export function calcularCobrancaPlano(
+  plano: ValoresPlano,
+  periodicidade: Periodicidade,
+  desconto: DescontoFundador,
+): Cobranca {
+  const meses = periodicidade === "anual" ? plano.mesesCobradosNoAnual : 1;
+  return calcular(plano.valorMensalCentavos, meses, desconto.fundador ? desconto.percentualFundador : 0);
+}
+
+export interface ValoresExtra extends ValoresPlano {
+  /** Pacotes (fotos, categoria, encarte, produtos, endereço) têm desconto de Fundador; destaques não. */
+  aceitaDescontoFundador: boolean;
+  /** O Destaque Exclusivo do Mês é vendido só mês a mês. */
+  permiteAnual: boolean;
+}
+
+/** Extras vendidos junto com a assinatura anual também são cobrados no anual. */
+export function calcularCobrancaExtra(
+  extra: ValoresExtra,
+  periodicidade: Periodicidade,
+  desconto: DescontoFundador,
+): Cobranca {
+  if (periodicidade === "anual" && !extra.permiteAnual) {
+    throw new RangeError("Este extra só pode ser contratado mês a mês.");
+  }
+  const meses = periodicidade === "anual" ? extra.mesesCobradosNoAnual : 1;
+  const comDesconto = desconto.fundador && extra.aceitaDescontoFundador;
+  return calcular(extra.valorMensalCentavos, meses, comDesconto ? desconto.percentualFundador : 0);
+}
+
+/**
+ * Vira Fundador quem paga a assinatura anual de um plano pago com o
+ * comprovante enviado até o prazo (item 4.16). Não há limite de quantidade.
+ */
+export function tornaFundador(assinatura: {
+  periodicidade: Periodicidade;
+  valorMensalPlanoCentavos: number;
+  comprovanteEnviadoEm: DataISO;
+  prazoFundador: DataISO;
+}): boolean {
+  return (
+    assinatura.periodicidade === "anual" &&
+    assinatura.valorMensalPlanoCentavos > 0 &&
+    assinatura.comprovanteEnviadoEm <= assinatura.prazoFundador
+  );
 }
 
 /** Data de vencimento: 1 mês ou 12 meses depois do início. */

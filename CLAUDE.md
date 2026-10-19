@@ -4,13 +4,13 @@
 
 Site aberto ao público que liga moradores e visitantes de Rio das Ostras a profissionais autônomos e comércios da cidade. O visitante busca e entra em contato sem criar conta; anunciantes, representantes e administradores têm conta com login.
 
-Calendário: pré-cadastro dos Fundadores de 09/11 a 26/11/2026, feito pela equipe e pelos representantes. Abertura ao público e início da cobrança em 27/11/2026 (Black Friday), sem período gratuito: os Fundadores pagam desde a abertura, com o desconto deles.
+Calendário: pré-cadastro dos Fundadores de 09/11 a 26/11/2026, feito pela equipe e pelos representantes. Abertura ao público e início da cobrança em 27/11/2026 (Black Friday), sem período gratuito. Fundador é quem paga a assinatura anual até 26/11/2026, sem limite de quantidade, e tem 50% de desconto permanente nos planos e nos pacotes extras (não nos destaques nem nos links patrocinados).
 
 ## Cobrança e representantes
 
 - Na abertura, o pagamento é por Pix, mensal ou anual: o anunciante envia o comprovante pela sua área e a equipe confere e confirma na administração, o que ativa o plano com a validade correspondente. O pagamento automático pelo site (Pix e cartão, com renovação automática) vem depois da abertura.
 - Plano vencido sem pagamento: o perfil do autônomo fica escondido, sem ser apagado, e o comércio passa para o plano Gratuito.
-- Representantes atuam desde o pré-cadastro dos Fundadores. A comissão é calculada sobre o valor efetivamente pago, já com descontos.
+- Representantes atuam desde o pré-cadastro dos Fundadores. A comissão é calculada sobre o valor efetivamente pago, já com descontos. Extras geram comissão só quando vendidos junto com a assinatura, pela mesma regra do plano.
 
 ## Documentação
 
@@ -66,7 +66,8 @@ Cada regra abaixo fica em packages/domain e tem testes automatizados:
 - Sorteio dos links patrocinados nas 3 primeiras posições, com peso dobrado para o Patrocinado Plus.
 - Vaga rotativa a cada 10 posições para os dois planos de entrada, com peso dobrado para o mais caro dos dois (autônomos: Profissional; comércios: Básico).
 - Ordenação por distância em "Mais perto de mim", mantendo os patrocinados no topo.
-- Cálculo da comissão do representante, no plano mensal e no anual.
+- Cálculo da comissão do representante, no plano mensal e no anual, incluindo os extras vendidos junto com a assinatura.
+- Quem vira Fundador (assinatura anual paga até o prazo) e em quais extras vale o desconto.
 - Limites de cada plano e extra.
 - Desconto de Fundador e perda da condição de Fundador quando a assinatura vence e não é paga em até 7 dias.
 - Vencimento das assinaturas e efeito no perfil (autônomo escondido, comércio no plano Gratuito).

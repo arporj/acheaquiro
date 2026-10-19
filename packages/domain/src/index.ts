@@ -5,4 +5,5 @@ export * from "./ordenacao";
 export * from "./datas";
 export * from "./limites";
 export * from "./cobranca";
+export * from "./comissao";
 export * from "./horario";
