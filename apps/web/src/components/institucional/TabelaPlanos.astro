@@ -1,0 +1,205 @@
+---
+// Planos de autônomos e de comércios (itens 6.2 e 6.3), com seletores de tipo
+// e de período. Tudo vem do servidor; o script só troca os atributos data-tipo
+// e data-periodo da raiz, e as classes group-data-* mostram o que vale.
+import { Icone, Selo, type NomeIcone } from "@acheaqui/ui";
+import type { Plano, RegrasCobranca, Selo as TipoSelo, TipoAnunciante } from "@acheaqui/types";
+import { formatarCentavos, valorPlano } from "@/lib/precos";
+
+interface Props {
+  planos: Record<TipoAnunciante, Plano[]>;
+  regras: RegrasCobranca;
+}
+
+const { planos, regras } = Astro.props;
+const mesesAnual = planos.profissional[0]?.mesesCobradosNoAnual ?? 10;
+
+const tipos: { id: TipoAnunciante; rotulo: string }[] = [
+  { id: "profissional", rotulo: "Profissional" },
+  { id: "comercio", rotulo: "Comércio" },
+];
+const periodos = [
+  { id: "mensal", rotulo: "Mensal" },
+  { id: "anual", rotulo: "Anual" },
+];
+
+const nomesSelo: Record<TipoSelo, string> = {
+  nenhum: "Sem selo",
+  transparente: "Selo estrela transparente",
+  prata: "Selo estrela prateada",
+  ouro: "Selo estrela dourada",
+};
+
+const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+
+/** Lista em ordem de nível: a posição de cada plano é a do plano acima dele. */
+function posicao(plano: Plano, lista: Plano[]): string {
+  const acima = lista.find((p) => p.nivel === plano.nivel + 1);
+  if (!acima) return "Logo após os patrocinados na lista";
+  if (plano.nivel === 1) return "No fim da lista";
+  return `Na lista, logo depois do ${acima.nome}`;
+}
+
+function recursos(plano: Plano, lista: Plano[]): { icone: NomeIcone; texto: string; inclui: boolean }[] {
+  const comercio = plano.tipo === "comercio";
+  const itens = [
+    {
+      inclui: plano.limiteFotos > 0,
+      texto:
+        plano.limiteFotos > 0
+          ? `${plural(plano.limiteFotos, "foto", "fotos")} ${comercio ? "do espaço e dos produtos" : "na galeria"}`
+          : "Sem galeria de fotos",
+    },
+    {
+      inclui: plano.limiteCategoriasAdicionais > 0,
+      texto:
+        plano.limiteCategoriasAdicionais > 0
+          ? `Mais ${plural(plano.limiteCategoriasAdicionais, "categoria", "categorias")} além da principal`
+          : "Só a categoria principal",
+    },
+    ...(comercio
+      ? [
+          {
+            inclui: plano.limiteEncartesSemana > 0,
+            texto:
+              plano.limiteEncartesSemana > 0
+                ? `${plural(plano.limiteEncartesSemana, "encarte", "encartes")} de ofertas por semana`
+                : "Sem encartes de ofertas",
+          },
+          {
+            inclui: plano.limiteProdutos > 0,
+            texto: plano.limiteProdutos > 0 ? `${plano.limiteProdutos} produtos na vitrine` : "Sem vitrine de produtos",
+          },
+          { inclui: true, texto: "Aparece em “Mais perto de mim” e “Aberto agora”" },
+        ]
+      : []),
+    { inclui: true, texto: posicao(plano, lista) },
+    // Vaga rotativa a cada 10 posições para os dois planos mais baratos (item 4.2).
+    ...(plano.nivel <= 2 ? [{ inclui: true, texto: "Vaga rotativa entre os primeiros, a cada 10 posições" }] : []),
+    { inclui: plano.temRelatorio, texto: "Relatório mensal de contatos por e-mail" },
+  ];
+  return itens.map((item) => ({ ...item, icone: item.inclui ? "certo" : "fechar" }));
+}
+
+const botao =
+  "flex h-11 items-center justify-center rounded-xl px-3 font-display text-base font-bold text-slate-600 transition not-aria-selected:hover:bg-azul-50 aria-selected:bg-azul-600 aria-selected:text-white aria-selected:shadow";
+---
+
+<div data-planos data-tipo="profissional" data-periodo="mensal" class="group">
+  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div role="tablist" aria-label="Tipo de anunciante" class="grid grid-cols-2 gap-1 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-black/5 md:w-[28rem]">
+      {
+        tipos.map((t, i) => (
+          <button role="tab" type="button" data-alterna="tipo" data-valor={t.id} aria-selected={i === 0 ? "true" : "false"} class={botao}>
+            {t.rotulo}
+          </button>
+        ))
+      }
+    </div>
+    <div role="tablist" aria-label="Período de pagamento" class="grid grid-cols-2 gap-1 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-black/5 md:w-72">
+      {
+        periodos.map((p, i) => (
+          <button role="tab" type="button" data-alterna="periodo" data-valor={p.id} aria-selected={i === 0 ? "true" : "false"} class={botao}>
+            {p.rotulo}
+          </button>
+        ))
+      }
+    </div>
+  </div>
+  <p class="mt-3 text-sm text-slate-600">
+    No anual, você paga {mesesAnual} mensalidades e leva 12 meses: são {12 - mesesAnual} meses de desconto.
+  </p>
+
+  {
+    tipos.map((t) => (
+      <ul
+        data-lista-tipo={t.id}
+        class={`mt-5 gap-4 sm:grid-cols-2 lg:grid-cols-4 ${
+          t.id === "profissional" ? "grid group-data-[tipo=comercio]:hidden" : "hidden group-data-[tipo=comercio]:grid"
+        }`}
+      >
+        {planos[t.id].map((plano) => {
+          const gratuito = plano.valorMensalCentavos === 0;
+          const topo = plano.nivel === Math.max(...planos[t.id].map((p) => p.nivel));
+          return (
+            <li class={`flex flex-col rounded-3xl bg-white p-5 shadow-sm ${topo ? "ring-2 ring-amarelo-400" : "ring-1 ring-black/5"}`}>
+              <h3 class="flex items-center gap-2 font-display text-2xl font-extrabold text-azul-900">
+                {plano.nome}
+                <Selo selo={plano.selo} class="text-2xl" />
+              </h3>
+              <p class="text-sm font-semibold text-slate-500">{nomesSelo[plano.selo]}</p>
+
+              <div class="mt-4 mb-2 sm:min-h-[4.75rem]">
+                {gratuito ? (
+                  <>
+                    <p class="font-display text-4xl font-extrabold text-azul-900">R$ 0</p>
+                    <p class="text-sm text-slate-600">Plano sem custo.</p>
+                  </>
+                ) : (
+                  <>
+                    <div class="group-data-[periodo=anual]:hidden">
+                      <p>
+                        <span class="font-display text-4xl font-extrabold text-azul-900">
+                          {formatarCentavos(valorPlano(plano, "mensal", false, regras))}
+                        </span>
+                        <span class="font-bold text-slate-500">/mês</span>
+                      </p>
+                      <p class="mt-1 text-sm text-slate-600">
+                        ou {formatarCentavos(valorPlano(plano, "anual", false, regras))} no plano anual
+                      </p>
+                    </div>
+                    <div class="hidden group-data-[periodo=anual]:block">
+                      <p>
+                        <span class="font-display text-4xl font-extrabold text-azul-900">
+                          {formatarCentavos(valorPlano(plano, "anual", false, regras))}
+                        </span>
+                        <span class="font-bold text-slate-500">/ano</span>
+                      </p>
+                      <p class="mt-1 inline-flex items-center gap-1 rounded-full bg-vermelho-500 px-2.5 py-0.5 text-sm font-extrabold text-white">
+                        <Icone nome="medalha" class="size-4" />
+                        Fundador: {formatarCentavos(valorPlano(plano, "anual", true, regras))}/ano
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <ul class="space-y-2 border-t border-slate-100 pt-4 text-sm">
+                {recursos(plano, planos[t.id]).map((r) => (
+                  <li class={`flex gap-2 ${r.inclui ? "text-tinta" : "text-slate-400"}`}>
+                    <Icone
+                      nome={r.icone}
+                      class={`mt-0.5 size-4 shrink-0 ${r.inclui ? "text-zap-600" : "text-slate-300"}`}
+                      strokeWidth={3}
+                    />
+                    {r.texto}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          );
+        })}
+      </ul>
+    ))
+  }
+</div>
+
+<script>
+  for (const raiz of document.querySelectorAll<HTMLElement>("[data-planos]")) {
+    const botoes = [...raiz.querySelectorAll<HTMLButtonElement>("[data-alterna]")];
+    for (const botao of botoes) {
+      botao.addEventListener("click", () => {
+        const chave = botao.dataset.alterna;
+        const valor = botao.dataset.valor;
+        if (!chave || !valor) {
+          console.error("Tabela de planos: botão sem data-alterna ou data-valor.");
+          return;
+        }
+        raiz.dataset[chave] = valor;
+        for (const outro of botoes) {
+          if (outro.dataset.alterna === chave) outro.setAttribute("aria-selected", String(outro === botao));
+        }
+      });
+    }
+  }
+</script>

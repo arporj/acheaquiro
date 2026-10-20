@@ -1,0 +1,198 @@
+---
+import { Icone, classesBotao, type NomeIcone } from "@acheaqui/ui";
+import Topo from "@/components/anuncios/Topo.astro";
+import Abertura from "@/components/institucional/Abertura.astro";
+import BotaoContato from "@/components/institucional/BotaoContato.astro";
+import ListaExtras from "@/components/institucional/ListaExtras.astro";
+import Passos from "@/components/institucional/Passos.astro";
+import TabelaPlanos from "@/components/institucional/TabelaPlanos.astro";
+import { listarExtras, listarPlanos, obterRegrasCobranca } from "@/dados/consultas";
+import Layout from "@/layouts/Layout.astro";
+import { guardarNoCache } from "@/lib/cache";
+import { formatarCentavos } from "@/lib/precos";
+import { formatarData } from "@/lib/texto";
+
+guardarNoCache(Astro);
+
+const planos = { profissional: listarPlanos("profissional"), comercio: listarPlanos("comercio") };
+const regras = obterRegrasCobranca();
+const menorPrecoProfissional = Math.min(...planos.profissional.map((p) => p.valorMensalCentavos));
+const temGratuito = planos.comercio.some((p) => p.valorMensalCentavos === 0);
+const prazo = formatarData(regras.prazoFundador);
+const mesesAnual = planos.profissional[0]?.mesesCobradosNoAnual ?? 10;
+
+const vantagens: { icone: NomeIcone; titulo: string; texto: string }[] = [
+  {
+    icone: "mensagem",
+    titulo: "Contato direto, sem comissão",
+    texto: "O cliente fala com você pelo WhatsApp ou pelo telefone. Não há taxa por pedido nem por serviço fechado.",
+  },
+  {
+    icone: "compartilhar",
+    titulo: "Seu link para divulgar",
+    texto: "O seu perfil tem um endereço próprio, que aparece com foto quando você compartilha no WhatsApp.",
+  },
+  {
+    icone: "busca",
+    titulo: "Encontrado no Google",
+    texto: "Cada categoria e bairro tem página própria, para buscas como “eletricista Costazul” chegarem até você.",
+  },
+  {
+    icone: "grafico",
+    titulo: "Números do mês",
+    texto: "Na sua área, você vê quantas pessoas visitaram o seu perfil e clicaram para falar com você.",
+  },
+];
+
+const passos = [
+  {
+    titulo: "Faça o cadastro",
+    texto: "Pelo celular, em poucos minutos. Se preferir, a equipe ou um representante faz o cadastro com você.",
+  },
+  { titulo: "Pague por Pix", texto: "Mensal ou anual. Você envia o comprovante pela sua área no site." },
+  { titulo: "Apareça no site", texto: "A equipe confere o cadastro e o pagamento e publica o seu perfil." },
+];
+
+const perguntas = [
+  {
+    pergunta: "Pago comissão pelos clientes que chegarem?",
+    resposta: "Não. O cliente fala direto com você e você paga só o valor fixo do plano, sem taxa por contato ou por venda.",
+  },
+  {
+    pergunta: "Como faço o pagamento?",
+    resposta:
+      "Por Pix, no plano mensal ou no anual. Você envia o comprovante pela sua área no site, a equipe confere e o plano é ativado.",
+  },
+  {
+    pergunta: "Posso mudar de plano depois?",
+    resposta: "Sim. Na sua área, você vê o que o seu plano inclui e pode pedir a mudança.",
+  },
+  {
+    pergunta: "Posso desistir?",
+    resposta:
+      "Sim. Até 7 dias depois do primeiro pagamento, você desiste e recebe o valor de volta. Depois desse prazo, não há devolução proporcional, inclusive no plano anual.",
+  },
+  {
+    pergunta: "E se eu não renovar?",
+    resposta: `O perfil de profissional autônomo sai do ar, sem ser apagado, e volta assim que o pagamento for confirmado. O comércio continua no site, no plano Gratuito. O Fundador que não renovar em até ${regras.toleranciaVencimentoDias} dias depois do vencimento perde o selo e o desconto.`,
+  },
+  {
+    pergunta: "Não tenho facilidade com celular. Consigo anunciar?",
+    resposta:
+      "Sim. A equipe do Ache Aqui ou um representante faz o cadastro por você. Depois, chega um link no seu e-mail para conferir o perfil e criar a sua senha.",
+  },
+];
+---
+
+<Layout
+  titulo="Anuncie aqui"
+  descricao="Planos para profissionais autônomos e comércios de Rio das Ostras. Contato direto pelo WhatsApp, sem comissão."
+  previa={{
+    titulo: "Anuncie no Ache Aqui RO",
+    descricao: `Profissional autônomo a partir de ${formatarCentavos(menorPrecoProfissional)} por mês. Fundador tem ${regras.percentualDescontoFundador}% de desconto.`,
+  }}
+>
+  <Topo pagina="interna" />
+
+  <main>
+    <Abertura
+      chamada="Anuncie no Ache Aqui RO"
+      subtitulo={`Profissional autônomo a partir de ${formatarCentavos(menorPrecoProfissional)} por mês.${
+        temGratuito ? " Comércio pode começar no plano Gratuito." : ""
+      }`}
+    >
+      Seja encontrado por quem procura <span class="text-amarelo-400">o seu serviço</span> em Rio das Ostras
+      <Fragment slot="acoes">
+        <BotaoContato rotulo="Quero anunciar" />
+        <a href="#planos" class={classesBotao("contornoClaro", "g")}>Ver os planos</a>
+      </Fragment>
+    </Abertura>
+
+    <section class="bg-white py-10">
+      <div class="mx-auto max-w-6xl px-4">
+        <h2 class="mb-6 font-display text-3xl font-extrabold text-azul-900">Por que anunciar</h2>
+        <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {
+            vantagens.map((v) => (
+              <li class="rounded-3xl bg-fundo p-5">
+                <span class="grid size-12 place-items-center rounded-2xl bg-azul-600 text-amarelo-400">
+                  <Icone nome={v.icone} class="size-6" />
+                </span>
+                <h3 class="mt-3 font-display text-xl font-bold text-azul-900">{v.titulo}</h3>
+                <p class="mt-1 text-slate-600">{v.texto}</p>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </section>
+
+    <section id="planos" class="mx-auto max-w-6xl scroll-mt-4 px-4 py-10">
+      <h2 class="mb-5 font-display text-3xl font-extrabold text-azul-900">Planos</h2>
+      <TabelaPlanos planos={planos} regras={regras} />
+    </section>
+
+    <section class="mx-auto max-w-6xl px-4">
+      <div class="flex flex-col gap-4 rounded-[2rem] bg-vermelho-500 px-6 py-7 text-white md:flex-row md:items-center md:justify-between md:px-10">
+        <div class="flex gap-4">
+          <span class="grid size-14 shrink-0 place-items-center rounded-2xl bg-amarelo-400 text-vermelho-600">
+            <Icone nome="medalha" class="size-8" />
+          </span>
+          <div>
+            <p class="font-display text-2xl leading-tight font-extrabold md:text-3xl">
+              Pague o anual até {prazo} e seja Fundador
+            </p>
+            <p class="mt-1 text-white/90">
+              {regras.percentualDescontoFundador}% de desconto para sempre nos planos e pacotes, selo Fundador e vitrine
+              própria, enquanto você mantiver a assinatura.
+            </p>
+          </div>
+        </div>
+        <a href="/fundadores" class={classesBotao("amarelo", "m", "shrink-0")}>Conheça os benefícios</a>
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-4 py-10">
+      <h2 class="font-display text-3xl font-extrabold text-azul-900">Extras</h2>
+      <p class="mt-1 mb-5 text-slate-600">
+        Para somar a qualquer plano, por mês. Junto com a assinatura anual, também são cobrados no anual, pelo equivalente
+        a {mesesAnual} mensalidades.
+      </p>
+      <ListaExtras extras={listarExtras()} regras={regras} />
+    </section>
+
+    <section class="bg-white py-10">
+      <div class="mx-auto max-w-6xl px-4">
+        <h2 class="mb-6 font-display text-3xl font-extrabold text-azul-900">Como contratar</h2>
+        <Passos passos={passos} />
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-3xl px-4 py-10">
+      <h2 class="mb-5 font-display text-3xl font-extrabold text-azul-900">Perguntas frequentes</h2>
+      <div class="flex flex-col gap-3">
+        {
+          perguntas.map((p) => (
+            <details class="group rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-center justify-between gap-3 font-display text-lg font-bold text-azul-900">
+                {p.pergunta}
+                <Icone nome="abaixo" class="size-5 shrink-0 text-slate-400 transition group-open:rotate-180" />
+              </summary>
+              <p class="mt-2 text-slate-600">{p.resposta}</p>
+            </details>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-4 pb-14">
+      <div class="rounded-[2rem] bg-tinta px-6 py-8 text-center text-white md:px-10 md:py-10">
+        <h2 class="font-display text-3xl font-extrabold md:text-4xl">
+          Pronto para ser <span class="text-amarelo-400">encontrado?</span>
+        </h2>
+        <p class="mx-auto mt-2 max-w-xl text-white/80">Fale com a equipe do Ache Aqui e tire as suas dúvidas.</p>
+        <BotaoContato rotulo="Quero anunciar" class="mt-6" />
+      </div>
+    </section>
+  </main>
+</Layout>

@@ -1,0 +1,131 @@
+---
+import { Icone, classesBotao, type NomeIcone } from "@acheaqui/ui";
+import Topo from "@/components/anuncios/Topo.astro";
+import Abertura from "@/components/institucional/Abertura.astro";
+import Passos from "@/components/institucional/Passos.astro";
+import Layout from "@/layouts/Layout.astro";
+import { guardarNoCache } from "@/lib/cache";
+
+guardarNoCache(Astro);
+
+const publicos: { icone: NomeIcone; titulo: string; texto: string }[] = [
+  {
+    icone: "busca",
+    titulo: "Moradores e visitantes",
+    texto:
+      "Quem mora em Rio das Ostras, quem tem casa de veraneio na cidade e turistas, que querem achar rápido um profissional ou comércio de confiança perto de casa.",
+  },
+  {
+    icone: "usuarios",
+    titulo: "Profissionais autônomos",
+    texto:
+      "Eletricistas, encanadores, diaristas, pedreiros, manicures, professores particulares e outros prestadores de serviço que querem novos clientes sem depender só de indicação.",
+  },
+  {
+    icone: "sacola",
+    titulo: "Comércios",
+    texto:
+      "Mercados, farmácias, restaurantes, pet shops, lojas de material de construção e outros estabelecimentos que querem aparecer para quem procura no bairro.",
+  },
+];
+
+const passosMorador = [
+  {
+    titulo: "Busque",
+    texto: "Escolha o tipo de serviço ou de comércio e, se quiser, o bairro. Também dá para chegar por uma busca no Google.",
+  },
+  { titulo: "Compare", texto: "A lista vem separada em Profissionais e Comércios, com foto, bairro e selo do plano." },
+  { titulo: "Abra o perfil", texto: "Veja fotos dos trabalhos, serviços, bairros atendidos e horário." },
+  { titulo: "Fale direto", texto: "Toque em “Pedir orçamento”, “Enviar mensagem” ou “Ligar”." },
+];
+
+const passosAnunciante = [
+  { titulo: "Cadastre-se", texto: "Pelo celular, em poucos minutos, ou com a ajuda da equipe ou de um representante." },
+  { titulo: "Confirme o e-mail", texto: "Clique no link que chega no e-mail informado no cadastro." },
+  { titulo: "Perfil no ar", texto: "A equipe confere o cadastro, confirma o pagamento e publica o perfil." },
+  { titulo: "Acompanhe", texto: "Na sua área, veja quantas pessoas visitaram o perfil e clicaram para falar com você." },
+];
+---
+
+<Layout
+  titulo="Sobre o Ache Aqui RO"
+  descricao="O Ache Aqui RO liga moradores e visitantes de Rio das Ostras a profissionais autônomos e comércios da cidade."
+>
+  <Topo pagina="interna" />
+
+  <main>
+    <Abertura
+      chamada="Sobre o Ache Aqui RO"
+      subtitulo="Um site onde moradores e visitantes encontram profissionais autônomos e comércios da cidade, filtram por tipo de serviço e por bairro e falam direto pelo WhatsApp ou pelo telefone."
+    >
+      Os profissionais e comércios de Rio das Ostras <span class="text-amarelo-400">num lugar só</span>
+    </Abertura>
+
+    <section class="bg-white py-10">
+      <div class="mx-auto max-w-6xl px-4">
+        <h2 class="mb-6 font-display text-3xl font-extrabold text-azul-900">Para quem é</h2>
+        <ul class="grid gap-4 md:grid-cols-3">
+          {
+            publicos.map((p) => (
+              <li class="rounded-3xl bg-fundo p-5">
+                <span class="grid size-12 place-items-center rounded-2xl bg-azul-600 text-amarelo-400">
+                  <Icone nome={p.icone} class="size-6" />
+                </span>
+                <h3 class="mt-3 font-display text-xl font-bold text-azul-900">{p.titulo}</h3>
+                <p class="mt-1 text-slate-600">{p.texto}</p>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-4 py-10">
+      <h2 class="mb-6 font-display text-3xl font-extrabold text-azul-900">Para quem procura</h2>
+      <Passos passos={passosMorador} fundo="branco" />
+      <p class="mt-4 font-semibold text-slate-600">Quem procura não paga nada e não precisa criar conta.</p>
+    </section>
+
+    <section class="bg-white py-10">
+      <div class="mx-auto max-w-6xl px-4">
+        <h2 class="mb-6 font-display text-3xl font-extrabold text-azul-900">Para quem anuncia</h2>
+        <Passos passos={passosAnunciante} />
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-4 py-10">
+      <div class="flex gap-4 rounded-3xl bg-azul-50 p-5 text-azul-900 md:p-6">
+        <Icone nome="escudo" class="size-8 shrink-0 text-azul-600" />
+        <div>
+          <h2 class="font-display text-2xl font-bold">Sem intermediação</h2>
+          <p class="mt-1">
+            O contato e a negociação acontecem direto entre quem procura e quem anuncia. O Ache Aqui RO divulga os
+            anunciantes, não cobra comissão sobre serviços nem sobre vendas e não se responsabiliza pelo que for combinado
+            entre as partes.
+          </p>
+        </div>
+      </div>
+      <p class="mt-6 text-sm text-slate-500">
+        O Ache Aqui RO é mantido pela A.R.R.C - Informática Serviços Ltda., CNPJ 37.905.181/0001-05.
+      </p>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-4 pb-14">
+      <div class="flex flex-col items-center gap-3 rounded-[2rem] bg-tinta px-6 py-8 text-center text-white md:px-10 md:py-10">
+        <h2 class="font-display text-3xl font-extrabold md:text-4xl">
+          O que você <span class="text-amarelo-400">procura hoje?</span>
+        </h2>
+        <div class="mt-3 flex flex-wrap justify-center gap-3">
+          <a href="/" class={classesBotao("amarelo", "g")}>
+            <Icone nome="busca" class="size-5" />
+            Buscar no Ache Aqui
+          </a>
+          <a href="/anuncie" class={classesBotao("contornoClaro", "g")}>
+            <Icone nome="megafone" class="size-5" />
+            Quero anunciar
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+</Layout>

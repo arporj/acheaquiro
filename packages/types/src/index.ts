@@ -50,7 +50,38 @@ export interface Plano {
   selo: Selo;
   /** Quanto maior, mais acima na lista (grupo de ordenação). */
   nivel: number;
-  valorMensal: number;
+  valorMensalCentavos: number;
+  /** O anual custa o equivalente a este número de mensalidades (hoje, 10). */
+  mesesCobradosNoAnual: number;
+  limiteFotos: number;
+  limiteCategoriasAdicionais: number;
+  limiteEncartesSemana: number;
+  limiteProdutos: number;
+  temRelatorio: boolean;
+}
+
+/** Extra avulso do item 6.4; valores vêm da tabela de extras. */
+export interface Extra {
+  id: string;
+  nome: string;
+  descricao: string;
+  valorMensalCentavos: number;
+  /** Complemento do preço: "por categoria e bairro". */
+  unidade?: string;
+  mesesCobradosNoAnual: number;
+  /** Pacotes têm desconto de Fundador; destaques e patrocínios não. */
+  aceitaDescontoFundador: boolean;
+  /** O Destaque Exclusivo do Mês é vendido só mês a mês. */
+  permiteAnual: boolean;
+}
+
+/** Regras de cobrança da tabela de configurações da cidade. */
+export interface RegrasCobranca {
+  percentualDescontoFundador: number;
+  /** Último dia para pagar o anual e virar Fundador (AAAA-MM-DD). */
+  prazoFundador: string;
+  /** Dias depois do vencimento até o Fundador perder a condição. */
+  toleranciaVencimentoDias: number;
 }
 
 export interface Foto {

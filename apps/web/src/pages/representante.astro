@@ -1,0 +1,186 @@
+---
+import { PERCENTUAIS_COMISSAO_MENSAL, PERCENTUAL_COMISSAO_ANUAL } from "@acheaqui/domain";
+import { Icone, type NomeIcone } from "@acheaqui/ui";
+import Topo from "@/components/anuncios/Topo.astro";
+import Abertura from "@/components/institucional/Abertura.astro";
+import BotaoContato from "@/components/institucional/BotaoContato.astro";
+import Passos from "@/components/institucional/Passos.astro";
+import { obterRegrasCobranca, planoPorId } from "@/dados/consultas";
+import Layout from "@/layouts/Layout.astro";
+import { guardarNoCache } from "@/lib/cache";
+import { exemploComissao, formatarCentavos, valorPlano } from "@/lib/precos";
+
+guardarNoCache(Astro);
+
+const regras = obterRegrasCobranca();
+const [primeira, segunda, terceira, quarta] = PERCENTUAIS_COMISSAO_MENSAL;
+
+// Exemplo do item 4.12 da especificação: padaria fictícia no plano Vitrine.
+const planoExemplo = planoPorId("com-vitrine");
+if (!planoExemplo) console.error("Página do representante: plano do exemplo (com-vitrine) não encontrado.");
+const exemplo = planoExemplo && {
+  plano: planoExemplo,
+  mensalidade: valorPlano(planoExemplo, "mensal", false, regras),
+  comissao: exemploComissao(planoExemplo, regras),
+};
+
+const passos = [
+  { titulo: "A equipe cadastra você", texto: "Você recebe um link próprio, como acheaquiro.com.br/r/joao, e um código." },
+  {
+    titulo: "Você apresenta o Ache Aqui",
+    texto: "Visite profissionais e comércios da cidade. Se precisarem, você mesmo faz o cadastro com eles.",
+  },
+  {
+    titulo: "O anunciante fica com você",
+    texto: "Quem se cadastra pelo seu link, ou informa o seu código, fica vinculado a você automaticamente.",
+  },
+  {
+    titulo: "Você acompanha e recebe",
+    texto: "Na sua área, você vê os anunciantes que trouxe e as comissões. O pagamento é feito por Pix.",
+  },
+];
+
+const regrasComissao: { icone: NomeIcone; titulo: string; texto: string }[] = [
+  {
+    icone: "relogio",
+    titulo: "No plano mensal",
+    texto: `Você recebe aos poucos, conforme o anunciante paga: ${primeira}% da 1ª mensalidade, ${segunda}% da 2ª, ${terceira}% da 3ª e ${quarta}% da 4ª. Da 5ª em diante, não há comissão.`,
+  },
+  {
+    icone: "dinheiro",
+    titulo: "No plano anual",
+    texto: `Você recebe ${PERCENTUAL_COMISSAO_ANUAL}% de uma mensalidade do plano, de uma vez, quando o anunciante paga o ano.`,
+  },
+  {
+    icone: "etiqueta",
+    titulo: "Sobre o valor pago",
+    texto: `A comissão é calculada sobre o que o anunciante efetivamente paga, já com descontos, como os ${regras.percentualDescontoFundador}% do Fundador.`,
+  },
+  {
+    icone: "sacola",
+    titulo: "Extras",
+    texto:
+      "Geram comissão quando vendidos junto com a assinatura, pela mesma regra do plano. Extras contratados depois pelo anunciante não geram comissão.",
+  },
+];
+---
+
+<Layout
+  titulo="Seja um representante"
+  descricao="Apresente o Ache Aqui RO a profissionais e comércios de Rio das Ostras e ganhe comissão por cada anunciante que pagar."
+  previa={{
+    titulo: "Seja um representante do Ache Aqui RO",
+    descricao: `Ganhe ${PERCENTUAL_COMISSAO_ANUAL}% de uma mensalidade por cada anunciante que você trouxer.`,
+  }}
+>
+  <Topo pagina="interna" />
+
+  <main>
+    <Abertura
+      chamada="Seja um representante"
+      subtitulo={`Para cada anunciante que você trouxer e que pagar, você recebe ao todo ${PERCENTUAL_COMISSAO_ANUAL}% de uma mensalidade do plano contratado.`}
+    >
+      Apresente o Ache Aqui e <span class="text-amarelo-400">ganhe comissão</span>
+      <Fragment slot="acoes">
+        <BotaoContato rotulo="Quero ser representante" />
+      </Fragment>
+    </Abertura>
+
+    <section class="bg-white py-10">
+      <div class="mx-auto max-w-6xl px-4">
+        <h2 class="mb-6 font-display text-3xl font-extrabold text-azul-900">Como funciona</h2>
+        <Passos passos={passos} />
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-4 py-10">
+      <h2 class="mb-5 font-display text-3xl font-extrabold text-azul-900">A comissão</h2>
+      <ul class="grid gap-4 sm:grid-cols-2">
+        {
+          regrasComissao.map((r) => (
+            <li class="flex gap-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+              <span class="grid size-12 shrink-0 place-items-center rounded-2xl bg-zap-600 text-white">
+                <Icone nome={r.icone} class="size-6" />
+              </span>
+              <div>
+                <h3 class="font-display text-xl font-bold text-azul-900">{r.titulo}</h3>
+                <p class="mt-1 text-slate-600">{r.texto}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    {
+      exemplo && (
+        <section class="bg-white py-10">
+          <div class="mx-auto max-w-4xl px-4">
+            <h2 class="font-display text-3xl font-extrabold text-azul-900">Exemplo</h2>
+            <p class="mt-1 mb-5 text-slate-600">
+              Você traz a Padaria Boa Massa (nome fictício), que contrata o plano {exemplo.plano.nome}, de{" "}
+              {formatarCentavos(exemplo.mensalidade)} por mês.
+            </p>
+            <div class="overflow-hidden rounded-3xl bg-fundo ring-1 ring-black/5">
+              <table class="w-full text-left text-sm sm:text-base">
+                <thead class="bg-azul-600 text-white">
+                  <tr>
+                    <th scope="col" class="px-4 py-3 font-display font-bold sm:px-5">Quando a padaria paga</th>
+                    <th scope="col" class="px-4 py-3 text-right font-display font-bold sm:px-5">Você recebe</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                  {exemplo.comissao.parcelasMensal.map((parcela) => (
+                    <tr>
+                      <th scope="row" class="px-4 py-3 font-semibold sm:px-5">{parcela.mensalidade}ª mensalidade</th>
+                      <td class="px-4 py-3 text-right sm:px-5">
+                        {formatarCentavos(parcela.centavos)} <span class="text-slate-500">({parcela.percentual}%)</span>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr class="bg-white">
+                    <th scope="row" class="px-4 py-3 font-extrabold text-azul-900 sm:px-5">Total no plano mensal</th>
+                    <td class="px-4 py-3 text-right font-extrabold text-zap-700 sm:px-5">
+                      {formatarCentavos(exemplo.comissao.totalMensal)}
+                    </td>
+                  </tr>
+                  <tr class="bg-white">
+                    <th scope="row" class="px-4 py-3 font-extrabold text-azul-900 sm:px-5">Se a padaria pagar o anual</th>
+                    <td class="px-4 py-3 text-right font-extrabold text-zap-700 sm:px-5">
+                      {formatarCentavos(exemplo.comissao.anual)}, de uma vez
+                    </td>
+                  </tr>
+                  <tr class="bg-white">
+                    <th scope="row" class="px-4 py-3 font-extrabold text-azul-900 sm:px-5">
+                      Se a padaria pagar o anual como Fundadora
+                    </th>
+                    <td class="px-4 py-3 text-right font-extrabold text-zap-700 sm:px-5">
+                      {formatarCentavos(exemplo.comissao.anualFundador)}, de uma vez
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="mt-4 flex gap-3 rounded-2xl bg-amarelo-200 p-4 text-azul-900">
+              <Icone nome="info" class="mt-0.5 size-5 shrink-0" />
+              <p>
+                Até o prazo dos Fundadores, quem paga o anual tem {regras.percentualDescontoFundador}% de desconto, e a
+                comissão acompanha o valor pago. Depois desse prazo, as novas vendas não têm o desconto de Fundador.
+              </p>
+            </div>
+          </div>
+        </section>
+      )
+    }
+
+    <section class="mx-auto max-w-6xl px-4 py-10 pb-14">
+      <div class="rounded-[2rem] bg-tinta px-6 py-8 text-center text-white md:px-10 md:py-10">
+        <h2 class="font-display text-3xl font-extrabold md:text-4xl">
+          Quer ser <span class="text-amarelo-400">representante?</span>
+        </h2>
+        <p class="mx-auto mt-2 max-w-xl text-white/80">Fale com a equipe do Ache Aqui para se candidatar.</p>
+        <BotaoContato rotulo="Quero ser representante" class="mt-6" />
+      </div>
+    </section>
+  </main>
+</Layout>

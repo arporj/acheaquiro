@@ -12,3 +12,9 @@ export function paraSlug(texto: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 }
+
+/** "2026-11-26" → "26/11/2026". */
+export function formatarData(dataISO: string): string {
+  const [ano, mes, dia] = dataISO.split("-");
+  return `${dia}/${mes}/${ano}`;
+}

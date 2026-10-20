@@ -1,5 +1,5 @@
 // Classes de botão compartilhadas por <button> e <a>.
-export type VarianteBotao = "amarelo" | "azul" | "zap" | "contorno" | "contornoZap" | "fantasma" | "perigo";
+export type VarianteBotao = "amarelo" | "azul" | "zap" | "contorno" | "contornoZap" | "contornoClaro" | "fantasma" | "perigo";
 export type TamanhoBotao = "p" | "m" | "g";
 
 const base =
@@ -13,6 +13,8 @@ const variantes: Record<VarianteBotao, string> = {
   zap: "bg-zap-600 text-white hover:bg-zap-700",
   contorno: "border-2 border-azul-100 bg-white text-azul-700 hover:border-azul-500 hover:bg-azul-50",
   contornoZap: "border-2 border-zap-600 bg-white text-zap-700 hover:bg-zap-50",
+  // Para fundos escuros (faixas azuis e o bloco final das páginas institucionais).
+  contornoClaro: "border-2 border-white/40 text-white hover:border-white hover:bg-white/10",
   fantasma: "text-azul-700 hover:bg-azul-50",
   perigo: "bg-vermelho-600 text-white hover:bg-vermelho-700",
 };

@@ -12,6 +12,7 @@
     "deploy:teste": "astro build --mode teste && wrangler deploy"
   },
   "dependencies": {
+    "@acheaqui/domain": "*",
     "@acheaqui/types": "*",
     "@acheaqui/ui": "*",
     "@astrojs/cloudflare": "^14.4.1",

@@ -1,11 +1,21 @@
 // Ponto único de leitura de dados das páginas. Hoje lê os mocks; quando o
 // Supabase entrar, só este arquivo muda (passa a usar packages/supabase-client).
-import type { Anunciante, Bairro, Categoria, Foto, Plano, Selo } from "@acheaqui/types";
+import type {
+  Anunciante,
+  Bairro,
+  Categoria,
+  Extra,
+  Foto,
+  Plano,
+  RegrasCobranca,
+  Selo,
+  TipoAnunciante,
+} from "@acheaqui/types";
 import { anunciantes } from "@/mocks/anunciantes";
 import { categorias, ordemAtalhos } from "@/mocks/categorias";
 import { destaqueExclusivoId, linksPatrocinados, simulacaoComercios, superDestaqueIds } from "@/mocks/extras";
 import { bairros, cidadeAtual } from "@/mocks/localidades";
-import { planos } from "@/mocks/planos";
+import { extrasDisponiveis, planos, regrasCobranca } from "@/mocks/planos";
 import { normalizar } from "@/lib/texto";
 
 export { cidadeAtual };
@@ -68,6 +78,19 @@ export function nomeBairro(id: string): string {
 
 export function planoPorId(id: string): Plano | undefined {
   return planos.find((p) => p.id === id);
+}
+
+/** Planos de um tipo de anunciante, do mais barato ao mais caro. */
+export function listarPlanos(tipo: TipoAnunciante): Plano[] {
+  return planos.filter((p) => p.tipo === tipo).sort((a, b) => a.nivel - b.nivel);
+}
+
+export function listarExtras(): Extra[] {
+  return extrasDisponiveis;
+}
+
+export function obterRegrasCobranca(): RegrasCobranca {
+  return regrasCobranca;
 }
 
 export function anunciantePorSlug(slug: string): Anunciante | undefined {
@@ -178,6 +201,14 @@ export function buscarPorTexto(termo: string): { categorias: Categoria[]; result
 export function destaqueExclusivo(): { item: ItemResultado; anunciante: Anunciante } | undefined {
   const anunciante = anunciantes.find((a) => a.id === destaqueExclusivoId);
   return anunciante && { item: paraItem(anunciante), anunciante };
+}
+
+/** Vitrine dos Fundadores (item 4.16), em ordem alfabética. */
+export function listarFundadores(): ItemResultado[] {
+  return anunciantes
+    .filter((a) => a.fundador)
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+    .map((a) => paraItem(a));
 }
 
 export function superDestaques(): ItemResultado[] {

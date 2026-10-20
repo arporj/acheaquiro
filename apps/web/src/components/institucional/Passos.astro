@@ -1,0 +1,26 @@
+---
+// Passos numerados ("Como funciona"), usados na página inicial e nas institucionais.
+interface Props {
+  passos: { titulo: string; texto: string }[];
+  /** Fundo de cada passo: claro sobre seção branca, branco sobre o fundo da página. */
+  fundo?: "claro" | "branco";
+}
+
+const { passos, fundo = "claro" } = Astro.props;
+---
+
+<ol class={`grid gap-4 ${passos.length === 4 ? "md:grid-cols-2 lg:grid-cols-4" : "md:grid-cols-3"}`}>
+  {
+    passos.map((passo, i) => (
+      <li class={`flex gap-4 rounded-3xl p-5 ${fundo === "claro" ? "bg-fundo" : "bg-white shadow-sm ring-1 ring-black/5"}`}>
+        <span class="grid size-12 shrink-0 place-items-center rounded-2xl bg-azul-600 font-display text-2xl font-extrabold text-amarelo-400">
+          {i + 1}
+        </span>
+        <div>
+          <h3 class="font-display text-xl font-bold text-azul-900">{passo.titulo}</h3>
+          <p class="text-slate-600">{passo.texto}</p>
+        </div>
+      </li>
+    ))
+  }
+</ol>

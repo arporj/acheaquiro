@@ -1,0 +1,43 @@
+---
+// Extras avulsos (item 6.4), com o preço de Fundador nos pacotes.
+import { Icone } from "@acheaqui/ui";
+import type { Extra, RegrasCobranca } from "@acheaqui/types";
+import { formatarCentavos, valorExtra } from "@/lib/precos";
+
+interface Props {
+  extras: Extra[];
+  regras: RegrasCobranca;
+}
+
+const { extras, regras } = Astro.props;
+---
+
+<ul class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+  {
+    extras.map((extra) => {
+      const mensal = valorExtra(extra, "mensal", false, regras);
+      const fundador = valorExtra(extra, "mensal", true, regras);
+      return (
+        <li class="flex flex-col rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+          <h3 class="font-display text-lg font-bold text-azul-900">{extra.nome}</h3>
+          <p class="mt-1 flex-1 text-sm text-slate-600">{extra.descricao}</p>
+          <p class="mt-3">
+            <span class="font-display text-2xl font-extrabold text-azul-900">{mensal !== null && formatarCentavos(mensal)}</span>
+            <span class="text-sm font-bold text-slate-500">/mês{extra.unidade && ` ${extra.unidade}`}</span>
+          </p>
+          <div class="mt-2 flex flex-wrap gap-1.5 text-xs font-extrabold">
+            {extra.aceitaDescontoFundador && fundador !== null ? (
+              <span class="inline-flex items-center gap-1 rounded-full bg-vermelho-500 px-2 py-0.5 text-white">
+                <Icone nome="medalha" class="size-3.5" />
+                Fundador: {formatarCentavos(fundador)}/mês
+              </span>
+            ) : (
+              <span class="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">Sem desconto de Fundador</span>
+            )}
+            {!extra.permiteAnual && <span class="rounded-full bg-azul-50 px-2 py-0.5 text-azul-700">Só mês a mês</span>}
+          </div>
+        </li>
+      );
+    })
+  }
+</ul>

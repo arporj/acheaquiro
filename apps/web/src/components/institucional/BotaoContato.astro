@@ -1,0 +1,19 @@
+---
+// Botão de contato com a equipe. Ainda sem destino: a página Fale conosco e o
+// WhatsApp da equipe entram depois (decisão de 20/10/2026). Quando existirem,
+// basta trocar o <button> por um link aqui.
+import { Icone, classesBotao, type VarianteBotao } from "@acheaqui/ui";
+
+interface Props {
+  rotulo: string;
+  variante?: VarianteBotao;
+  class?: string;
+}
+
+const { rotulo, variante = "amarelo", class: classe = "" } = Astro.props;
+---
+
+<button type="button" class={classesBotao(variante, "g", classe)}>
+  <Icone nome="mensagem" class="size-5" />
+  {rotulo}
+</button>
