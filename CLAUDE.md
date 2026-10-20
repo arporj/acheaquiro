@@ -12,7 +12,7 @@ Calendário: pré-cadastro dos Fundadores de 09/11 a 26/11/2026, feito pela equi
 - Plano vencido sem pagamento: o perfil do autônomo fica escondido, sem ser apagado, e o comércio passa para o plano Gratuito.
 - Representantes atuam desde o pré-cadastro dos Fundadores. A comissão é calculada sobre o valor efetivamente pago, já com descontos. No plano, 135% de uma mensalidade (mensal: 100%, 20%, 10% e 5% das 4 primeiras; anual: de uma vez, sem nova comissão na renovação). Extras geram comissão só quando vendidos junto com a assinatura: 20% do valor pago pelo extra nessa venda, uma vez só.
 - Destaque Exclusivo: vendido por dia, escolhido num calendário com os dias livres e ocupados. Diária e bloco de 30 dias seguidos ficam em extras.regras; a partir de 21 dias seguidos, o anunciante paga o bloco e os dias que faltam vão para os próximos dias livres (pode cancelá-los, sem devolução). Reserva com pelo menos 2 dias de antecedência, valendo a partir do dia seguinte à confirmação do Pix. Uma tarefa à meia-noite limpa o cache das páginas.
-- Link patrocinado: pacote de 3 bairros ou cidade toda (no máximo 3 por categoria). Sem bairro escolhido pelo visitante, só os da cidade toda disputam o topo. O patrocinado continua também na posição do seu plano. Super Destaque: ordem sorteada a cada visita.
+- Link patrocinado: pacote de 3 bairros ou cidade toda (no máximo 3 por categoria). Sem bairro escolhido pelo visitante, só os da cidade toda disputam o topo. Na aba Comércios, o bairro escolhido reordena em vez de esconder: os do bairro primeiro, depois os outros pela distância (com a localização do celular) ou pelos planos. O patrocinado continua também na posição do seu plano. Super Destaque: ordem sorteada a cada visita.
 
 ## Documentação
 
@@ -69,7 +69,7 @@ Cada regra abaixo fica em packages/domain e tem testes automatizados:
 - Ordem da lista de resultados por grupo de plano, com alternância dentro de cada grupo.
 - Sorteio dos links patrocinados nas 3 primeiras posições, com peso dobrado para o Patrocinado Plus, considerando o bairro escolhido (pacote de bairros ou cidade toda), com o patrocinado mantido também na posição do seu plano.
 - Vaga rotativa a cada 10 posições para os dois planos de entrada, com peso dobrado para o mais caro dos dois (autônomos: Profissional; comércios: Básico).
-- Ordenação por distância em "Mais perto de mim", mantendo os patrocinados no topo.
+- Ordenação por distância em "Mais perto de mim", mantendo os patrocinados no topo, e a ordem dos comércios com bairro escolhido (os do bairro primeiro, pelos planos; depois os outros, pela distância ou pelos planos sem localização).
 - Cálculo da comissão do representante, no plano mensal e no anual, incluindo os extras vendidos junto com a assinatura.
 - Preço do Destaque Exclusivo por dia, com o bloco de 30 dias seguidos e os dias a completar.
 - Quem vira Fundador (assinatura anual paga até o prazo) e em quais extras vale o desconto.

@@ -21,8 +21,10 @@ export interface CandidatoLista {
   nivelPlano: number;
   /** Links patrocinados ativos do anunciante na categoria buscada. */
   patrocinios?: readonly Patrocinio[];
-  /** Usada só no modo "Mais perto de mim". */
+  /** Distância até o visitante, quando ele permite a localização. */
   distanciaKm?: number;
+  /** Bairros do anunciante (endereços do comércio); usados com `priorizarBairro`. */
+  bairroIds?: readonly string[];
 }
 
 export interface OpcoesOrdenacao {
@@ -31,6 +33,14 @@ export interface OpcoesOrdenacao {
   semente: number;
   /** Bairro escolhido pelo visitante; sem bairro, só os patrocinados da cidade toda disputam o topo. */
   bairro?: string;
+  /**
+   * Comércios com bairro escolhido (decisão de 20/10/2026): ninguém sai da
+   * lista. Primeiro os do bairro, pela regra dos planos; depois os de outros
+   * bairros. Os profissionais continuam filtrados pelos bairros que atendem.
+   */
+  priorizarBairro?: boolean;
+  /** Com a localização do visitante, os de outros bairros vão do mais perto ao mais longe; sem ela, pela regra dos planos. */
+  outrosBairrosPorDistancia?: boolean;
   /**
    * Níveis dos dois planos de entrada do tipo da lista, vindos da tabela de
    * planos. O mais caro dos dois tem o dobro de chance na vaga rotativa.
@@ -46,6 +56,8 @@ export interface ListaOrdenada<T> {
    * aqui, na posição do seu plano: o patrocínio é um lugar a mais no topo.
    */
   lista: T[];
+  /** Com `priorizarBairro`: quantos itens do início da lista são do bairro escolhido. */
+  noBairro?: number;
 }
 
 export function ordenarResultados<T extends CandidatoLista>(
@@ -59,12 +71,46 @@ export function ordenarResultados<T extends CandidatoLista>(
     return { patrocinados, lista: ordenarPorDistancia(candidatos) };
   }
 
-  // A vaga rotativa conta as posições da página inteira, com os patrocinados do topo.
-  const exibicao = [...patrocinados, ...agruparPorPlano(candidatos, aleatorio)];
-  if (candidatos.length > INTERVALO_VAGA_ROTATIVA) {
-    aplicarVagaRotativa(exibicao, patrocinados.length, opcoes.niveisEntrada, aleatorio);
+  const inicio = patrocinados.length;
+  const bairro = opcoes.priorizarBairro ? opcoes.bairro : undefined;
+  if (bairro === undefined) {
+    const exibicao = [...patrocinados, ...agruparPorPlano(candidatos, aleatorio)];
+    aplicarVagas(exibicao, candidatos.length, [{ inicio, fim: exibicao.length }], opcoes, aleatorio);
+    return { patrocinados, lista: exibicao.slice(inicio) };
   }
-  return { patrocinados, lista: exibicao.slice(patrocinados.length) };
+
+  const doBairro = agruparPorPlano(
+    candidatos.filter((c) => c.bairroIds?.includes(bairro)),
+    aleatorio,
+  );
+  const outros = candidatos.filter((c) => !c.bairroIds?.includes(bairro));
+  const exibicao = [
+    ...patrocinados,
+    ...doBairro,
+    ...(opcoes.outrosBairrosPorDistancia ? ordenarPorDistancia(outros) : agruparPorPlano(outros, aleatorio)),
+  ];
+  // A vaga rotativa só mexe nos trechos ordenados pelos planos, sem desmanchar a ordem por distância.
+  const trechos = [{ inicio, fim: inicio + doBairro.length }];
+  if (!opcoes.outrosBairrosPorDistancia) trechos.push({ inicio: inicio + doBairro.length, fim: exibicao.length });
+  aplicarVagas(exibicao, candidatos.length, trechos, opcoes, aleatorio);
+  return { patrocinados, lista: exibicao.slice(inicio), noBairro: doBairro.length };
+}
+
+/** A vaga rotativa existe só em categorias com mais de 10 anunciantes. */
+function aplicarVagas<T extends CandidatoLista>(
+  exibicao: T[],
+  totalCandidatos: number,
+  trechos: Trecho[],
+  opcoes: OpcoesOrdenacao,
+  aleatorio: Aleatorio,
+): void {
+  if (totalCandidatos > INTERVALO_VAGA_ROTATIVA) aplicarVagaRotativa(exibicao, trechos, opcoes.niveisEntrada, aleatorio);
+}
+
+/** Pedaço da página ordenado pelos planos: de `inicio` (incluído) a `fim` (excluído). */
+interface Trecho {
+  inicio: number;
+  fim: number;
 }
 
 /** Peso no sorteio do topo nesta busca; 0 quando nenhum patrocínio vale para o bairro. */
@@ -105,27 +151,31 @@ function ordenarPorDistancia<T extends CandidatoLista>(candidatos: readonly T[])
 }
 
 /**
- * Nas posições 10, 20, 30... entra um anunciante dos dois planos de entrada,
- * sorteado entre os que estão daquela posição para baixo (subir, nunca
- * descer). Ele sai da posição original, então ninguém aparece duas vezes na
- * lista. Sem candidatos dos planos de entrada, a vaga não é aplicada.
+ * Nas posições 10, 20, 30... da página entra um anunciante dos dois planos de
+ * entrada, sorteado entre os que estão daquela posição para baixo no mesmo
+ * trecho (subir, nunca descer). Ele sai da posição original, então ninguém
+ * aparece duas vezes na lista. Sem candidatos dos planos de entrada, ou com a
+ * posição fora de um trecho ordenado pelos planos, a vaga não é aplicada.
  */
 function aplicarVagaRotativa<T extends CandidatoLista>(
   exibicao: T[],
-  inicioLista: number,
+  trechos: readonly Trecho[],
   niveis: OpcoesOrdenacao["niveisEntrada"],
   aleatorio: Aleatorio,
 ): void {
   for (let posicao = INTERVALO_VAGA_ROTATIVA; posicao <= exibicao.length; posicao += INTERVALO_VAGA_ROTATIVA) {
     const indiceVaga = posicao - 1;
+    const trecho = trechos.find((t) => indiceVaga >= t.inicio && indiceVaga < t.fim);
+    if (!trecho) continue;
     const elegiveis = exibicao
       .map((candidato, indice) => ({ candidato, indice }))
       .filter(
         ({ candidato, indice }) =>
-          indice >= Math.max(indiceVaga, inicioLista) &&
+          indice >= indiceVaga &&
+          indice < trecho.fim &&
           (candidato.nivelPlano === niveis.maisCaro || candidato.nivelPlano === niveis.maisBarato),
       );
-    if (elegiveis.length === 0) break;
+    if (elegiveis.length === 0) continue;
 
     const [sorteado] = sortearComPeso(
       elegiveis.map((e) => ({ item: e, peso: e.candidato.nivelPlano === niveis.maisCaro ? 2 : 1 })),

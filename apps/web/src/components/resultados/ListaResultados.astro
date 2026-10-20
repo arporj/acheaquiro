@@ -97,7 +97,15 @@ const filtroBotao =
     bairro escolhido.
   </p>
 
+  <p class="mt-2 rounded-xl bg-azul-50 px-3 py-2 text-xs text-azul-800" data-nota-bairro hidden>
+    Protótipo: no site real, o navegador pede a sua localização para ordenar os comércios de outros bairros do mais
+    perto para o mais longe. Sem ela, eles seguem a ordem dos planos.
+  </p>
+
   <div class="mt-4 flex flex-col gap-3" data-lista>
+    <h3 class="mt-2 font-display text-lg font-bold text-azul-900" data-separador-bairro hidden>
+      Em outros bairros, do mais perto para o mais longe
+    </h3>
     {
       itens.map((item, i) => (
         <div data-item={JSON.stringify(dados[i])} hidden={!passaNoFiltro(dados[i], estado)}>
@@ -128,7 +136,7 @@ const filtroBotao =
 </div>
 
 <script>
-  import { ordemDeExibicao, passaNoFiltro, type Aba, type DadosFiltro, type EstadoLista } from "./filtros";
+  import { bairroReordena, ordemDeExibicao, passaNoFiltro, type Aba, type DadosFiltro, type EstadoLista } from "./filtros";
 
   function iniciar(raiz: HTMLElement) {
     const lista = raiz.querySelector<HTMLElement>("[data-lista]");
@@ -140,7 +148,9 @@ const filtroBotao =
     const vazioNenhum = raiz.querySelector<HTMLElement>("[data-vazio-nenhum]");
     const vazioTipo = raiz.querySelector<HTMLElement>("[data-vazio-tipo]");
     const notaPerto = raiz.querySelector<HTMLElement>("[data-nota-perto]");
-    if (!lista || !selectBairro || !botaoPerto || !botaoAbertos || !vazio || !vazioFiltro || !vazioNenhum || !vazioTipo || !notaPerto) {
+    const notaBairro = raiz.querySelector<HTMLElement>("[data-nota-bairro]");
+    const separador = raiz.querySelector<HTMLElement>("[data-separador-bairro]");
+    if (!lista || !selectBairro || !botaoPerto || !botaoAbertos || !vazio || !vazioFiltro || !vazioNenhum || !vazioTipo || !notaPerto || !notaBairro || !separador) {
       console.error("Lista de resultados: elementos da página não encontrados.");
       return;
     }
@@ -164,15 +174,27 @@ const filtroBotao =
       selectBairro!.value = estado.bairro;
       selectBairro!.toggleAttribute("data-ativo", Boolean(estado.bairro));
       notaPerto!.hidden = !(comercio && estado.maisPerto);
+      notaBairro!.hidden = !bairroReordena(estado);
 
       let visiveis = 0;
-      for (const posicao of ordemDeExibicao(dados, estado)) {
+      let separadorPosto = false;
+      const { ordem, inicioOutrosBairros } = ordemDeExibicao(dados, estado);
+      ordem.forEach((posicao, indice) => {
         const cartao = cartoes[posicao];
         cartao.hidden = !passaNoFiltro(dados[posicao], estado);
+        const deOutroBairro = inicioOutrosBairros >= 0 && indice >= inicioOutrosBairros;
+        // A linha "Em outros bairros" fica antes do primeiro comércio visível de outro bairro.
+        if (deOutroBairro && !cartao.hidden && !separadorPosto) {
+          lista!.append(separador!);
+          separadorPosto = true;
+        }
         if (!cartao.hidden) visiveis++;
-        for (const distancia of cartao.querySelectorAll<HTMLElement>("[data-distancia]")) distancia.hidden = !estado.maisPerto;
+        for (const distancia of cartao.querySelectorAll<HTMLElement>("[data-distancia]")) {
+          distancia.hidden = !(estado.maisPerto || deOutroBairro);
+        }
         lista!.append(cartao); // reordena
-      }
+      });
+      separador!.hidden = !separadorPosto;
 
       const totalDaAba = Number(botoesAba.find((b) => b.dataset.abaBotao === estado.aba)?.dataset.total ?? 0);
       const porFiltro = (Boolean(estado.bairro) || estado.somenteAbertos) && totalDaAba > 0;

@@ -198,6 +198,86 @@ describe("vaga rotativa", () => {
   });
 });
 
+describe("comércios com bairro escolhido", () => {
+  // Decisão de 20/10/2026: ninguém sai da lista; o bairro escolhido vem primeiro.
+  const opcoes: OpcoesOrdenacao = { ...padrao, bairro: "costazul", priorizarBairro: true };
+  const noBairro = (id: string, nivelPlano: number, distanciaKm: number) => ({
+    id,
+    nivelPlano,
+    distanciaKm,
+    bairroIds: ["costazul"],
+  });
+  const fora = (id: string, nivelPlano: number, distanciaKm: number) => ({
+    id,
+    nivelPlano,
+    distanciaKm,
+    bairroIds: ["centro"],
+  });
+  const entrada = [
+    fora("centro-premium-longe", 4, 9),
+    noBairro("costazul-basico-longe", 2, 5),
+    fora("centro-gratuito-perto", 1, 0.3),
+    noBairro("costazul-premium-perto", 4, 0.5),
+    fora("centro-vitrine-meio", 3, 2),
+  ];
+
+  it("põe os do bairro primeiro, pela regra dos planos, mesmo os mais longe", () => {
+    const { lista, noBairro: quantidade } = ordenarResultados(entrada, opcoes);
+    expect(quantidade).toBe(2);
+    expect(ids(lista.slice(0, 2))).toEqual(["costazul-premium-perto", "costazul-basico-longe"]);
+    listaCompleta(entrada, lista);
+  });
+
+  it("sem a localização do visitante, os de outros bairros seguem a regra dos planos", () => {
+    const { lista } = ordenarResultados(entrada, opcoes);
+    expect(ids(lista.slice(2))).toEqual(["centro-premium-longe", "centro-vitrine-meio", "centro-gratuito-perto"]);
+  });
+
+  it("com a localização, os de outros bairros vão do mais perto ao mais longe", () => {
+    const { lista } = ordenarResultados(entrada, { ...opcoes, outrosBairrosPorDistancia: true });
+    expect(ids(lista.slice(2))).toEqual(["centro-gratuito-perto", "centro-vitrine-meio", "centro-premium-longe"]);
+  });
+
+  it("o patrocinado da cidade toda de outro bairro vai para o topo e continua no seu grupo", () => {
+    const patrocinado = { ...fora("centro-patrocinado", 2, 7), patrocinios: cidade };
+    const { patrocinados, lista } = ordenarResultados([...entrada, patrocinado], opcoes);
+    expect(ids(patrocinados)).toEqual(["centro-patrocinado"]);
+    expect(ids(lista.slice(2))).toContain("centro-patrocinado");
+  });
+
+  it("aplica a vaga rotativa dentro do bairro", () => {
+    const doBairro = [
+      ...anunciantes(10, 4, { bairroIds: ["costazul"] }),
+      ...anunciantes(1, 2, { bairroIds: ["costazul"] }),
+    ];
+    const { lista } = ordenarResultados([...doBairro, ...anunciantes(3, 4, { bairroIds: ["centro"] })], opcoes);
+    expect(lista[9]!.nivelPlano).toBe(2);
+  });
+
+  it("não desmancha a ordem por distância dos outros bairros com a vaga rotativa", () => {
+    const outros = Array.from({ length: 12 }, (_, i) => ({
+      id: `fora${i}`,
+      nivelPlano: i === 11 ? 1 : 4,
+      distanciaKm: i + 1,
+      bairroIds: ["centro"],
+    }));
+    const entradaGrande = [noBairro("costazul-1", 4, 20), ...outros];
+    const { lista } = ordenarResultados(entradaGrande, { ...opcoes, outrosBairrosPorDistancia: true });
+    expect(ids(lista.slice(1))).toEqual(outros.map((o) => o.id));
+  });
+
+  it("no \"Mais perto de mim\", ignora o bairro e ordena todos pela distância", () => {
+    const { lista } = ordenarResultados(entrada, { ...opcoes, modo: "distancia" });
+    expect(ids(lista)[0]).toBe("centro-gratuito-perto");
+  });
+
+  it("sem bairro escolhido, nada muda", () => {
+    const comPrioridade = ordenarResultados(entrada, { ...padrao, priorizarBairro: true });
+    expect(comPrioridade).toEqual(ordenarResultados(entrada, padrao));
+    expect(comPrioridade.noBairro).toBeUndefined();
+  });
+});
+
 describe("Mais perto de mim", () => {
   const distancia: OpcoesOrdenacao = { ...padrao, modo: "distancia" };
 
