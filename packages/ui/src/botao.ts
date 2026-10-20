@@ -1,4 +1,4 @@
-// Classes de botão compartilhadas por <button>, <a> e <Link>.
+// Classes de botão compartilhadas por <button> e <a>.
 export type VarianteBotao = "amarelo" | "azul" | "zap" | "contorno" | "contornoZap" | "fantasma" | "perigo";
 export type TamanhoBotao = "p" | "m" | "g";
 

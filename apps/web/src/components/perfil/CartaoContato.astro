@@ -1,0 +1,40 @@
+---
+// Cartão lateral de contato, no computador.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import type { Anunciante } from "@acheaqui/types";
+import { formatarTelefone, linksContato } from "@/lib/contato";
+
+interface Props {
+  anunciante: Anunciante;
+}
+
+const { anunciante } = Astro.props;
+const l = linksContato(anunciante);
+---
+
+<div class="rounded-3xl bg-white p-5 shadow-md ring-1 ring-black/5">
+  <h2 class="font-display text-xl font-bold text-azul-900">Entre em contato</h2>
+  <p class="mb-4 text-sm text-slate-500">Direto com o anunciante, sem intermediários.</p>
+  <div class="flex flex-col gap-2">
+    <a href={l.orcamento} target="_blank" rel="noopener noreferrer" class={classesBotao("zap", "g")}>
+      <Icone nome="mensagem" class="size-5" />
+      Pedir orçamento
+    </a>
+    <a href={l.mensagem} target="_blank" rel="noopener noreferrer" class={classesBotao("contornoZap", "m")}>
+      <Icone nome="mensagem" class="size-4" />
+      Enviar mensagem
+    </a>
+    <a href={l.telefone} class={classesBotao("contorno", "m")}>
+      <Icone nome="telefone" class="size-4" />
+      Ligar · {formatarTelefone(anunciante.telefone ?? anunciante.whatsapp)}
+    </a>
+    {
+      l.comoChegar && (
+        <a href={l.comoChegar} target="_blank" rel="noopener noreferrer" class={classesBotao("contorno", "m")}>
+          <Icone nome="rota" class="size-4" />
+          Como chegar
+        </a>
+      )
+    }
+  </div>
+</div>

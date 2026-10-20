@@ -1,0 +1,177 @@
+---
+import { Icone, IconeCategoria, classesBotao, type NomeIcone } from "@acheaqui/ui";
+import Topo from "@/components/anuncios/Topo.astro";
+import FormBusca from "@/components/FormBusca.astro";
+import { categoriasAtalho, categoriasPorGrupo } from "@/dados/consultas";
+import Layout from "@/layouts/Layout.astro";
+import { guardarNoCache } from "@/lib/cache";
+
+guardarNoCache(Astro);
+const buscasPopulares = ["Diarista", "Pizza", "Bombeiro hidráulico", "Farmácia", "Pet shop", "Marmita"];
+
+// Estrela de 16 pontas do selo "R$ 1,99" do flyer.
+const pontasEstrela = Array.from({ length: 32 }, (_, i) => {
+  const angulo = (Math.PI * 2 * i) / 32 - Math.PI / 2;
+  const raio = i % 2 === 0 ? 50 : 42;
+  return `${(50 + raio * Math.cos(angulo)).toFixed(1)}% ${(50 + raio * Math.sin(angulo)).toFixed(1)}%`;
+}).join(", ");
+
+const passos: { icone: NomeIcone; titulo: string; texto: string }[] = [
+  { icone: "busca", titulo: "Busque", texto: "Digite o que precisa ou toque numa categoria. Escolha o bairro, se quiser." },
+  { icone: "estrela", titulo: "Escolha", texto: "Veja fotos dos trabalhos, bairros atendidos e horários de cada anunciante." },
+  { icone: "mensagem", titulo: "Fale direto", texto: "Peça orçamento pelo WhatsApp ou ligue. A negociação é direto com o anunciante." },
+];
+---
+
+<Layout>
+  <Topo pagina="inicial" />
+
+  <main>
+    <section class="fundo-raios mt-4 text-white">
+      <div class="mx-auto max-w-6xl px-4 py-10 md:py-14">
+        <h1 class="max-w-3xl font-display text-[2rem] leading-[1.05] font-extrabold sm:text-5xl">
+          Aqui você encontra os melhores <span class="text-amarelo-400">profissionais e serviços</span> de Rio das Ostras!
+        </h1>
+        <p class="mt-3 max-w-xl text-lg text-white/85">
+          Busque, escolha e fale direto pelo WhatsApp. Sem cadastro, sem complicação.
+        </p>
+        <div class="mt-6 max-w-4xl">
+          <FormBusca variante="destaque" />
+        </div>
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <span class="text-sm font-bold text-white/70">Mais buscados:</span>
+          {
+            buscasPopulares.map((termo) => (
+              <a
+                href={`/busca?q=${encodeURIComponent(termo)}`}
+                class="rounded-full bg-white/15 px-3 py-1 text-sm font-bold text-white hover:bg-white/25"
+              >
+                {termo}
+              </a>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section id="categorias" class="mx-auto max-w-6xl scroll-mt-4 px-4 py-10">
+      <div class="mb-5 flex items-end justify-between gap-4">
+        <h2 class="font-display text-3xl font-extrabold text-azul-900">O que você procura?</h2>
+        <a href="#todas" class="shrink-0 text-sm font-extrabold text-azul-600 hover:underline">Ver todas</a>
+      </div>
+      <ul class="grid grid-cols-3 gap-2.5 sm:gap-3 md:grid-cols-5">
+        {
+          categoriasAtalho().map((categoria) => (
+            <li>
+              <a
+                href={`/${categoria.slugLista}`}
+                class="group relative flex aspect-square flex-col overflow-hidden rounded-2xl shadow-md ring-1 ring-black/5 transition hover:-translate-y-1 hover:shadow-xl sm:aspect-[5/4]"
+                style={`background-color: ${categoria.cor}`}
+              >
+                <span class="absolute -top-6 -right-6 size-20 rounded-full bg-white/20" aria-hidden="true" />
+                <span class="grid flex-1 place-items-center text-white drop-shadow-sm transition group-hover:scale-110">
+                  <IconeCategoria nome={categoria.icone} class="size-10 sm:size-12" />
+                </span>
+                <span class="bg-black/25 px-1.5 py-1.5 text-center font-display text-[0.8rem] leading-tight font-bold text-white sm:text-base">
+                  {categoria.nome}
+                </span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section class="bg-white py-10">
+      <div class="mx-auto max-w-6xl px-4">
+        <h2 class="mb-6 font-display text-3xl font-extrabold text-azul-900">Como funciona</h2>
+        <ol class="grid gap-4 md:grid-cols-3">
+          {
+            passos.map((passo, i) => (
+              <li class="flex gap-4 rounded-3xl bg-fundo p-5">
+                <span class="grid size-12 shrink-0 place-items-center rounded-2xl bg-azul-600 font-display text-2xl font-extrabold text-amarelo-400">
+                  {i + 1}
+                </span>
+                <div>
+                  <h3 class="font-display text-xl font-bold text-azul-900">{passo.titulo}</h3>
+                  <p class="text-slate-600">{passo.texto}</p>
+                </div>
+              </li>
+            ))
+          }
+        </ol>
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-4 py-10">
+      <div class="relative overflow-hidden rounded-[2rem] bg-tinta px-6 py-8 text-white md:px-10 md:py-10">
+        <div class="relative z-10 max-w-xl">
+          <p class="font-display text-lg font-bold text-amarelo-400">Você é profissional ou tem um comércio?</p>
+          <h2 class="mt-1 font-display text-4xl leading-none font-extrabold md:text-5xl">
+            Seu serviço <span class="text-amarelo-400">mais visível!</span>
+          </h2>
+          <ul class="mt-5 space-y-1.5 text-lg font-semibold">
+            {
+              ["Mais clientes", "Mais oportunidades", "Mais resultados"].map((item) => (
+                <li class="flex items-center gap-2">
+                  <Icone nome="certo" class="size-6 text-amarelo-400" strokeWidth={3} />
+                  {item}
+                </li>
+              ))
+            }
+          </ul>
+          <p class="mt-4 text-white/75">É fácil, rápido e você chega até mais clientes.</p>
+          <a href="/anuncie" class={classesBotao("amarelo", "g", "mt-6")}>
+            <Icone nome="megafone" class="size-5" />
+            Quero anunciar
+          </a>
+        </div>
+        <div
+          class="mt-8 grid size-44 place-items-center bg-vermelho-500 text-center text-white md:absolute md:top-1/2 md:right-12 md:mt-0 md:size-60 md:-translate-y-1/2 md:rotate-6"
+          style={`clip-path: polygon(${pontasEstrela})`}
+        >
+          <div class="leading-none">
+            <p class="text-xs font-extrabold uppercase md:text-sm">Profissional,</p>
+            <p class="text-xs font-extrabold uppercase md:text-sm">a partir de</p>
+            <p class="font-display text-5xl font-extrabold text-amarelo-400 md:text-6xl">R$ 1,99</p>
+            <p class="text-xs font-bold md:text-sm">por mês</p>
+          </div>
+        </div>
+        <span class="absolute -top-20 -left-20 size-64 rounded-full bg-azul-600/40 blur-2xl" aria-hidden="true"></span>
+      </div>
+    </section>
+
+    <section id="todas" class="mx-auto max-w-6xl scroll-mt-4 px-4 pb-14">
+      <h2 class="mb-5 font-display text-3xl font-extrabold text-azul-900">Todas as categorias</h2>
+      <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {
+          categoriasPorGrupo().map(({ grupo, categorias }) => (
+            <details class="group rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-center justify-between gap-2 font-display text-lg font-bold text-azul-900">
+                <span class="flex items-center gap-2">
+                  <IconeCategoria nome={categorias[0].icone} class="size-5 text-azul-600" />
+                  {grupo}
+                  <span class="text-sm font-semibold text-slate-400">({categorias.length})</span>
+                </span>
+                <Icone nome="abaixo" class="size-5 text-slate-400 transition group-open:rotate-180" />
+              </summary>
+              <ul class="mt-3 flex flex-wrap gap-1.5">
+                {categorias.map((categoria) => (
+                  <li>
+                    <a
+                      href={`/${categoria.slugLista}`}
+                      class="inline-flex items-center gap-1 rounded-full bg-fundo px-3 py-1 text-sm font-semibold text-tinta hover:bg-azul-50 hover:text-azul-700"
+                    >
+                      <IconeCategoria nome={categoria.icone} class="size-4 text-slate-500" />
+                      {categoria.nome}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ))
+        }
+      </div>
+    </section>
+  </main>
+</Layout>

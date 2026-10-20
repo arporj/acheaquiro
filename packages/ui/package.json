@@ -7,10 +7,10 @@
     ".": "./src/index.ts"
   },
   "peerDependencies": {
-    "react": "^19"
+    "astro": "^7"
   },
   "dependencies": {
     "@acheaqui/types": "*",
-    "lucide-react": "^1.59.0"
+    "@lucide/astro": "^1.60.0"
   }
 }

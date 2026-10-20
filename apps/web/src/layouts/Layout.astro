@@ -1,0 +1,47 @@
+---
+import { Font } from "astro:assets";
+import Rodape from "@/components/Rodape.astro";
+import "@/styles/global.css";
+
+interface Props {
+  /** Título da página; recebe " · Ache Aqui RO" no fim. Sem título, usa o padrão do site. */
+  titulo?: string;
+  descricao?: string;
+  /** Prévia do link no WhatsApp e nas redes sociais. */
+  previa?: { titulo: string; descricao: string };
+}
+
+const TITULO_PADRAO = "Ache Aqui RO · Profissionais e comércios de Rio das Ostras";
+const DESCRICAO_PADRAO =
+  "Encontre eletricistas, diaristas, bombeiros hidráulicos, restaurantes, farmácias e muito mais em Rio das Ostras. Fale direto pelo WhatsApp.";
+
+const { titulo, descricao = DESCRICAO_PADRAO, previa } = Astro.props;
+---
+
+<!doctype html>
+<html lang="pt-BR" class="h-full antialiased">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titulo ? `${titulo} · Ache Aqui RO` : TITULO_PADRAO}</title>
+    <meta name="description" content={descricao} />
+    {/* ANTES DA ABERTURA: o site de teste não deve aparecer no Google. Remover em 27/11/2026. */}
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#1747C9" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    {
+      previa && (
+        <>
+          <meta property="og:title" content={previa.titulo} />
+          <meta property="og:description" content={previa.descricao} />
+        </>
+      )
+    }
+    <Font cssVariable="--font-baloo" preload />
+    <Font cssVariable="--font-nunito" preload />
+  </head>
+  <body class="flex min-h-full flex-col font-sans">
+    <slot />
+    <Rodape />
+  </body>
+</html>

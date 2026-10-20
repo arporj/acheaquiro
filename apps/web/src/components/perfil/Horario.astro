@@ -1,0 +1,40 @@
+---
+import type { HorarioDia } from "@acheaqui/types";
+
+interface Props {
+  horario: HorarioDia[];
+}
+
+const nomesDias = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const ordemDias = [1, 2, 3, 4, 5, 6, 0]; // semana começando na segunda
+
+function vinteEQuatroHoras(dia: HorarioDia) {
+  return dia.intervalos.length === 1 && dia.intervalos[0].abre === "00:00" && dia.intervalos[0].fecha === "23:59";
+}
+
+const { horario } = Astro.props;
+const semHorario = horario.length === 0 || horario.every((d) => d.intervalos.length === 0);
+const dias = ordemDias.map((numero) => ({
+  nome: nomesDias[numero],
+  intervalos: horario.find((d) => d.dia === numero)?.intervalos ?? [],
+}));
+---
+
+{
+  semHorario ? (
+    <p class="text-slate-600">Horário a combinar pelo WhatsApp.</p>
+  ) : horario.every(vinteEQuatroHoras) ? (
+    <p class="font-bold text-zap-700">Atende 24 horas, todos os dias.</p>
+  ) : (
+    <dl class="divide-y divide-slate-100">
+      {dias.map((dia) => (
+        <div class="flex justify-between gap-4 py-2 text-sm">
+          <dt class="font-bold">{dia.nome}</dt>
+          <dd class={dia.intervalos.length ? "text-tinta" : "text-slate-400"}>
+            {dia.intervalos.length ? dia.intervalos.map((i) => `${i.abre} às ${i.fecha}`).join(" · ") : "Fechado"}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  )
+}

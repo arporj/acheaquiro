@@ -1,0 +1,114 @@
+---
+// Denúncia de perfil (item 4.9). No protótipo, o envio é só visual.
+import { Icone, Modal, classesBotao } from "@acheaqui/ui";
+import type { MotivoDenuncia } from "@acheaqui/types";
+
+interface Props {
+  nomeAnunciante: string;
+}
+
+const motivos: { id: MotivoDenuncia; rotulo: string }[] = [
+  { id: "informacao_falsa", rotulo: "Informação falsa" },
+  { id: "telefone_errado", rotulo: "Telefone errado" },
+  { id: "servico_nao_prestado", rotulo: "Serviço não prestado" },
+  { id: "conteudo_improprio", rotulo: "Conteúdo impróprio" },
+  { id: "outro", rotulo: "Outro motivo" },
+];
+
+const { nomeAnunciante } = Astro.props;
+---
+
+<button
+  type="button"
+  data-denuncia-abrir
+  class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold text-slate-500 hover:bg-vermelho-500/10 hover:text-vermelho-600"
+>
+  <Icone nome="bandeira" class="size-4" />
+  Denunciar
+</button>
+
+<Modal id="modal-denuncia" titulo="Denunciar perfil">
+  <form data-denuncia-formulario>
+    <p class="mb-3 text-sm text-slate-600">
+      O que há de errado com o perfil de <strong>{nomeAnunciante}</strong>?
+    </p>
+    <fieldset class="space-y-2">
+      <legend class="sr-only">Motivo</legend>
+      {
+        motivos.map((m) => (
+          <label class="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 font-semibold ring-1 ring-slate-200 hover:bg-slate-50 has-checked:bg-azul-50 has-checked:ring-azul-500 has-checked:hover:bg-azul-50">
+            <input type="radio" name="motivo" value={m.id} class="size-4 accent-azul-600" />
+            {m.rotulo}
+          </label>
+        ))
+      }
+    </fieldset>
+    <label class="mt-3 block" data-denuncia-outro hidden>
+      <span class="text-sm font-bold">Conte o que aconteceu</span>
+      <textarea
+        name="descricao"
+        rows="3"
+        maxlength="500"
+        class="mt-1 w-full rounded-xl border-0 p-3 ring-1 ring-slate-200 focus:ring-3 focus:ring-amarelo-400 focus:outline-none"
+      ></textarea>
+      <span class="text-xs text-slate-500">Pelo menos 10 caracteres.</span>
+    </label>
+    <div class="mt-5 flex gap-2">
+      <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>Cancelar</button>
+      <button type="submit" disabled class={classesBotao("perigo", "m", "flex-1")}>Enviar denúncia</button>
+    </div>
+  </form>
+
+  <div class="text-center" data-denuncia-enviada hidden>
+    <span class="mx-auto grid size-14 place-items-center rounded-full bg-zap-50 text-zap-700">
+      <Icone nome="certo" class="size-7" strokeWidth={3} />
+    </span>
+    <p class="mt-3 text-slate-600">
+      Obrigado! A equipe do Ache Aqui vai analisar o perfil de <strong>{nomeAnunciante}</strong>.
+    </p>
+    <button type="button" data-modal-fechar class={classesBotao("azul", "m", "mt-5 w-full")}>Fechar</button>
+  </div>
+</Modal>
+
+<script>
+  const dialogo = document.querySelector<HTMLDialogElement>("#modal-denuncia");
+  const formulario = dialogo?.querySelector<HTMLFormElement>("[data-denuncia-formulario]");
+  const enviada = dialogo?.querySelector<HTMLElement>("[data-denuncia-enviada]");
+  const titulo = dialogo?.querySelector<HTMLElement>("[data-modal-titulo]");
+  const campoOutro = formulario?.querySelector<HTMLElement>("[data-denuncia-outro]");
+  const botaoEnviar = formulario?.querySelector<HTMLButtonElement>("button[type=submit]");
+
+  if (dialogo && formulario && enviada && titulo && campoOutro && botaoEnviar) {
+    const podeEnviar = () => {
+      const dados = new FormData(formulario);
+      const motivo = dados.get("motivo");
+      const descricao = String(dados.get("descricao") ?? "");
+      return motivo !== null && (motivo !== "outro" || descricao.trim().length >= 10);
+    };
+
+    const atualizar = () => {
+      campoOutro.hidden = new FormData(formulario).get("motivo") !== "outro";
+      botaoEnviar.disabled = !podeEnviar();
+    };
+
+    document.querySelector("[data-denuncia-abrir]")?.addEventListener("click", () => dialogo.showModal());
+    formulario.addEventListener("input", atualizar);
+    formulario.addEventListener("submit", (evento) => {
+      evento.preventDefault();
+      if (!podeEnviar()) return;
+      formulario.hidden = true;
+      enviada.hidden = false;
+      titulo.textContent = "Denúncia enviada";
+    });
+    // Ao fechar, o modal volta ao estado inicial.
+    dialogo.addEventListener("close", () => {
+      formulario.reset();
+      formulario.hidden = false;
+      enviada.hidden = true;
+      titulo.textContent = "Denunciar perfil";
+      atualizar();
+    });
+  } else {
+    console.error("Denúncia: elementos do modal não encontrados na página.");
+  }
+</script>

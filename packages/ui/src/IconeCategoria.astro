@@ -1,0 +1,16 @@
+---
+import { MapPin } from "@lucide/astro";
+import { iconesCategoria, type NomeIconeCategoria } from "./iconesCategoria";
+
+interface Props {
+  nome: string;
+  class?: string;
+  strokeWidth?: number;
+}
+
+/** Ícone de categoria. Nome desconhecido cai no marcador de mapa. */
+const { nome, class: classe = "size-6", strokeWidth = 1.75 } = Astro.props;
+const Componente = iconesCategoria[nome as NomeIconeCategoria] ?? MapPin;
+---
+
+<Componente class={classe} stroke-width={strokeWidth} aria-hidden="true" />

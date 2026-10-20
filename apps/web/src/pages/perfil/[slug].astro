@@ -1,0 +1,307 @@
+---
+import { EtiquetaAberto, EtiquetaFundador, FotoMarcador, Icone, IconeCategoria, Selo } from "@acheaqui/ui";
+import type { Categoria, FormaPagamento } from "@acheaqui/types";
+import Topo from "@/components/anuncios/Topo.astro";
+import BotaoCompartilhar from "@/components/BotaoCompartilhar.astro";
+import BarraContato from "@/components/perfil/BarraContato.astro";
+import BotaoDenunciar from "@/components/perfil/BotaoDenunciar.astro";
+import CartaoContato from "@/components/perfil/CartaoContato.astro";
+import Galeria from "@/components/perfil/Galeria.astro";
+import Horario from "@/components/perfil/Horario.astro";
+import Secao from "@/components/perfil/Secao.astro";
+import { anunciantePorSlug, categoriaPorId, nomeBairro, planoPorId, situacaoComercio } from "@/dados/consultas";
+import Layout from "@/layouts/Layout.astro";
+import { guardarNoCache } from "@/lib/cache";
+import { formatarPreco, linkComoChegar } from "@/lib/contato";
+
+const anunciante = anunciantePorSlug(Astro.params.slug ?? "");
+if (!anunciante) return Astro.rewrite("/404");
+guardarNoCache(Astro);
+
+const rotulosPagamento: Record<FormaPagamento, string> = { pix: "Pix", cartao: "Cartão", dinheiro: "Dinheiro" };
+
+function dataCurta(iso: string): string {
+  const [, mes, dia] = iso.split("-");
+  return `${dia}/${mes}`;
+}
+
+const categoria = categoriaPorId(anunciante.categoriaId)!;
+const adicionais = anunciante.categoriasAdicionais.map(categoriaPorId).filter((c): c is Categoria => Boolean(c));
+const selo = planoPorId(anunciante.planoId)?.selo ?? "nenhum";
+const situacao = anunciante.tipo === "comercio" ? situacaoComercio(anunciante.id) : undefined;
+const local =
+  anunciante.tipo === "profissional"
+    ? anunciante.atendeTodaCidade
+      ? "Atende toda a cidade"
+      : `Atende: ${anunciante.bairrosAtendidos.map(nomeBairro).join(", ")}`
+    : anunciante.enderecos.map((e) => `${e.logradouro}, ${e.numero} · ${nomeBairro(e.bairroId)}`).join("  |  ");
+const fundoMapa =
+  "background-image: linear-gradient(90deg, #fff 0 6px, transparent 6px), linear-gradient(0deg, #fff 0 6px, transparent 6px), linear-gradient(35deg, transparent 48%, #fde68a 48% 52%, transparent 52%); background-size: 70px 70px, 90px 90px, 100% 100%";
+---
+
+<Layout
+  titulo={`${anunciante.nome} · ${categoria.nome}`}
+  descricao={anunciante.descricao.slice(0, 155)}
+  previa={{ titulo: anunciante.nome, descricao: `${categoria.nome} em Rio das Ostras` }}
+>
+  <Topo pagina="interna" />
+  <main class="mx-auto w-full max-w-6xl px-4 pt-4 pb-28 lg:pb-12">
+    <nav aria-label="Você está em" class="flex flex-wrap items-center gap-1 text-sm font-semibold text-slate-500">
+      <a href="/" class="hover:text-azul-600">Início</a>
+      <Icone nome="direita" class="size-3.5" />
+      <a href={`/${categoria.slugLista}`} class="hover:text-azul-600">{categoria.nomePlural}</a>
+      <Icone nome="direita" class="size-3.5" />
+      <span class="text-tinta">{anunciante.nome}</span>
+    </nav>
+
+    <div class="mt-3 grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div class="space-y-4">
+        <section class="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5">
+          <FotoMarcador
+            foto={anunciante.galeria[0]}
+            icone={categoria.icone}
+            cor={categoria.cor}
+            class="h-32 w-full sm:h-48"
+            tamanhoIcone="text-6xl sm:text-7xl"
+          />
+          <div class="px-5 pb-5 sm:px-6">
+            <div class="flex items-end justify-between gap-3">
+              <FotoMarcador
+                foto={anunciante.fotoPerfil}
+                icone={categoria.icone}
+                cor={categoria.cor}
+                class={`-mt-12 size-24 shrink-0 ring-4 ring-white sm:size-28 ${
+                  anunciante.tipo === "profissional" ? "rounded-full" : "rounded-2xl"
+                }`}
+                tamanhoIcone="text-4xl"
+              />
+              <div class="flex flex-wrap items-center justify-end gap-1 pt-2">
+                <BotaoCompartilhar caminho={`/perfil/${anunciante.slug}`} titulo={anunciante.nome} variante="botao" />
+                <BotaoDenunciar nomeAnunciante={anunciante.nome} />
+              </div>
+            </div>
+
+            <div class="mt-3 flex flex-wrap gap-1.5">
+              {anunciante.fundador && <EtiquetaFundador />}
+              {situacao && <EtiquetaAberto aberto={situacao.abertoAgora} />}
+            </div>
+            <h1 class="mt-1 font-display text-3xl leading-tight font-extrabold text-azul-900 sm:text-4xl">
+              {anunciante.nome} <Selo selo={selo} class="align-[-0.05em] text-2xl" />
+            </h1>
+            <div class="mt-2 flex flex-wrap gap-1.5">
+              {
+                [categoria, ...adicionais].map((c, i) => (
+                  <a
+                    href={`/${c.slugLista}`}
+                    class={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-bold ${
+                      i === 0 ? "bg-azul-600 text-white" : "bg-azul-50 text-azul-700 hover:bg-azul-100"
+                    }`}
+                  >
+                    <IconeCategoria nome={c.icone} class="size-4" />
+                    {c.nome}
+                  </a>
+                ))
+              }
+            </div>
+            <p class="mt-3 flex items-start gap-1.5 text-slate-600">
+              <Icone nome="pin" class="mt-1 size-4 shrink-0 text-vermelho-500" />
+              {local}
+            </p>
+            {
+              anunciante.registroConselho && (
+                <p class="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-zap-50 px-3 py-1.5 text-sm font-bold text-zap-700">
+                  <Icone nome="escudo" class="size-4" />
+                  {anunciante.registroConselho}
+                </p>
+              )
+            }
+          </div>
+        </section>
+
+        <Secao titulo="Sobre">
+          <p class="leading-relaxed text-slate-700">{anunciante.descricao}</p>
+        </Secao>
+
+        {
+          anunciante.tipo === "profissional" && anunciante.galeria.length > 0 && (
+            <Secao titulo="Fotos dos trabalhos">
+              <span slot="extra" class="text-sm font-bold text-slate-400">
+                {anunciante.galeria.length} fotos
+              </span>
+              <Galeria fotos={anunciante.galeria} categoria={categoria} />
+            </Secao>
+          )
+        }
+        {
+          anunciante.tipo === "profissional" && anunciante.antesDepois.length > 0 && (
+            <Secao titulo="Antes e depois">
+              <div class="space-y-4">
+                {anunciante.antesDepois.map((par) => (
+                  <figure>
+                    <div class="grid grid-cols-2 gap-1.5 overflow-hidden rounded-2xl">
+                      {[
+                        { foto: par.antes, rotulo: "Antes", cor: "#64748B" },
+                        { foto: par.depois, rotulo: "Depois", cor: categoria.cor },
+                      ].map((lado) => (
+                        <div class="relative">
+                          <FotoMarcador foto={lado.foto} icone={categoria.icone} cor={lado.cor} class="aspect-[4/3] w-full" />
+                          <span class="absolute top-2 left-2 rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-extrabold text-white uppercase">
+                            {lado.rotulo}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <figcaption class="mt-2 text-sm font-semibold text-slate-600">{par.legenda}</figcaption>
+                  </figure>
+                ))}
+              </div>
+            </Secao>
+          )
+        }
+
+        {
+          anunciante.tipo === "comercio" && anunciante.encartes.length > 0 && (
+            <Secao titulo="Ofertas">
+              <Icone slot="extra" nome="etiqueta" class="size-5 text-vermelho-500" />
+              <ul class="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2">
+                {anunciante.encartes.map((encarte) => (
+                  <li class="w-56 shrink-0 snap-start">
+                    <div class="relative overflow-hidden rounded-2xl ring-1 ring-black/5">
+                      <FotoMarcador foto={encarte.imagem} icone="tag" cor="#E5262B" class="aspect-[3/4] w-full" tamanhoIcone="text-5xl" />
+                      <span class="absolute top-2 right-2 rounded-full bg-amarelo-400 px-2.5 py-0.5 text-xs font-extrabold text-azul-900">
+                        Até {dataCurta(encarte.validoAte)}
+                      </span>
+                    </div>
+                    <p class="mt-1.5 text-sm font-bold">{encarte.titulo}</p>
+                  </li>
+                ))}
+              </ul>
+            </Secao>
+          )
+        }
+        {
+          anunciante.tipo === "comercio" && anunciante.produtos.length > 0 && (
+            <Secao titulo="Vitrine">
+              <Icone slot="extra" nome="sacola" class="size-5 text-azul-600" />
+              <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {anunciante.produtos.map((produto) => (
+                  <li class="overflow-hidden rounded-2xl bg-fundo">
+                    <FotoMarcador foto={produto.foto} icone={categoria.icone} cor={categoria.cor} class="aspect-square w-full" tamanhoIcone="text-3xl" />
+                    <div class="p-2.5">
+                      <p class="line-clamp-2 text-sm leading-snug font-bold">{produto.nome}</p>
+                      {produto.descricao && <p class="text-xs text-slate-500">{produto.descricao}</p>}
+                      <p class="mt-1 font-display text-lg font-extrabold text-vermelho-600">{formatarPreco(produto.preco)}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Secao>
+          )
+        }
+        {
+          anunciante.tipo === "comercio" && anunciante.galeria.length > 0 && (
+            <Secao titulo="Fotos do espaço">
+              <Galeria fotos={anunciante.galeria} categoria={categoria} />
+            </Secao>
+          )
+        }
+        {
+          anunciante.tipo === "comercio" && (
+            <Secao titulo={anunciante.enderecos.length > 1 ? "Nossas lojas" : "Endereço"}>
+              <div class="space-y-4">
+                {anunciante.enderecos.map((endereco) => (
+                  <div>
+                    <div
+                      class="relative grid h-44 place-items-center overflow-hidden rounded-2xl bg-[#e6efe1]"
+                      style={fundoMapa}
+                      role="img"
+                      aria-label="Mapa ilustrativo"
+                    >
+                      <Icone nome="pin" class="size-11 fill-vermelho-500 text-white drop-shadow-lg" strokeWidth={1.5} />
+                      <span class="absolute bottom-2 left-2 rounded-md bg-white/90 px-2 py-0.5 text-[0.7rem] font-bold text-slate-500">
+                        Mapa ilustrativo
+                      </span>
+                    </div>
+                    <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+                      <p class="font-semibold">
+                        {endereco.logradouro}, {endereco.numero} · {nomeBairro(endereco.bairroId)}
+                      </p>
+                      <a
+                        href={linkComoChegar(endereco.latitude, endereco.longitude)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center gap-1 text-sm font-extrabold text-azul-600 hover:underline"
+                      >
+                        <Icone nome="rota" class="size-4" />
+                        Como chegar
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {anunciante.entrega && (
+                <p class="mt-4 flex items-start gap-2 rounded-xl bg-azul-50 px-3 py-2.5 text-sm text-azul-900">
+                  <Icone nome="entrega" class="mt-0.5 size-5 shrink-0" />
+                  <span>
+                    <strong>Faz entrega</strong>{" "}
+                    {anunciante.entrega.todaCidade
+                      ? "em toda a cidade."
+                      : `nos bairros: ${anunciante.entrega.bairros.map(nomeBairro).join(", ")}.`}
+                  </span>
+                </p>
+              )}
+            </Secao>
+          )
+        }
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <Secao titulo={anunciante.tipo === "comercio" ? "Horário de funcionamento" : "Horário de atendimento"}>
+            <Horario horario={anunciante.horario} />
+          </Secao>
+          <Secao titulo="Pagamento e redes">
+            <ul class="flex flex-wrap gap-1.5">
+              {
+                anunciante.formasPagamento.map((forma) => (
+                  <li class="inline-flex items-center gap-1 rounded-full bg-fundo px-3 py-1 text-sm font-bold">
+                    <Icone nome="cartao" class="size-4 text-azul-600" />
+                    {rotulosPagamento[forma]}
+                  </li>
+                ))
+              }
+            </ul>
+            {
+              anunciante.instagram && (
+                <a
+                  href={`https://instagram.com/${anunciante.instagram}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="mt-4 inline-flex items-center gap-2 font-bold text-[#C2185B] hover:underline"
+                >
+                  <Icone nome="instagram" class="size-5" />@{anunciante.instagram}
+                </a>
+              )
+            }
+            {
+              anunciante.tipo === "comercio" && anunciante.siteProprio && (
+                <a
+                  href={anunciante.siteProprio}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="mt-3 flex items-center gap-2 font-bold text-azul-600 hover:underline"
+                >
+                  <Icone nome="link" class="size-5" />
+                  Cardápio, loja ou site
+                </a>
+              )
+            }
+          </Secao>
+        </div>
+      </div>
+
+      <aside class="hidden lg:sticky lg:top-4 lg:block">
+        <CartaoContato anunciante={anunciante} />
+      </aside>
+    </div>
+  </main>
+  <BarraContato anunciante={anunciante} />
+</Layout>

@@ -1,0 +1,27 @@
+---
+import type { Selo as TipoSelo } from "@acheaqui/types";
+import Icone from "./Icone.astro";
+
+interface Props {
+  selo: TipoSelo;
+  class?: string;
+}
+
+const estilosSelo: Record<Exclude<TipoSelo, "nenhum">, { cor: string; preenchimento: string; rotulo: string }> = {
+  transparente: { cor: "#5B7BC9", preenchimento: "none", rotulo: "Selo estrela transparente" },
+  prata: { cor: "#8A97A8", preenchimento: "#C9D2DC", rotulo: "Selo estrela prateada" },
+  ouro: { cor: "#D99A00", preenchimento: "#FFC72C", rotulo: "Selo estrela dourada" },
+};
+
+const { selo, class: classe = "" } = Astro.props;
+const estilo = selo === "nenhum" ? undefined : estilosSelo[selo];
+---
+
+{
+  estilo && (
+    <span title={estilo.rotulo} class={`inline-flex shrink-0 ${classe}`}>
+      <Icone nome="estrela" stroke={estilo.cor} fill={estilo.preenchimento} strokeWidth={2.2} class="size-[1.1em]" />
+      <span class="sr-only">{estilo.rotulo}</span>
+    </span>
+  )
+}

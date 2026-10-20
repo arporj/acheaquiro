@@ -1,0 +1,21 @@
+---
+import { IconeCategoria, classesBotao } from "@acheaqui/ui";
+import Cabecalho from "@/components/Cabecalho.astro";
+import Layout from "@/layouts/Layout.astro";
+---
+
+<Layout titulo="Página não encontrada">
+  <Cabecalho comBusca />
+  <main class="mx-auto grid w-full max-w-xl flex-1 place-items-center px-4 py-16 text-center">
+    <div>
+      <span class="mx-auto grid size-20 place-items-center rounded-full bg-amarelo-200 text-azul-900">
+        <IconeCategoria nome="construction" class="size-10" />
+      </span>
+      <h1 class="mt-4 font-display text-3xl font-extrabold text-azul-900">Página não encontrada</h1>
+      <p class="mt-2 text-slate-600">
+        O endereço pode estar errado ou a página ainda está em construção. Que tal buscar o que você precisa?
+      </p>
+      <a href="/" class={classesBotao("azul", "m", "mt-6")}>Voltar para o início</a>
+    </div>
+  </main>
+</Layout>

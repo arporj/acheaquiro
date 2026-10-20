@@ -3,13 +3,12 @@ docs/
 
 # Dependências e build
 node_modules/
-.next/
-out/
 *.tsbuildinfo
 
 # Variáveis de ambiente
 .env*
 !.env.example
+!apps/web/.env.teste
 
 # Relatórios de cobertura de testes
 coverage/
@@ -17,6 +16,7 @@ coverage/
 # Arquivos de execução do Claude Code
 .claude/*.lock
 
-# Build da Cloudflare (OpenNext e Wrangler)
-.open-next/
+# Build do Astro e da Cloudflare
+dist/
+.astro/
 .wrangler/

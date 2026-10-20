@@ -1,0 +1,43 @@
+---
+import { Icone, IconeCategoria, classesBotao } from "@acheaqui/ui";
+import type { Categoria } from "@acheaqui/types";
+
+interface Props {
+  relacionadas: Categoria[];
+}
+
+const { relacionadas } = Astro.props;
+---
+
+<aside class="space-y-4">
+  {
+    relacionadas.length > 0 && (
+      <div class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+        <h2 class="mb-3 font-display text-lg font-bold text-azul-900">Veja também</h2>
+        <ul class="flex flex-wrap gap-1.5">
+          {relacionadas.map((categoria) => (
+            <li>
+              <a
+                href={`/${categoria.slugLista}`}
+                class="inline-flex items-center gap-1 rounded-full bg-fundo px-3 py-1 text-sm font-semibold hover:bg-azul-50 hover:text-azul-700"
+              >
+                <IconeCategoria nome={categoria.icone} class="size-4 text-slate-500" />
+                {categoria.nome}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+  <div class="fundo-raios rounded-3xl p-5 text-white">
+    <p class="font-display text-2xl leading-tight font-extrabold">
+      Trabalha com isso? <span class="text-amarelo-400">Apareça aqui!</span>
+    </p>
+    <p class="mt-2 text-sm text-white/85">Profissional autônomo a partir de R$ 1,99 por mês. Comércio tem plano gratuito.</p>
+    <a href="/anuncie" class={classesBotao("amarelo", "p", "mt-4")}>
+      <Icone nome="megafone" class="size-4" />
+      Anuncie aqui
+    </a>
+  </div>
+</aside>

@@ -1,0 +1,79 @@
+---
+import {
+  EtiquetaAberto,
+  EtiquetaFundador,
+  EtiquetaPatrocinado,
+  FotoMarcador,
+  Icone,
+  Selo,
+  classesBotao,
+} from "@acheaqui/ui";
+import type { ItemResultado } from "@/dados/consultas";
+import { MENSAGEM_ORCAMENTO, linkTelefone, linkWhatsApp } from "@/lib/contato";
+import BotaoCompartilhar from "../BotaoCompartilhar.astro";
+
+interface Props {
+  item: ItemResultado;
+}
+
+// A distância só aparece no modo "Mais perto de mim"; quem liga é a ListaResultados.
+const { item } = Astro.props;
+const perfil = `/perfil/${item.slug}`;
+---
+
+<article
+  class={`rounded-2xl bg-white p-3 shadow-sm transition hover:shadow-md sm:p-4 ${
+    item.patrocinado ? "ring-2 ring-amarelo-400" : "ring-1 ring-black/5"
+  }`}
+>
+  <a href={perfil} class="flex gap-3 sm:gap-4">
+    <FotoMarcador icone={item.icone} cor={item.cor} class="size-20 shrink-0 rounded-xl sm:size-24" />
+    <div class="min-w-0 flex-1">
+      {
+        (item.patrocinado || item.fundador) && (
+          <div class="mb-1 flex flex-wrap gap-1">
+            {item.patrocinado && <EtiquetaPatrocinado />}
+            {item.fundador && <EtiquetaFundador />}
+          </div>
+        )
+      }
+      <h3 class="flex items-center gap-1.5 font-display text-lg leading-tight font-bold text-tinta">
+        <span class="truncate">{item.nome}</span>
+        <Selo selo={item.selo} />
+      </h3>
+      <p class="text-sm font-bold text-azul-600">{item.categoriaNome}</p>
+      <p class="mt-0.5 flex items-start gap-1 text-sm text-slate-600">
+        <Icone nome="pin" class="mt-0.5 size-3.5 shrink-0 text-vermelho-500" />
+        <span class="line-clamp-2">{item.local}</span>
+      </p>
+      {
+        item.tipo === "comercio" && (
+          <div class="mt-1.5 flex flex-wrap items-center gap-2">
+            {item.abertoAgora !== undefined && <EtiquetaAberto aberto={item.abertoAgora} />}
+            {item.distanciaKm !== undefined && (
+              <span class="text-xs font-bold text-slate-600" data-distancia hidden>
+                a {item.distanciaKm.toLocaleString("pt-BR")} km de você
+              </span>
+            )}
+          </div>
+        )
+      }
+    </div>
+  </a>
+  <div class="mt-3 flex gap-2">
+    <a
+      href={linkWhatsApp(item.whatsapp, MENSAGEM_ORCAMENTO)}
+      target="_blank"
+      rel="noopener noreferrer"
+      class={classesBotao("zap", "m", "flex-1")}
+    >
+      <Icone nome="mensagem" class="size-5" />
+      WhatsApp
+    </a>
+    <a href={linkTelefone(item.telefone ?? item.whatsapp)} class={classesBotao("contorno", "m", "px-4")}>
+      <Icone nome="telefone" class="size-4" />
+      Ligar
+    </a>
+    <BotaoCompartilhar caminho={perfil} titulo={item.nome} />
+  </div>
+</article>

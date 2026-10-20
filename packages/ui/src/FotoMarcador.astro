@@ -1,0 +1,47 @@
+---
+// Ocupa o lugar das fotos enquanto não houver Storage: fundo na cor da
+// categoria com o ícone dela. Quando a foto existir, mostra a imagem.
+import type { Foto } from "@acheaqui/types";
+import IconeCategoria from "./IconeCategoria.astro";
+
+interface Props {
+  foto?: Foto;
+  icone: string;
+  cor: string;
+  class?: string;
+  tamanhoIcone?: string;
+}
+
+function variacao(semente: string): number {
+  let soma = 0;
+  for (const letra of semente) soma = (soma * 31 + letra.charCodeAt(0)) % 997;
+  return soma;
+}
+
+const { foto, icone, cor, class: classe = "", tamanhoIcone = "text-4xl" } = Astro.props;
+const semente = variacao(foto?.id ?? icone);
+const angulo = 120 + (semente % 90);
+const claridade = 18 + (semente % 3) * 8;
+---
+
+{
+  foto?.url ? (
+    <img src={foto.url} alt={foto.legenda ?? ""} class={`object-cover ${classe}`} />
+  ) : (
+    <div
+      role="img"
+      aria-label={foto?.legenda ?? "Foto ilustrativa"}
+      class={`relative grid place-items-center overflow-hidden ${classe}`}
+      style={`background: linear-gradient(${angulo}deg, ${cor} 0%, color-mix(in srgb, ${cor} ${100 - claridade}%, white) 100%)`}
+    >
+      <span
+        aria-hidden="true"
+        class="absolute -right-4 -bottom-6 size-24 rounded-full bg-white/15"
+        style={`transform: scale(${1 + (semente % 5) / 4})`}
+      />
+      <span class={`relative text-white/90 drop-shadow-sm ${tamanhoIcone}`}>
+        <IconeCategoria nome={icone} class="size-[1em]" strokeWidth={1.5} />
+      </span>
+    </div>
+  )
+}

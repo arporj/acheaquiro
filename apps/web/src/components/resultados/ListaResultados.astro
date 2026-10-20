@@ -1,0 +1,211 @@
+---
+// Abas Profissionais/Comércios e filtros. Todos os cartões vêm do servidor;
+// o script só esconde, mostra e reordena (sem buscar nada de novo). A lista usa
+// gap, e não space-y, porque a margem do space-y conta os cartões ocultos.
+import { Icone, IconeCategoria, classesBotao } from "@acheaqui/ui";
+import type { Bairro } from "@acheaqui/types";
+import type { ItemResultado } from "@/dados/consultas";
+import CardResultado from "./CardResultado.astro";
+import { abaInicial, paraDadosFiltro, passaNoFiltro, type Aba, type EstadoLista } from "./filtros";
+
+interface Props {
+  itens: ItemResultado[];
+  bairros: Bairro[];
+  bairroInicial?: string;
+}
+
+const { itens, bairros, bairroInicial = "" } = Astro.props;
+const dados = itens.map(paraDadosFiltro);
+const estado: EstadoLista = { aba: abaInicial(dados), bairro: bairroInicial, somenteAbertos: false, maisPerto: false };
+
+const totalProfissionais = itens.filter((i) => i.tipo === "profissional").length;
+const abas: { id: Aba; rotulo: string; total: number }[] = [
+  { id: "profissional", rotulo: "Profissionais", total: totalProfissionais },
+  { id: "comercio", rotulo: "Comércios", total: itens.length - totalProfissionais },
+];
+
+const visiveis = dados.filter((d) => passaNoFiltro(d, estado)).length;
+const totalDaAba = abas.find((a) => a.id === estado.aba)?.total ?? 0;
+const vazioPorFiltro = Boolean(estado.bairro) && totalDaAba > 0;
+const filtroBotao =
+  "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-bold ring-1 bg-white text-tinta ring-azul-100 not-aria-pressed:hover:bg-azul-50";
+---
+
+<div data-resultados data-aba={estado.aba}>
+  <div role="tablist" aria-label="Tipo de anunciante" class="grid grid-cols-2 gap-1 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-black/5">
+    {
+      abas.map((a) => (
+        <button
+          role="tab"
+          type="button"
+          data-aba-botao={a.id}
+          data-total={a.total}
+          aria-selected={a.id === estado.aba ? "true" : "false"}
+          class="group flex h-11 items-center justify-center gap-2 rounded-xl font-display text-base font-bold text-slate-600 transition not-aria-selected:hover:bg-azul-50 aria-selected:bg-azul-600 aria-selected:text-white aria-selected:shadow"
+        >
+          {a.rotulo}
+          <span class="rounded-full bg-slate-100 px-2 text-xs font-extrabold text-slate-500 group-aria-selected:bg-amarelo-400 group-aria-selected:text-azul-900">
+            {a.total}
+          </span>
+        </button>
+      ))
+    }
+  </div>
+
+  <div class="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+    <label class="relative shrink-0">
+      <span class="sr-only">Filtrar por bairro</span>
+      <Icone nome="pin" class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-vermelho-500" />
+      <select
+        data-filtro-bairro
+        data-ativo={estado.bairro ? "" : undefined}
+        class="h-9 max-w-52 appearance-none rounded-full bg-white pr-8 pl-8 text-sm font-bold text-tinta ring-1 ring-azul-100 focus:ring-3 focus:ring-amarelo-400 focus:outline-none data-ativo:bg-azul-600 data-ativo:text-white data-ativo:ring-azul-600"
+      >
+        <option value="">Todos os bairros</option>
+        {bairros.map((b) => <option value={b.id} selected={b.id === estado.bairro}>{b.nome}</option>)}
+      </select>
+      <Icone nome="abaixo" class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 opacity-60" />
+    </label>
+    <button
+      type="button"
+      data-filtro-perto
+      data-so-comercio
+      aria-pressed="false"
+      hidden={estado.aba !== "comercio"}
+      class={`${filtroBotao} aria-pressed:bg-azul-600 aria-pressed:text-white aria-pressed:ring-azul-600`}
+    >
+      <Icone nome="localizar" class="size-4" />
+      Mais perto de mim
+    </button>
+    <button
+      type="button"
+      data-filtro-abertos
+      data-so-comercio
+      aria-pressed="false"
+      hidden={estado.aba !== "comercio"}
+      class={`${filtroBotao} aria-pressed:bg-zap-600 aria-pressed:text-white aria-pressed:ring-zap-600`}
+    >
+      <Icone nome="relogio" class="size-4" />
+      Aberto agora
+    </button>
+  </div>
+
+  <p class="mt-2 rounded-xl bg-azul-50 px-3 py-2 text-xs text-azul-800" data-nota-perto hidden>
+    Protótipo: no site real, o navegador pede permissão para usar a sua localização. Se você não permitir, a lista usa o
+    bairro escolhido.
+  </p>
+
+  <div class="mt-4 flex flex-col gap-3" data-lista>
+    {
+      itens.map((item, i) => (
+        <div data-item={JSON.stringify(dados[i])} hidden={!passaNoFiltro(dados[i], estado)}>
+          <CardResultado item={item} />
+        </div>
+      ))
+    }
+  </div>
+
+  <div class="mt-4 rounded-3xl border-2 border-dashed border-azul-100 bg-white px-6 py-10 text-center" data-vazio hidden={visiveis > 0}>
+    <span class="mx-auto grid size-14 place-items-center rounded-full bg-azul-50 text-azul-600">
+      <IconeCategoria nome="search-x" class="size-7" />
+    </span>
+    <div data-vazio-filtro hidden={!vazioPorFiltro}>
+      <p class="mt-2 font-display text-xl font-bold text-azul-900">Nenhum resultado com esses filtros</p>
+      <button type="button" data-limpar-filtros class={classesBotao("contorno", "p", "mt-4")}>Limpar filtros</button>
+    </div>
+    <div data-vazio-nenhum hidden={vazioPorFiltro}>
+      <p class="mt-2 font-display text-xl font-bold text-azul-900">
+        Ainda não temos <span data-vazio-tipo>{estado.aba === "comercio" ? "comércios" : "profissionais"}</span> aqui
+      </p>
+      <p class="mx-auto mt-1 max-w-sm text-sm text-slate-600">
+        Conhece alguém bom nisso em Rio das Ostras? Conte para essa pessoa que dá para anunciar no Ache Aqui.
+      </p>
+      <a href="/anuncie" class={classesBotao("amarelo", "p", "mt-4")}>Quero anunciar</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { ordemDeExibicao, passaNoFiltro, type Aba, type DadosFiltro, type EstadoLista } from "./filtros";
+
+  function iniciar(raiz: HTMLElement) {
+    const lista = raiz.querySelector<HTMLElement>("[data-lista]");
+    const selectBairro = raiz.querySelector<HTMLSelectElement>("[data-filtro-bairro]");
+    const botaoPerto = raiz.querySelector<HTMLButtonElement>("[data-filtro-perto]");
+    const botaoAbertos = raiz.querySelector<HTMLButtonElement>("[data-filtro-abertos]");
+    const vazio = raiz.querySelector<HTMLElement>("[data-vazio]");
+    const vazioFiltro = raiz.querySelector<HTMLElement>("[data-vazio-filtro]");
+    const vazioNenhum = raiz.querySelector<HTMLElement>("[data-vazio-nenhum]");
+    const vazioTipo = raiz.querySelector<HTMLElement>("[data-vazio-tipo]");
+    const notaPerto = raiz.querySelector<HTMLElement>("[data-nota-perto]");
+    if (!lista || !selectBairro || !botaoPerto || !botaoAbertos || !vazio || !vazioFiltro || !vazioNenhum || !vazioTipo || !notaPerto) {
+      console.error("Lista de resultados: elementos da página não encontrados.");
+      return;
+    }
+
+    const cartoes = [...lista.querySelectorAll<HTMLElement>("[data-item]")];
+    const dados = cartoes.map((c) => JSON.parse(c.dataset.item ?? "{}") as DadosFiltro);
+    const botoesAba = [...raiz.querySelectorAll<HTMLButtonElement>("[data-aba-botao]")];
+    const estado: EstadoLista = {
+      aba: (raiz.dataset.aba as Aba) ?? "profissional",
+      bairro: selectBairro.value,
+      somenteAbertos: false,
+      maisPerto: false,
+    };
+
+    function desenhar() {
+      const comercio = estado.aba === "comercio";
+      for (const botao of botoesAba) botao.setAttribute("aria-selected", String(botao.dataset.abaBotao === estado.aba));
+      for (const botao of raiz.querySelectorAll<HTMLElement>("[data-so-comercio]")) botao.hidden = !comercio;
+      botaoPerto!.setAttribute("aria-pressed", String(estado.maisPerto));
+      botaoAbertos!.setAttribute("aria-pressed", String(estado.somenteAbertos));
+      selectBairro!.value = estado.bairro;
+      selectBairro!.toggleAttribute("data-ativo", Boolean(estado.bairro));
+      notaPerto!.hidden = !(comercio && estado.maisPerto);
+
+      let visiveis = 0;
+      for (const posicao of ordemDeExibicao(dados, estado)) {
+        const cartao = cartoes[posicao];
+        cartao.hidden = !passaNoFiltro(dados[posicao], estado);
+        if (!cartao.hidden) visiveis++;
+        for (const distancia of cartao.querySelectorAll<HTMLElement>("[data-distancia]")) distancia.hidden = !estado.maisPerto;
+        lista!.append(cartao); // reordena
+      }
+
+      const totalDaAba = Number(botoesAba.find((b) => b.dataset.abaBotao === estado.aba)?.dataset.total ?? 0);
+      const porFiltro = (Boolean(estado.bairro) || estado.somenteAbertos) && totalDaAba > 0;
+      vazio!.hidden = visiveis > 0;
+      vazioFiltro!.hidden = !porFiltro;
+      vazioNenhum!.hidden = porFiltro;
+      vazioTipo!.textContent = comercio ? "comércios" : "profissionais";
+    }
+
+    for (const botao of botoesAba) {
+      botao.addEventListener("click", () => {
+        estado.aba = botao.dataset.abaBotao as Aba;
+        desenhar();
+      });
+    }
+    selectBairro.addEventListener("change", () => {
+      estado.bairro = selectBairro.value;
+      desenhar();
+    });
+    botaoPerto.addEventListener("click", () => {
+      estado.maisPerto = !estado.maisPerto;
+      desenhar();
+    });
+    botaoAbertos.addEventListener("click", () => {
+      estado.somenteAbertos = !estado.somenteAbertos;
+      desenhar();
+    });
+    raiz.querySelector("[data-limpar-filtros]")?.addEventListener("click", () => {
+      estado.bairro = "";
+      estado.somenteAbertos = false;
+      desenhar();
+    });
+    // Ao voltar pelo navegador, o select pode vir com outro bairro: alinha a lista com ele.
+    desenhar();
+  }
+
+  for (const raiz of document.querySelectorAll<HTMLElement>("[data-resultados]")) iniciar(raiz);
+</script>

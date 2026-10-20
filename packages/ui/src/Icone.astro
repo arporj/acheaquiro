@@ -1,0 +1,25 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { desenhos, type NomeIcone } from "./desenhos";
+
+type Props = HTMLAttributes<"svg"> & { nome: NomeIcone; strokeWidth?: number };
+
+// fill e stroke saem do resto das props: o Astro não junta atributos repetidos,
+// e o navegador usaria o primeiro (o valor padrão).
+const { nome, strokeWidth = 2, fill = "none", stroke = "currentColor", ...props } = Astro.props;
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 24 24"
+  width="1em"
+  height="1em"
+  fill={fill}
+  stroke={stroke}
+  stroke-width={strokeWidth}
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  {...props}
+  set:html={desenhos[nome]}
+/>

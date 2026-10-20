@@ -1,6 +1,11 @@
-export { Icone, type NomeIcone } from "./Icone";
+export { default as Icone } from "./Icone.astro";
+export { type NomeIcone } from "./desenhos";
 export { classesBotao, type VarianteBotao, type TamanhoBotao } from "./botao";
-export { Selo, EtiquetaFundador, EtiquetaPatrocinado, EtiquetaAberto } from "./Etiquetas";
-export { FotoMarcador } from "./FotoMarcador";
-export { IconeCategoria, type NomeIconeCategoria } from "./IconeCategoria";
-export { Modal } from "./Modal";
+export { default as Selo } from "./Selo.astro";
+export { default as EtiquetaFundador } from "./EtiquetaFundador.astro";
+export { default as EtiquetaPatrocinado } from "./EtiquetaPatrocinado.astro";
+export { default as EtiquetaAberto } from "./EtiquetaAberto.astro";
+export { default as FotoMarcador } from "./FotoMarcador.astro";
+export { default as IconeCategoria } from "./IconeCategoria.astro";
+export { type NomeIconeCategoria } from "./iconesCategoria";
+export { default as Modal } from "./Modal.astro";

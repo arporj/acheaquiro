@@ -1,0 +1,49 @@
+---
+import { IconeCategoria } from "@acheaqui/ui";
+import Topo from "@/components/anuncios/Topo.astro";
+import LateralResultados from "@/components/resultados/LateralResultados.astro";
+import ListaResultados from "@/components/resultados/ListaResultados.astro";
+import { buscarPorTexto, listarBairros, nomeBairro } from "@/dados/consultas";
+import Layout from "@/layouts/Layout.astro";
+import { guardarNoCache } from "@/lib/cache";
+
+guardarNoCache(Astro);
+const termo = Astro.url.searchParams.get("q")?.trim() ?? "";
+const bairro = Astro.url.searchParams.get("bairro")?.trim() ?? "";
+const { categorias, resultados } = buscarPorTexto(termo);
+---
+
+<Layout titulo="Busca">
+  <Topo pagina="interna" />
+  <main class="mx-auto w-full max-w-6xl px-4 pt-4 pb-12">
+    <h1 class="font-display text-2xl leading-tight font-extrabold text-azul-900 sm:text-3xl">
+      {termo ? `Resultados para “${termo}”` : "Todos os anunciantes"}
+      {bairro && <span class="text-slate-500"> no {nomeBairro(bairro)}</span>}
+    </h1>
+    <p class="text-sm font-semibold text-slate-500">
+      {resultados.length} {resultados.length === 1 ? "anunciante encontrado" : "anunciantes encontrados"}
+    </p>
+
+    {
+      categorias.length > 0 && (
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <span class="text-sm font-bold text-slate-500">Categorias:</span>
+          {categorias.map((categoria) => (
+            <a
+              href={`/${categoria.slugLista}`}
+              class="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm font-bold text-azul-700 ring-1 ring-azul-100 hover:bg-azul-50"
+            >
+              <IconeCategoria nome={categoria.icone} class="size-4" />
+              {categoria.nomePlural}
+            </a>
+          ))}
+        </div>
+      )
+    }
+
+    <div class="mt-4 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <ListaResultados itens={resultados} bairros={listarBairros()} bairroInicial={bairro} />
+      <LateralResultados relacionadas={[]} />
+    </div>
+  </main>
+</Layout>

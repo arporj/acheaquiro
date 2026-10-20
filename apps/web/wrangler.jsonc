@@ -1,19 +1,23 @@
 {
 	"$schema": "../../node_modules/wrangler/config-schema.json",
-	"main": ".open-next/worker.js",
+	// Produção: o domínio acheaquiro.com.br entra na abertura (27/11/2026).
 	"name": "acheaqui",
 	"compatibility_date": "2026-10-01",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-	"assets": {
-		"directory": ".open-next/assets",
-		"binding": "ASSETS"
-	},
-	"services": [
-		{
-			// O nome do serviço precisa ser igual ao do worker (cache do OpenNext).
-			"binding": "WORKER_SELF_REFERENCE",
-			"service": "acheaqui"
+	"cache": { "enabled": true },
+	// Versão do Worker nas etiquetas do cache (limpeza do cache a cada publicação).
+	"version_metadata": { "binding": "CF_VERSION_METADATA" },
+	// Segredos que o Worker usa. Declarar a lista impede que o build copie o
+	// .env.local inteiro (com a chave service_role) para dist/server/.dev.vars.
+	"secrets": { "required": [] },
+	"env": {
+		// Site de apresentação para anunciantes, com dados fictícios.
+		// Publicar com: npm run deploy:teste -w web
+		"teste": {
+			"name": "acheaqui-teste",
+			"routes": [{ "pattern": "teste.acheaquiro.com.br", "custom_domain": true }],
+			"version_metadata": { "binding": "CF_VERSION_METADATA" },
+			"secrets": { "required": [] }
 		}
-	]
-	// Cache em R2 e otimização de imagens entram depois de conferidos os limites gratuitos.
+	}
 }

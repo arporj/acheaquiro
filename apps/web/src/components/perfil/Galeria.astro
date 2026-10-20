@@ -1,0 +1,26 @@
+---
+import { FotoMarcador } from "@acheaqui/ui";
+import type { Categoria, Foto } from "@acheaqui/types";
+
+interface Props {
+  fotos: Foto[];
+  categoria: Categoria;
+}
+
+const { fotos, categoria } = Astro.props;
+---
+
+<ul class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+  {
+    fotos.map((foto) => (
+      <li class="group relative overflow-hidden rounded-2xl">
+        <FotoMarcador foto={foto} icone={categoria.icone} cor={categoria.cor} class="aspect-square w-full" />
+        {foto.legenda && (
+          <span class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2.5 pt-6 pb-2 text-xs font-bold text-white">
+            {foto.legenda}
+          </span>
+        )}
+      </li>
+    ))
+  }
+</ul>
