@@ -1,5 +1,6 @@
 ---
 import { Font } from "astro:assets";
+import FaixaApresentacao from "@/components/FaixaApresentacao.astro";
 import Rodape from "@/components/Rodape.astro";
 import "@/styles/global.css";
 
@@ -41,6 +42,7 @@ const { titulo, descricao = DESCRICAO_PADRAO, previa } = Astro.props;
     <Font cssVariable="--font-nunito" preload />
   </head>
   <body class="flex min-h-full flex-col font-sans">
+    {import.meta.env.PUBLIC_SITE_APRESENTACAO === "true" && <FaixaApresentacao />}
     <slot />
     <Rodape />
   </body>
