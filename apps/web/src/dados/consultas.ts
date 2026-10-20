@@ -1,6 +1,6 @@
 // Ponto único de leitura de dados das páginas. Hoje lê os mocks; quando o
 // Supabase entrar, só este arquivo muda (passa a usar packages/supabase-client).
-import type { Anunciante, Bairro, Categoria, Plano, Selo } from "@acheaqui/types";
+import type { Anunciante, Bairro, Categoria, Foto, Plano, Selo } from "@acheaqui/types";
 import { anunciantes } from "@/mocks/anunciantes";
 import { categorias, ordemAtalhos } from "@/mocks/categorias";
 import { destaqueExclusivoId, linksPatrocinados, simulacaoComercios, superDestaqueIds } from "@/mocks/extras";
@@ -16,6 +16,8 @@ export interface ItemResultado {
   slug: string;
   tipo: Anunciante["tipo"];
   nome: string;
+  /** Foto de perfil; sem ela, a interface mostra o ícone da categoria. */
+  foto?: Foto;
   categoriaNome: string;
   icone: string;
   cor: string;
@@ -88,6 +90,7 @@ function paraItem(anunciante: Anunciante, patrocinado = false): ItemResultado {
     slug: anunciante.slug,
     tipo: anunciante.tipo,
     nome: anunciante.nome,
+    foto: anunciante.fotoPerfil,
     categoriaNome: categoria?.nome ?? "",
     icone: categoria?.icone ?? "map-pin",
     cor: categoria?.cor ?? "#2563EB",

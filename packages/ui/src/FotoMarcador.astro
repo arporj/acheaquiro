@@ -10,6 +10,8 @@ interface Props {
   cor: string;
   class?: string;
   tamanhoIcone?: string;
+  /** Foto no topo da página: carrega na hora e com prioridade. As demais carregam perto de aparecer na tela. */
+  prioritaria?: boolean;
 }
 
 function variacao(semente: string): number {
@@ -18,7 +20,7 @@ function variacao(semente: string): number {
   return soma;
 }
 
-const { foto, icone, cor, class: classe = "", tamanhoIcone = "text-4xl" } = Astro.props;
+const { foto, icone, cor, class: classe = "", tamanhoIcone = "text-4xl", prioritaria = false } = Astro.props;
 const semente = variacao(foto?.id ?? icone);
 const angulo = 120 + (semente % 90);
 const claridade = 18 + (semente % 3) * 8;
@@ -26,7 +28,14 @@ const claridade = 18 + (semente % 3) * 8;
 
 {
   foto?.url ? (
-    <img src={foto.url} alt={foto.legenda ?? ""} class={`object-cover ${classe}`} />
+    <img
+      src={foto.url}
+      alt={foto.legenda ?? ""}
+      loading={prioritaria ? "eager" : "lazy"}
+      fetchpriority={prioritaria ? "high" : undefined}
+      decoding="async"
+      class={`object-cover ${classe}`}
+    />
   ) : (
     <div
       role="img"

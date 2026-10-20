@@ -27,7 +27,7 @@ const perfil = `/perfil/${item.slug}`;
   }`}
 >
   <a href={perfil} class="flex gap-3 sm:gap-4">
-    <FotoMarcador icone={item.icone} cor={item.cor} class="size-20 shrink-0 rounded-xl sm:size-24" />
+    <FotoMarcador foto={item.foto} icone={item.icone} cor={item.cor} class="size-20 shrink-0 rounded-xl sm:size-24" />
     <div class="min-w-0 flex-1">
       {
         (item.patrocinado || item.fundador) && (

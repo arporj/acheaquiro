@@ -1,6 +1,8 @@
 // DADOS FICTÍCIOS para o layout. Nomes, telefones, endereços e registros
 // profissionais são inventados. Os números de WhatsApp são inválidos de
 // propósito (900000-0XX), para nenhum clique no protótipo chegar a alguém.
+// As fotos foram geradas por IA (FLUX.1 schnell, no Workers AI) e ficam em
+// public/mock/fotos, com o nome igual ao id da foto.
 import type {
   Anunciante,
   AnuncianteComercio,
@@ -13,11 +15,11 @@ import type {
 import { cidadeAtual } from "./localidades";
 
 function fotos(prefixo: string, legendas: string[]): Foto[] {
-  return legendas.map((legenda, i) => ({ id: `${prefixo}-${i + 1}`, legenda }));
+  return legendas.map((legenda, i) => foto(`${prefixo}-${i + 1}`, legenda));
 }
 
 function foto(id: string, legenda?: string): Foto {
-  return { id, legenda };
+  return { id, legenda, url: `/mock/fotos/${id}.webp` };
 }
 
 function horario(porDia: Partial<Record<DiaSemana, IntervaloHorario[]>>): HorarioDia[] {
