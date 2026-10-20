@@ -21,14 +21,15 @@ Calendário: pré-cadastro dos Fundadores de 09/11 a 26/11/2026, feito pela equi
 ## Stack
 
 - Supabase: PostgreSQL, Auth, Storage e Edge Functions.
-- Next.js com TypeScript. Páginas públicas (perfis, categorias, bairros, links curtos de busca) geradas no servidor, para a prévia de links no WhatsApp e para o Google. Áreas logadas (anunciante, representante, administração) podem ser renderizadas no navegador.
+- Astro com TypeScript e o adaptador da Cloudflare (decisão de 20/10/2026, no lugar do Next.js). Páginas públicas (perfis, categorias, bairros, links curtos de busca) geradas no servidor, para a prévia de links no WhatsApp e para o Google. Partes interativas são scripts pequenos em TypeScript, sem React. Áreas logadas (anunciante, representante, administração) podem ser renderizadas no navegador.
+- Hospedagem: Cloudflare Workers Free. As páginas públicas ficam no Workers Cache (acesso em cache não executa o Worker); cada página liga o próprio cache em apps/web/src/lib/cache.ts. Acessos sem cache medidos em 20/10/2026: 6 a 53 ms de processamento, contra o limite de 10 ms do plano.
+- Ambientes no apps/web/wrangler.jsonc: "teste" (teste.acheaquiro.com.br, site de apresentação com dados fictícios, publicado com `npm run deploy:teste -w web`) e produção (acheaquiro.com.br, na abertura).
 - Hospedagem e serviços externos: somente planos gratuitos que permitam uso comercial. Antes de recomendar um serviço, confira e informe os limites atuais do plano gratuito.
-- Exceção temporária (decisão de 19/10/2026): o Next.js fica na Vercel Hobby, que proíbe uso comercial, até o lançamento. O uso passa a ser comercial quando o site começa a receber pagamentos (pré-cadastro, a partir de 09/11/2026); a hospedagem precisa ser migrada antes disso ou, no máximo, na abertura. O teste na Cloudflare Workers Free mostrou de 40 a 740 ms de processamento por acesso, contra o limite de 10 ms. A região das funções é gru1 (São Paulo), a mesma do banco.
 
 ## Arquitetura
 
 - Monorepo com esta estrutura:
-  - apps/web: aplicação Next.js.
+  - apps/web: aplicação Astro.
   - packages/types: tipos TypeScript compartilhados.
   - packages/validation: esquemas de validação, usados na tela e no servidor.
   - packages/domain: regras de negócio (ordenação, sorteios, comissão, limites de plano), sem dependência de interface nem de banco.
