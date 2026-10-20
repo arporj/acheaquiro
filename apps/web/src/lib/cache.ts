@@ -5,8 +5,14 @@
 // "não encontrado". A limpeza a cada alteração de perfil entra na etapa 3.
 import type { AstroGlobal } from "astro";
 
+/** Depois deste tempo, a página é refeita no próximo acesso. */
 export const SEGUNDOS_NO_CACHE = 300;
+/**
+ * Até este tempo, o visitante recebe a versão guardada na hora e o Worker
+ * refaz a página em segundo plano: o visitante não espera o processamento.
+ */
+export const SEGUNDOS_VERSAO_ANTIGA = 86_400;
 
 export function guardarNoCache(Astro: Pick<AstroGlobal, "cache">): void {
-  Astro.cache.set({ maxAge: SEGUNDOS_NO_CACHE });
+  Astro.cache.set({ maxAge: SEGUNDOS_NO_CACHE, swr: SEGUNDOS_VERSAO_ANTIGA });
 }
