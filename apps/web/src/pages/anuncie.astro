@@ -74,7 +74,7 @@ const perguntas = [
   },
   {
     pergunta: "E se eu não renovar?",
-    resposta: `O perfil de profissional autônomo sai do ar, sem ser apagado, e volta assim que o pagamento for confirmado. O comércio continua no site, no plano Gratuito. O Fundador que não renovar em até ${regras.toleranciaVencimentoDias} dias depois do vencimento perde o selo e o desconto.`,
+    resposta: `O perfil de profissional autônomo sai do ar, sem ser apagado, e volta assim que o pagamento for confirmado. O comércio continua no site, no plano Gratuito. O Fundador renova sempre no anual: se não renovar em até ${regras.toleranciaVencimentoDias} dias depois do vencimento, ou se passar para o mensal, deixa de ser Fundador e perde o selo e o desconto.`,
   },
   {
     pergunta: "Não tenho facilidade com celular. Consigo anunciar?",
@@ -143,8 +143,8 @@ const perguntas = [
               Pague o anual até {prazo} e seja Fundador
             </p>
             <p class="mt-1 text-white/90">
-              {regras.percentualDescontoFundador}% de desconto para sempre nos planos e pacotes, selo Fundador e vitrine
-              própria, enquanto você mantiver a assinatura.
+              {regras.percentualDescontoFundador}% de desconto nos planos e pacotes, selo Fundador e vitrine própria,
+              todo ano em que você renovar no anual.
             </p>
           </div>
         </div>
@@ -155,8 +155,8 @@ const perguntas = [
     <section class="mx-auto max-w-6xl px-4 py-10">
       <h2 class="font-display text-3xl font-extrabold text-azul-900">Extras</h2>
       <p class="mt-1 mb-5 text-slate-600">
-        Para somar a qualquer plano, por mês. Junto com a assinatura anual, também são cobrados no anual, pelo equivalente
-        a {mesesAnual} mensalidades.
+        Para somar a qualquer plano. Os mensais, quando contratados junto com a assinatura anual, também podem ser pagos
+        no anual, pelo equivalente a {mesesAnual} mensalidades. O Destaque Exclusivo é comprado por dia, num calendário.
       </p>
       <ListaExtras extras={listarExtras()} regras={regras} />
     </section>

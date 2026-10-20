@@ -46,11 +46,18 @@ function calcular(valorMensalCentavos: number, meses: number, percentualDesconto
   return { valorCheioCentavos, descontoFundadorCentavos: valorCheioCentavos - valorDevidoCentavos, valorDevidoCentavos };
 }
 
+/**
+ * O desconto de Fundador no plano só existe no anual: o Fundador renova
+ * sempre no anual, e quem passa para o mensal deixa de ser Fundador (20/10/2026).
+ */
 export function calcularCobrancaPlano(
   plano: ValoresPlano,
   periodicidade: Periodicidade,
   desconto: DescontoFundador,
 ): Cobranca {
+  if (desconto.fundador && periodicidade === "mensal") {
+    throw new RangeError("O Fundador renova o plano só no anual; no mensal, deixa de ser Fundador.");
+  }
   const meses = periodicidade === "anual" ? plano.mesesCobradosNoAnual : 1;
   return calcular(plano.valorMensalCentavos, meses, desconto.fundador ? desconto.percentualFundador : 0);
 }
@@ -58,7 +65,7 @@ export function calcularCobrancaPlano(
 export interface ValoresExtra extends ValoresPlano {
   /** Pacotes (fotos, categoria, encarte, produtos, endereço) têm desconto de Fundador; destaques não. */
   aceitaDescontoFundador: boolean;
-  /** O Destaque Exclusivo do Mês é vendido só mês a mês. */
+  /** Extras sem venda no anual. O Destaque Exclusivo, vendido por dia, tem regra própria (destaque.ts). */
   permiteAnual: boolean;
 }
 
@@ -117,15 +124,19 @@ export function efeitoDoVencimento(tipo: TipoAnunciante): "escondido_por_vencime
 
 /**
  * O Fundador perde a condição quando a assinatura vence e a renovação não é
- * paga dentro da tolerância (decisão 9: 7 dias).
+ * paga dentro da tolerância (decisão 9: 7 dias), ou quando renova no mensal:
+ * a renovação do Fundador é sempre anual (20/10/2026). A perda é definitiva.
  */
 export function perdeCondicaoFundador(situacao: {
   venceuEm: DataISO;
   /** Data em que a renovação foi paga, se foi. */
   renovadaEm?: DataISO;
+  /** Período escolhido na renovação, se já foi escolhido. */
+  periodicidadeRenovacao?: Periodicidade;
   hoje: DataISO;
   toleranciaDias: number;
 }): boolean {
+  if (situacao.periodicidadeRenovacao === "mensal") return true;
   const limite = somarDias(situacao.venceuEm, situacao.toleranciaDias);
   return (situacao.renovadaEm ?? situacao.hoje) > limite;
 }

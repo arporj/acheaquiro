@@ -18,10 +18,12 @@ const { itens, bairros, bairroInicial = "" } = Astro.props;
 const dados = itens.map(paraDadosFiltro);
 const estado: EstadoLista = { aba: abaInicial(dados), bairro: bairroInicial, somenteAbertos: false, maisPerto: false };
 
-const totalProfissionais = itens.filter((i) => i.tipo === "profissional").length;
+// A cópia do patrocinado no topo não conta: cada anunciante entra uma vez no total.
+const unicos = itens.filter((i) => !i.patrocinado);
+const totalProfissionais = unicos.filter((i) => i.tipo === "profissional").length;
 const abas: { id: Aba; rotulo: string; total: number }[] = [
   { id: "profissional", rotulo: "Profissionais", total: totalProfissionais },
-  { id: "comercio", rotulo: "Comércios", total: itens.length - totalProfissionais },
+  { id: "comercio", rotulo: "Comércios", total: unicos.length - totalProfissionais },
 ];
 
 const visiveis = dados.filter((d) => passaNoFiltro(d, estado)).length;

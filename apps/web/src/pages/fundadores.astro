@@ -24,7 +24,7 @@ const beneficios: { icone: NomeIcone; titulo: string; texto: string }[] = [
   },
   {
     icone: "dinheiro",
-    titulo: `${desconto} de desconto permanente`,
+    titulo: `${desconto} de desconto todo ano`,
     texto:
       "Nos planos e nos pacotes extras: categoria adicional, fotos, encarte, produtos e endereço. Os destaques e os links patrocinados, que têm vagas limitadas, não têm desconto.",
   },
@@ -68,10 +68,10 @@ const chip =
 
 <Layout
   titulo="Fundadores"
-  descricao={`Quem paga a assinatura anual até ${prazo} vira Fundador do Ache Aqui RO, com ${desconto} de desconto permanente.`}
+  descricao={`Quem paga a assinatura anual até ${prazo} vira Fundador do Ache Aqui RO, com ${desconto} de desconto em todo ano renovado no anual.`}
   previa={{
     titulo: "Fundadores do Ache Aqui RO",
-    descricao: `Pague o anual até ${prazo} e tenha ${desconto} de desconto permanente, selo e vitrine própria.`,
+    descricao: `Pague o anual até ${prazo} e tenha ${desconto} de desconto todo ano, selo e vitrine própria.`,
   }}
 >
   <Topo pagina="interna" />
@@ -81,7 +81,7 @@ const chip =
       chamada="Fundadores do Ache Aqui RO"
       subtitulo={`Pague a assinatura anual de um plano pago até ${prazo}. Não há limite de vagas.`}
     >
-      Seja Fundador e tenha <span class="text-amarelo-400">{desconto} de desconto</span> para sempre
+      Seja Fundador e tenha <span class="text-amarelo-400">{desconto} de desconto</span> todo ano
       <Fragment slot="acoes">
         <BotaoContato rotulo="Quero ser Fundador" />
       </Fragment>
@@ -106,9 +106,9 @@ const chip =
         <div class="mt-6 flex gap-3 rounded-2xl bg-azul-50 p-4 text-azul-900">
           <Icone nome="info" class="mt-0.5 size-5 shrink-0 text-azul-600" />
           <p>
-            <strong>Como manter:</strong> depois do primeiro ano, você renova no anual ou no mensal e continua Fundador
-            enquanto a assinatura não for interrompida. Se ela vencer e não for paga em até{" "}
-            {regras.toleranciaVencimentoDias} dias, o anunciante perde o selo, o desconto e a vaga na vitrine.
+            <strong>Como manter:</strong> a renovação do Fundador é sempre anual. Você continua Fundador enquanto renovar no
+            anual em até {regras.toleranciaVencimentoDias} dias depois do vencimento. Quem passa para o mensal, ou não
+            renova nesse prazo, deixa de ser Fundador de vez e perde o selo, o desconto e a vaga na vitrine.
           </p>
         </div>
       </div>

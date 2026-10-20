@@ -52,14 +52,35 @@ describe("Fundador", () => {
   });
 });
 
-describe("extras", () => {
-  it("o extra vendido junto com a assinatura segue a regra do plano (mensal)", () => {
-    expect(valor({ origem: "extra_na_assinatura", valorPagoCentavos: 8990 })).toBe(8990);
-    expect(valor({ origem: "extra_na_assinatura", valorPagoCentavos: 8990, numeroMensalidade: 2 })).toBe(1798);
+describe("renovação do anual", () => {
+  it("não gera nova comissão: os 135% são pagos uma vez", () => {
+    expect(valor({ periodicidade: "anual", valorPagoCentavos: 59900, numeroMensalidade: 2 })).toBeNull();
+  });
+});
+
+describe("extras (20% do valor pago na venda, uma vez)", () => {
+  it("Super Destaque mensal vendido junto com a assinatura: 20% da 1ª mensalidade", () => {
+    expect(calcularComissao({ ...mensalidade, origem: "extra_na_assinatura", valorPagoCentavos: 8990 })).toEqual({
+      baseCentavos: 8990,
+      percentual: 20,
+      valorCentavos: 1798,
+    });
   });
 
-  it("o extra vendido junto com a assinatura anual paga 135% de uma mensalidade", () => {
-    expect(valor({ origem: "extra_na_assinatura", periodicidade: "anual", valorPagoCentavos: 89900 })).toBe(12137);
+  it("não paga nas mensalidades seguintes do extra", () => {
+    expect(valor({ origem: "extra_na_assinatura", valorPagoCentavos: 8990, numeroMensalidade: 2 })).toBeNull();
+  });
+
+  it("Super Destaque anual: 20% do valor anual", () => {
+    expect(valor({ origem: "extra_na_assinatura", periodicidade: "anual", valorPagoCentavos: 89900 })).toBe(17980);
+  });
+
+  it("Destaque Exclusivo: 20% da compra de dias (7 dias, R$ 174,30)", () => {
+    expect(valor({ origem: "extra_na_assinatura", valorPagoCentavos: 17430 })).toBe(3486);
+  });
+
+  it("pacote com desconto de Fundador: 20% do valor pago (R$ 2,45 → R$ 0,49)", () => {
+    expect(valor({ origem: "extra_na_assinatura", valorPagoCentavos: 245 })).toBe(49);
   });
 
   it("o extra contratado depois não gera comissão", () => {

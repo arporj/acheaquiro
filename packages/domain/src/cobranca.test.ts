@@ -45,24 +45,17 @@ describe("calcularCobrancaPlano", () => {
     expect(calcularCobrancaPlano(vitrine, "anual", semFundador).valorDevidoCentavos).toBe(59900);
   });
 
-  it("mensal com Fundador tem 50% de desconto", () => {
-    expect(calcularCobrancaPlano(vitrine, "mensal", comFundador)).toEqual({
-      valorCheioCentavos: 5990,
-      descontoFundadorCentavos: 2995,
-      valorDevidoCentavos: 2995,
+  it("anual com Fundador tem 50% de desconto", () => {
+    expect(calcularCobrancaPlano(vitrine, "anual", comFundador)).toEqual({
+      valorCheioCentavos: 59900,
+      descontoFundadorCentavos: 29950,
+      valorDevidoCentavos: 29950,
     });
+    expect(calcularCobrancaPlano(basicoAutonomo, "anual", comFundador).valorDevidoCentavos).toBe(995);
   });
 
-  it("anual com Fundador", () => {
-    expect(calcularCobrancaPlano(vitrine, "anual", comFundador).valorDevidoCentavos).toBe(29950);
-  });
-
-  it("centavos ímpares: arredonda o valor devido e o desconto fecha a conta", () => {
-    expect(calcularCobrancaPlano(basicoAutonomo, "mensal", comFundador)).toEqual({
-      valorCheioCentavos: 199,
-      descontoFundadorCentavos: 99,
-      valorDevidoCentavos: 100,
-    });
+  it("recusa o plano mensal com desconto de Fundador: a renovação do Fundador é anual", () => {
+    expect(() => calcularCobrancaPlano(vitrine, "mensal", comFundador)).toThrow(RangeError);
   });
 });
 
@@ -74,9 +67,9 @@ describe("calcularCobrancaExtra", () => {
     permiteAnual: true,
   };
   const superDestaque: ValoresExtra = { ...pacoteDeFotos, valorMensalCentavos: 8990, aceitaDescontoFundador: false };
-  const destaqueExclusivo: ValoresExtra = { ...superDestaque, valorMensalCentavos: 50000, permiteAnual: false };
+  const soMensal: ValoresExtra = { ...superDestaque, permiteAnual: false };
 
-  it("pacote com Fundador tem 50% de desconto", () => {
+  it("pacote mensal com Fundador tem 50% de desconto", () => {
     expect(calcularCobrancaExtra(pacoteDeFotos, "mensal", comFundador)).toEqual({
       valorCheioCentavos: 490,
       descontoFundadorCentavos: 245,
@@ -101,9 +94,17 @@ describe("calcularCobrancaExtra", () => {
     expect(calcularCobrancaExtra(superDestaque, "anual", semFundador).valorDevidoCentavos).toBe(89900);
   });
 
-  it("o Destaque Exclusivo do Mês não pode ser anual", () => {
-    expect(() => calcularCobrancaExtra(destaqueExclusivo, "anual", semFundador)).toThrow(RangeError);
-    expect(calcularCobrancaExtra(destaqueExclusivo, "mensal", comFundador).valorDevidoCentavos).toBe(50000);
+  it("centavos ímpares: arredonda o valor devido e o desconto fecha a conta", () => {
+    expect(calcularCobrancaExtra({ ...pacoteDeFotos, valorMensalCentavos: 199 }, "mensal", comFundador)).toEqual({
+      valorCheioCentavos: 199,
+      descontoFundadorCentavos: 99,
+      valorDevidoCentavos: 100,
+    });
+  });
+
+  it("extra sem venda no anual recusa o anual", () => {
+    expect(() => calcularCobrancaExtra(soMensal, "anual", semFundador)).toThrow(RangeError);
+    expect(calcularCobrancaExtra(soMensal, "mensal", semFundador).valorDevidoCentavos).toBe(8990);
   });
 });
 
@@ -172,5 +173,17 @@ describe("perdeCondicaoFundador", () => {
 
   it("perde quando a tolerância acaba sem pagamento", () => {
     expect(perdeCondicaoFundador({ ...base, hoje: "2027-01-04" })).toBe(true);
+  });
+
+  it("mantém quando renova no anual, dentro do prazo", () => {
+    expect(
+      perdeCondicaoFundador({ ...base, renovadaEm: "2026-12-20", periodicidadeRenovacao: "anual", hoje: "2026-12-20" }),
+    ).toBe(false);
+  });
+
+  it("perde quando renova no mensal, mesmo pagando em dia", () => {
+    expect(
+      perdeCondicaoFundador({ ...base, renovadaEm: "2026-12-20", periodicidadeRenovacao: "mensal", hoje: "2026-12-20" }),
+    ).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
 ---
-import { PERCENTUAIS_COMISSAO_MENSAL, PERCENTUAL_COMISSAO_ANUAL } from "@acheaqui/domain";
+import { PERCENTUAIS_COMISSAO_MENSAL, PERCENTUAL_COMISSAO_ANUAL, PERCENTUAL_COMISSAO_EXTRAS } from "@acheaqui/domain";
 import { Icone, type NomeIcone } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
 import Abertura from "@/components/institucional/Abertura.astro";
@@ -49,7 +49,7 @@ const regrasComissao: { icone: NomeIcone; titulo: string; texto: string }[] = [
   {
     icone: "dinheiro",
     titulo: "No plano anual",
-    texto: `Você recebe ${PERCENTUAL_COMISSAO_ANUAL}% de uma mensalidade do plano, de uma vez, quando o anunciante paga o ano.`,
+    texto: `Você recebe ${PERCENTUAL_COMISSAO_ANUAL}% de uma mensalidade do plano, de uma vez, quando o anunciante paga o primeiro ano. A renovação não gera nova comissão.`,
   },
   {
     icone: "etiqueta",
@@ -60,7 +60,7 @@ const regrasComissao: { icone: NomeIcone; titulo: string; texto: string }[] = [
     icone: "sacola",
     titulo: "Extras",
     texto:
-      "Geram comissão quando vendidos junto com a assinatura, pela mesma regra do plano. Extras contratados depois pelo anunciante não geram comissão.",
+      `Quando vendidos junto com a assinatura, você recebe ${PERCENTUAL_COMISSAO_EXTRAS}% do valor pago pelo extra nessa venda, de uma vez. Extras contratados depois pelo anunciante não geram comissão.`,
   },
 ];
 ---

@@ -2,7 +2,7 @@
 // no sistema real, são calculados na hora (aberto agora e distância).
 import type { LinkPatrocinado } from "@acheaqui/types";
 
-/** Destaque Exclusivo do Mês: um único anunciante por vez. */
+/** Destaque Exclusivo: um único anunciante por dia. */
 export const destaqueExclusivoId = "c03";
 
 /** Carrossel Super Destaque: no máximo 8 vagas. */

@@ -150,27 +150,33 @@ function paraItem(anunciante: Anunciante, patrocinado = false): ItemResultado {
 }
 
 /**
- * SIMULAÇÃO da ordem da lista, só para o layout: patrocinados primeiro e depois
- * por nível do plano. A regra real (sorteio dos patrocinados, alternância dentro
- * de cada grupo, vaga rotativa) vai para packages/domain, com testes.
+ * SIMULAÇÃO da ordem da lista, só para o layout: por nível do plano e nome. A
+ * regra real (sorteio dos patrocinados, alternância dentro de cada grupo, vaga
+ * rotativa) é `ordenarResultados`, de packages/domain, aplicada na etapa 3.
  */
 function ordenarSimulado(itens: { anunciante: Anunciante; patrocinado: boolean }[]) {
   return [...itens].sort((a, b) => {
-    if (a.patrocinado !== b.patrocinado) return a.patrocinado ? -1 : 1;
     const nivelA = planoPorId(a.anunciante.planoId)?.nivel ?? 0;
     const nivelB = planoPorId(b.anunciante.planoId)?.nivel ?? 0;
     return nivelB - nivelA || a.anunciante.nome.localeCompare(b.anunciante.nome, "pt-BR");
   });
 }
 
+/**
+ * Os patrocinados aparecem no topo, marcados, e também na posição do seu
+ * plano: o patrocínio é um lugar a mais (decisão de 20/10/2026).
+ */
 export function buscarPorCategoria(categoriaId: string): ItemResultado[] {
-  const encontrados = anunciantes
-    .filter((a) => a.categoriaId === categoriaId || a.categoriasAdicionais.includes(categoriaId))
-    .map((anunciante) => ({
-      anunciante,
-      patrocinado: linksPatrocinados.some((l) => l.anuncianteId === anunciante.id && l.categoriaId === categoriaId),
-    }));
-  return ordenarSimulado(encontrados).map((r) => paraItem(r.anunciante, r.patrocinado));
+  const encontrados = ordenarSimulado(
+    anunciantes
+      .filter((a) => a.categoriaId === categoriaId || a.categoriasAdicionais.includes(categoriaId))
+      .map((anunciante) => ({
+        anunciante,
+        patrocinado: linksPatrocinados.some((l) => l.anuncianteId === anunciante.id && l.categoriaId === categoriaId),
+      })),
+  );
+  const topo = encontrados.filter((r) => r.patrocinado).map((r) => paraItem(r.anunciante, true));
+  return [...topo, ...encontrados.map((r) => paraItem(r.anunciante))];
 }
 
 export function buscarPorTexto(termo: string): { categorias: Categoria[]; resultados: ItemResultado[] } {

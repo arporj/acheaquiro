@@ -65,13 +65,22 @@ export interface Extra {
   id: string;
   nome: string;
   descricao: string;
+  /** Na cobrança por dia, é o valor do bloco de dias seguidos. */
   valorMensalCentavos: number;
-  /** Complemento do preço: "por categoria e bairro". */
+  /** Complemento do preço: "por categoria, em 3 bairros". */
   unidade?: string;
+  /** "por_dia": o Destaque Exclusivo, escolhido em calendário (regras em `porDia`). */
+  cobranca: "mensal" | "por_dia";
+  porDia?: {
+    diariaCentavos: number;
+    valorBlocoCentavos: number;
+    diasPorBloco: number;
+    minimoDiasParaBloco: number;
+    antecedenciaDias: number;
+  };
   mesesCobradosNoAnual: number;
   /** Pacotes têm desconto de Fundador; destaques e patrocínios não. */
   aceitaDescontoFundador: boolean;
-  /** O Destaque Exclusivo do Mês é vendido só mês a mês. */
   permiteAnual: boolean;
 }
 
