@@ -25,7 +25,10 @@ Calendário: pré-cadastro dos Fundadores de 09/11 a 26/11/2026, feito pela equi
 - Supabase: PostgreSQL, Auth, Storage e Edge Functions.
 - Astro com TypeScript e o adaptador da Cloudflare (decisão de 20/10/2026, no lugar do Next.js). Páginas públicas (perfis, categorias, bairros, links curtos de busca) geradas no servidor, para a prévia de links no WhatsApp e para o Google. Partes interativas são scripts pequenos em TypeScript, sem React. Áreas logadas (anunciante, representante, administração) podem ser renderizadas no navegador.
 - Hospedagem: Cloudflare Workers Free. As páginas públicas ficam no Workers Cache (acesso em cache não executa o Worker); cada página liga o próprio cache em apps/web/src/lib/cache.ts. Acessos sem cache medidos em 20/10/2026: 6 a 53 ms de processamento, contra o limite de 10 ms do plano.
-- Ambientes no apps/web/wrangler.jsonc: "teste" (teste.acheaquiro.com.br, site de apresentação com dados fictícios, publicado com `npm run deploy:teste -w web`) e produção (acheaquiro.com.br, na abertura).
+- Três sites no apps/web/wrangler.jsonc, escolhidos por PUBLIC_AMBIENTE (apps/web/src/lib/ambiente.ts), publicados juntos com `npm run deploy:todos -w web` (decisão de 21/10/2026):
+  - produção (Worker "acheaqui"): o site real, com banco e login, em prod.acheaquiro.com.br até a abertura. Em 27/11/2026 passa para acheaquiro.com.br, e prod. redireciona para lá.
+  - "em-breve" (Worker "acheaqui-em-breve"): acheaquiro.com.br e www até 26/11/2026, só com o aviso "abre em 27/11". Não acessa o banco. Apagar na abertura.
+  - "teste" (Worker "acheaqui-teste"): teste.acheaquiro.com.br, site de apresentação com dados fictícios, sem login e sem acesso ao banco real.
 - Hospedagem e serviços externos: somente planos gratuitos que permitam uso comercial. Antes de recomendar um serviço, confira e informe os limites atuais do plano gratuito.
 
 ## Arquitetura
