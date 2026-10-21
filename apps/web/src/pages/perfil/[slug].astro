@@ -137,32 +137,6 @@ const fundoMapa =
             </Secao>
           )
         }
-        {
-          anunciante.tipo === "profissional" && anunciante.antesDepois.length > 0 && (
-            <Secao titulo="Antes e depois">
-              <div class="space-y-4">
-                {anunciante.antesDepois.map((par) => (
-                  <figure>
-                    <div class="grid grid-cols-2 gap-1.5 overflow-hidden rounded-2xl">
-                      {[
-                        { foto: par.antes, rotulo: "Antes", cor: "#64748B" },
-                        { foto: par.depois, rotulo: "Depois", cor: categoria.cor },
-                      ].map((lado) => (
-                        <div class="relative">
-                          <FotoMarcador foto={lado.foto} icone={categoria.icone} cor={lado.cor} class="aspect-[4/3] w-full" />
-                          <span class="absolute top-2 left-2 rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-extrabold text-white uppercase">
-                            {lado.rotulo}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <figcaption class="mt-2 text-sm font-semibold text-slate-600">{par.legenda}</figcaption>
-                  </figure>
-                ))}
-              </div>
-            </Secao>
-          )
-        }
 
         {
           anunciante.tipo === "comercio" && anunciante.encartes.length > 0 && (

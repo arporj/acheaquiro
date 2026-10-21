@@ -108,13 +108,12 @@ export interface Foto {
   /** Vazio enquanto não houver Storage; a interface mostra um marcador. */
   url?: string;
   legenda?: string;
-}
-
-export interface ParAntesDepois {
-  id: string;
-  antes: Foto;
-  depois: Foto;
-  legenda: string;
+  /**
+   * Antes e depois (item 4.3): duas fotos da galeria com o mesmo parId,
+   * mostradas lado a lado. A legenda do par é a da foto "antes".
+   */
+  parId?: string;
+  papelNoPar?: "antes" | "depois";
 }
 
 export interface IntervaloHorario {
@@ -176,7 +175,6 @@ export interface AnuncianteProfissional extends AnuncianteBase {
   tipo: "profissional";
   atendeTodaCidade: boolean;
   bairrosAtendidos: string[];
-  antesDepois: ParAntesDepois[];
 }
 
 export interface AnuncianteComercio extends AnuncianteBase {

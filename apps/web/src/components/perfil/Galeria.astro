@@ -1,4 +1,6 @@
 ---
+// Galeria única do perfil (item 4.3): as fotos soltas e os pares de antes e
+// depois, que ocupam duas colunas e mostram as duas fotos lado a lado.
 import { FotoMarcador } from "@acheaqui/ui";
 import type { Categoria, Foto } from "@acheaqui/types";
 
@@ -8,19 +10,58 @@ interface Props {
 }
 
 const { fotos, categoria } = Astro.props;
+
+type Item = { tipo: "foto"; foto: Foto } | { tipo: "par"; antes: Foto; depois: Foto };
+
+// O par entra no lugar da foto "antes"; a "depois" vai junto. Foto de par sem a outra metade aparece sozinha.
+const itens: Item[] = [];
+for (const foto of fotos) {
+  if (!foto.parId) {
+    itens.push({ tipo: "foto", foto });
+    continue;
+  }
+  if (foto.papelNoPar !== "antes") {
+    const temAntes = fotos.some((f) => f.parId === foto.parId && f.papelNoPar === "antes");
+    if (!temAntes) itens.push({ tipo: "foto", foto });
+    continue;
+  }
+  const depois = fotos.find((f) => f.parId === foto.parId && f.papelNoPar === "depois");
+  itens.push(depois ? { tipo: "par", antes: foto, depois } : { tipo: "foto", foto });
+}
 ---
 
 <ul class="grid grid-cols-2 gap-2 sm:grid-cols-3">
   {
-    fotos.map((foto) => (
-      <li class="group relative overflow-hidden rounded-2xl">
-        <FotoMarcador foto={foto} icone={categoria.icone} cor={categoria.cor} class="aspect-square w-full" />
-        {foto.legenda && (
-          <span class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2.5 pt-6 pb-2 text-xs font-bold text-white">
-            {foto.legenda}
-          </span>
-        )}
-      </li>
-    ))
+    itens.map((item) =>
+      item.tipo === "foto" ? (
+        <li class="group relative overflow-hidden rounded-2xl">
+          <FotoMarcador foto={item.foto} icone={categoria.icone} cor={categoria.cor} class="aspect-square w-full" />
+          {item.foto.legenda && (
+            <span class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2.5 pt-6 pb-2 text-xs font-bold text-white">
+              {item.foto.legenda}
+            </span>
+          )}
+        </li>
+      ) : (
+        <li class="col-span-2">
+          <figure>
+            <div class="grid grid-cols-2 gap-1.5 overflow-hidden rounded-2xl">
+              {[
+                { foto: item.antes, rotulo: "Antes", cor: "#64748B" },
+                { foto: item.depois, rotulo: "Depois", cor: categoria.cor },
+              ].map((lado) => (
+                <div class="relative">
+                  <FotoMarcador foto={lado.foto} icone={categoria.icone} cor={lado.cor} class="aspect-square w-full" />
+                  <span class="absolute top-2 left-2 rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-extrabold text-white uppercase">
+                    {lado.rotulo}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {item.antes.legenda && <figcaption class="mt-1.5 text-sm font-semibold text-slate-600">{item.antes.legenda}</figcaption>}
+          </figure>
+        </li>
+      ),
+    )
   }
 </ul>
