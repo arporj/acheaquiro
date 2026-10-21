@@ -62,6 +62,8 @@ if (Astro.request.method === "POST") {
   )}
 
   <form method="post" novalidate>
+    {/* Para o gerenciador de senhas do navegador salvar a senha na conta certa (sem ele, grava na última conta usada no site). */}
+    <input type="email" name="usuario" value={usuario.email} autocomplete="username" readonly hidden />
     <label for="senha" class={classesRotulo}>Nova senha</label>
     <input
       id="senha"
