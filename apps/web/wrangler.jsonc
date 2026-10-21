@@ -13,7 +13,7 @@
 	// Segredos que o Worker usa (wrangler secret put). Declarar a lista impede
 	// que o build copie o .env.local inteiro para dist/server/.dev.vars: só a
 	// produção usa a service_role (limites de acesso e registro de acessos).
-	"secrets": { "required": ["SUPABASE_SERVICE_ROLE_KEY"] },
+	"secrets": { "required": ["SUPABASE_SERVICE_ROLE_KEY", "CLOUDFLARE_LIMPEZA_CACHE_TOKEN"] },
 	// Arquivos enviados pelos anunciantes (Especificação Técnica, seção 10.4).
 	// Só a produção tem: as ligações não passam para os outros ambientes.
 	"r2_buckets": [
