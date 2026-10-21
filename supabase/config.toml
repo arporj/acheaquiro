@@ -219,10 +219,13 @@ token_verifications = 30
 web3 = 30
 
 # Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
-# [auth.captcha]
-# enabled = true
-# provider = "hcaptcha"
-# secret = ""
+# Ache Aqui RO: o próprio Auth confere o Turnstile na entrada, no cadastro e na
+# recuperação de senha, inclusive em chamadas diretas com a chave pública. O
+# site só repassa o token (ele vale uma vez). Chave secreta só no .env.local.
+[auth.captcha]
+enabled = true
+provider = "turnstile"
+secret = "env(SUPABASE_AUTH_CAPTCHA_SECRET)"
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
