@@ -1,0 +1,109 @@
+---
+// Entrada de anunciantes, representantes e administradores (item 4.14).
+import { classesBotao } from "@acheaqui/ui";
+import { entrar, registrarAcesso } from "@acheaqui/supabase-client";
+import { esquemaEntrar, mensagensPorCampo } from "@acheaqui/validation";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import Turnstile from "@/components/conta/Turnstile.astro";
+import { clienteServico, destinoDepoisDeEntrar, ipDaRequisicao } from "@/lib/sessao";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario;
+
+/** Só caminhos do próprio site: evita mandar a pessoa para outro endereço depois de entrar. */
+function voltarSeguro(valor: string | null): string | undefined {
+  return valor && valor.startsWith("/") && !valor.startsWith("//") && !valor.includes("\\") ? valor : undefined;
+}
+const voltar = voltarSeguro(Astro.url.searchParams.get("voltar"));
+
+if (Astro.request.method === "GET" && usuario) {
+  return Astro.redirect(voltar ?? (await destinoDepoisDeEntrar(supabase, usuario)), 303);
+}
+
+const avisos: Record<string, string> = {
+  confirmado: "E-mail confirmado. Agora é só entrar.",
+  saiu: "Você saiu da sua conta.",
+};
+const aviso = [...Astro.url.searchParams.keys()].map((chave) => avisos[chave]).find(Boolean);
+let erro = Astro.url.searchParams.get("erro") === "interno" ? "Não foi possível entrar agora. Tente de novo em instantes." : "";
+let campos: Record<string, string> = {};
+let email = "";
+
+if (Astro.request.method === "POST") {
+  const formulario = await Astro.request.formData();
+  email = String(formulario.get("email") ?? "").slice(0, 254);
+  const dados = esquemaEntrar.safeParse({
+    email: formulario.get("email"),
+    senha: formulario.get("senha"),
+    tokenRobo: formulario.get("tokenRobo"),
+  });
+
+  if (!dados.success) {
+    campos = mensagensPorCampo(dados.error);
+    Astro.response.status = 400;
+  } else {
+    const ip = ipDaRequisicao(Astro.clientAddress);
+    const servico = clienteServico();
+    const resultado = await entrar(supabase, servico, { ...dados.data, ip });
+    if (resultado.ok) {
+      await registrarAcesso(servico, {
+        usuarioId: resultado.dados.usuarioId,
+        ip,
+        userAgent: Astro.request.headers.get("user-agent"),
+        acao: "login",
+      });
+      // Na próxima página a sessão nova já vem nos cookies, e o destino depende do papel e da segunda etapa.
+      return Astro.redirect(voltar ?? "/entrar", 303);
+    }
+    erro = resultado.erro.mensagem;
+    Astro.response.status = resultado.erro.codigo === "LIMITE_DE_REQUISICOES" ? 429 : 400;
+  }
+}
+---
+
+<PaginaAcesso titulo="Entrar">
+  <p class="mt-1 text-slate-600">Área de anunciantes, representantes e equipe do Ache Aqui RO.</p>
+
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <form method="post" novalidate>
+    <label for="email" class={classesRotulo}>E-mail</label>
+    <input
+      id="email"
+      name="email"
+      type="email"
+      autocomplete="username"
+      required
+      value={email}
+      class={classesCampo}
+      aria-invalid={campos.email ? "true" : undefined}
+      aria-describedby={campos.email ? "email-erro" : undefined}
+    />
+    {campos.email && <p id="email-erro" class={classesErroCampo}>{campos.email}</p>}
+
+    <label for="senha" class={classesRotulo}>Senha</label>
+    <input
+      id="senha"
+      name="senha"
+      type="password"
+      autocomplete="current-password"
+      required
+      class={classesCampo}
+      aria-invalid={campos.senha ? "true" : undefined}
+      aria-describedby={campos.senha ? "senha-erro" : undefined}
+    />
+    {campos.senha && <p id="senha-erro" class={classesErroCampo}>{campos.senha}</p>}
+
+    <Turnstile />
+    {campos.tokenRobo && <p class={classesErroCampo}>{campos.tokenRobo}</p>}
+
+    <button type="submit" class={classesBotao("azul", "g", "mt-6 w-full")}>Entrar</button>
+  </form>
+
+  <p class="mt-5 text-center">
+    <a href="/recuperar-senha" class="font-bold text-azul-600 hover:underline">Esqueci minha senha</a>
+  </p>
+</PaginaAcesso>

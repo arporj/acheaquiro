@@ -19,7 +19,9 @@
     "@acheaqui/supabase-client": "*",
     "@acheaqui/types": "*",
     "@acheaqui/ui": "*",
+    "@acheaqui/validation": "*",
     "@astrojs/cloudflare": "^14.4.1",
+    "@supabase/supabase-js": "^2.118.0",
     "astro": "^7.4.1"
   },
   "devDependencies": {

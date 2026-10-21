@@ -1,0 +1,42 @@
+---
+// Lista do que falta na senha, atualizada enquanto a pessoa digita (item
+// 4.14). A regra é a de packages/validation, a mesma que o servidor usa.
+import { Icone } from "@acheaqui/ui";
+import { REQUISITOS_SENHA } from "@acheaqui/validation/senha";
+
+interface Props {
+  /** id do campo de senha observado. */
+  campo: string;
+}
+
+const { campo } = Astro.props;
+---
+
+<ul class="mt-2 space-y-1 text-sm" data-requisitos-senha={campo} aria-live="polite">
+  {
+    REQUISITOS_SENHA.map((requisito) => (
+      <li data-requisito={requisito.id} data-ok="false" class="group flex items-center gap-2 text-slate-500 data-[ok=true]:text-zap-700">
+        <Icone nome="certo" class="size-4 opacity-30 group-data-[ok=true]:opacity-100" strokeWidth={3} />
+        <span>{requisito.descricao}</span>
+        <span class="sr-only group-data-[ok=true]:hidden">(falta)</span>
+      </li>
+    ))
+  }
+</ul>
+
+<script>
+  import { REQUISITOS_SENHA } from "@acheaqui/validation/senha";
+
+  for (const lista of document.querySelectorAll<HTMLElement>("[data-requisitos-senha]")) {
+    const campo = document.getElementById(lista.dataset.requisitosSenha ?? "");
+    if (!(campo instanceof HTMLInputElement)) continue;
+    const atualizar = () => {
+      for (const requisito of REQUISITOS_SENHA) {
+        const item = lista.querySelector<HTMLElement>(`[data-requisito="${requisito.id}"]`);
+        if (item) item.dataset.ok = String(requisito.atende(campo.value));
+      }
+    };
+    campo.addEventListener("input", atualizar);
+    atualizar();
+  }
+</script>

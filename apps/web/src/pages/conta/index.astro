@@ -1,0 +1,47 @@
+---
+// Minha conta: dados de acesso, senha e verificação em duas etapas.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import { areaDoPapel } from "@/lib/sessao";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+
+const nomesPapel = { anunciante: "Anunciante", representante: "Representante", administrador: "Administrador" };
+const fatores = await supabase.auth.mfa.listFactors();
+if (fatores.error) console.error("conta: listFactors falhou", { codigo: fatores.error.code, mensagem: fatores.error.message });
+const duasEtapasAtiva = (fatores.data?.totp.length ?? 0) > 0;
+const situacaoDuasEtapas = fatores.error ? "Não foi possível conferir agora" : duasEtapasAtiva ? "Ativa" : "Desligada";
+const emailTrocado = Astro.url.searchParams.has("email-trocado");
+---
+
+<PaginaAcesso titulo="Minha conta" logado>
+  {emailTrocado && <Aviso tipo="sucesso">E-mail trocado.</Aviso>}
+
+  <dl class="mt-5 space-y-3">
+    <div>
+      <dt class="text-sm font-bold text-slate-500">E-mail</dt>
+      <dd class="font-semibold">{usuario.email}</dd>
+    </div>
+    <div>
+      <dt class="text-sm font-bold text-slate-500">Tipo de conta</dt>
+      <dd class="font-semibold">{usuario.papel ? nomesPapel[usuario.papel] : "Sem papel definido"}</dd>
+    </div>
+    <div>
+      <dt class="text-sm font-bold text-slate-500">Verificação em duas etapas</dt>
+      <dd class="flex items-center gap-1.5 font-semibold">
+        {duasEtapasAtiva ? <Icone nome="escudo" class="size-4 text-zap-700" /> : null}
+        {situacaoDuasEtapas}
+      </dd>
+    </div>
+  </dl>
+
+  <div class="mt-6 flex flex-col gap-3">
+    <a href={areaDoPapel(usuario.papel)} class={classesBotao("azul", "m")}>Ir para a minha área</a>
+    <a href="/nova-senha" class={classesBotao("contorno", "m")}>Trocar a senha</a>
+    <a href="/conta/duas-etapas" class={classesBotao("contorno", "m")}>
+      {duasEtapasAtiva ? "Ver a verificação em duas etapas" : "Ativar a verificação em duas etapas"}
+    </a>
+  </div>
+</PaginaAcesso>

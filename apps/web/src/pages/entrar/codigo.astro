@@ -1,0 +1,63 @@
+---
+// Segunda etapa da entrada: o código de 6 números do aplicativo autenticador.
+import { classesBotao } from "@acheaqui/ui";
+import { esquemaCodigoDuasEtapas, mensagensPorCampo } from "@acheaqui/validation";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import { verificarCodigo } from "@/lib/duasEtapas";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+
+const fatores = await supabase.auth.mfa.listFactors();
+if (fatores.error) {
+  console.error("entrar/codigo: listFactors falhou", { codigo: fatores.error.code, mensagem: fatores.error.message });
+  return Astro.redirect("/entrar?erro=interno", 303);
+}
+const fator = fatores.data.totp[0];
+// Sem aplicativo cadastrado ou já na segunda etapa: nada a fazer aqui.
+if (!fator || usuario.nivel === "aal2") return Astro.redirect("/entrar", 303);
+
+let erro = "";
+let campos: Record<string, string> = {};
+
+if (Astro.request.method === "POST") {
+  const formulario = await Astro.request.formData();
+  const dados = esquemaCodigoDuasEtapas.safeParse({ codigo: formulario.get("codigo") });
+  if (!dados.success) {
+    campos = mensagensPorCampo(dados.error);
+    Astro.response.status = 400;
+  } else {
+    const resultado = await verificarCodigo(supabase, usuario.id, fator.id, dados.data.codigo);
+    if (resultado.ok) return Astro.redirect("/entrar", 303);
+    erro = resultado.erro.mensagem;
+    Astro.response.status = 400;
+  }
+}
+---
+
+<PaginaAcesso titulo="Código de verificação" logado>
+  <p class="mt-1 text-slate-600">Abra o aplicativo autenticador do seu celular e digite o código de 6 números do Ache Aqui RO.</p>
+
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <form method="post" novalidate>
+    <label for="codigo" class={classesRotulo}>Código</label>
+    <input
+      id="codigo"
+      name="codigo"
+      inputmode="numeric"
+      autocomplete="one-time-code"
+      pattern="[0-9]{6}"
+      maxlength="6"
+      required
+      autofocus
+      class={`${classesCampo} text-center text-2xl tracking-[0.4em]`}
+      aria-invalid={campos.codigo ? "true" : undefined}
+      aria-describedby={campos.codigo ? "codigo-erro" : undefined}
+    />
+    {campos.codigo && <p id="codigo-erro" class={classesErroCampo}>{campos.codigo}</p>}
+    <button type="submit" class={classesBotao("azul", "g", "mt-6 w-full")}>Confirmar</button>
+  </form>
+</PaginaAcesso>

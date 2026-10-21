@@ -1,0 +1,21 @@
+---
+// Mensagem dentro do formulário (erro ou sucesso), lida pelo leitor de tela.
+import { Icone } from "@acheaqui/ui";
+
+interface Props {
+  tipo: "erro" | "sucesso" | "info";
+  class?: string;
+}
+
+const { tipo, class: classe = "" } = Astro.props;
+const estilos = {
+  erro: { caixa: "bg-vermelho-500/10 text-vermelho-700", icone: "info" as const },
+  sucesso: { caixa: "bg-zap-50 text-zap-700", icone: "certo" as const },
+  info: { caixa: "bg-azul-50 text-azul-900", icone: "info" as const },
+}[tipo];
+---
+
+<div role={tipo === "erro" ? "alert" : "status"} class={`mt-4 flex gap-3 rounded-2xl p-4 font-semibold ${estilos.caixa} ${classe}`}>
+  <Icone nome={estilos.icone} class="mt-0.5 size-5 shrink-0" />
+  <p><slot /></p>
+</div>

@@ -1,0 +1,65 @@
+---
+// Destino dos links dos e-mails do Auth (supabase/templates). O código só é
+// usado depois que a pessoa toca em "Continuar": os antivírus de e-mail abrem
+// os links sozinhos e, se a conferência fosse na abertura, gastariam o link
+// antes da pessoa.
+import { classesBotao } from "@acheaqui/ui";
+import { registrarAcesso } from "@acheaqui/supabase-client";
+import type { EmailOtpType } from "@supabase/supabase-js";
+import Aviso from "@/components/conta/Aviso.astro";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import { clienteServico, ipDaRequisicao } from "@/lib/sessao";
+
+const supabase = Astro.locals.supabase!;
+
+const TIPOS: Record<string, { tipo: EmailOtpType; titulo: string; texto: string; destino: string }> = {
+  email: { tipo: "email", titulo: "Confirmar e-mail", texto: "Toque em continuar para confirmar o seu e-mail.", destino: "/entrar?confirmado" },
+  invite: { tipo: "invite", titulo: "Criar sua senha", texto: "Toque em continuar para criar a senha do seu acesso.", destino: "/nova-senha" },
+  recovery: { tipo: "recovery", titulo: "Criar uma nova senha", texto: "Toque em continuar para criar a nova senha.", destino: "/nova-senha" },
+  email_change: { tipo: "email_change", titulo: "Trocar o e-mail", texto: "Toque em continuar para confirmar o e-mail novo.", destino: "/conta?email-trocado" },
+};
+
+const parametros = Astro.request.method === "POST" ? await Astro.request.formData() : Astro.url.searchParams;
+const tokenHash = String(parametros.get("token_hash") ?? "").slice(0, 200);
+const etapa = TIPOS[String(parametros.get("type") ?? "")];
+let erro = !tokenHash || !etapa ? "Este link está incompleto. Abra de novo o link do e-mail ou peça outro." : "";
+
+if (!erro && etapa && Astro.request.method === "POST") {
+  const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: etapa.tipo });
+  if (!error && data.user) {
+    await registrarAcesso(clienteServico(), {
+      usuarioId: data.user.id,
+      ip: ipDaRequisicao(Astro.clientAddress),
+      userAgent: Astro.request.headers.get("user-agent"),
+      acao: "login",
+    });
+    return Astro.redirect(etapa.destino, 303);
+  }
+  if (error && error.code !== "otp_expired") {
+    console.error("auth/confirmar: verifyOtp falhou", { tipo: etapa.tipo, codigo: error.code, status: error.status, mensagem: error.message });
+  }
+  erro = "Este link venceu ou já foi usado. Os links valem por 1 hora e só uma vez.";
+  Astro.response.status = 400;
+}
+---
+
+<PaginaAcesso titulo={etapa?.titulo ?? "Link do e-mail"}>
+  {
+    erro ? (
+      <>
+        <Aviso tipo="erro">{erro}</Aviso>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a href="/recuperar-senha" class={classesBotao("azul", "m")}>Pedir um link novo</a>
+          <a href="/entrar" class={classesBotao("contorno", "m")}>Entrar</a>
+        </div>
+      </>
+    ) : (
+      <form method="post">
+        <p class="mt-1 text-slate-600">{etapa?.texto}</p>
+        <input type="hidden" name="token_hash" value={tokenHash} />
+        <input type="hidden" name="type" value={etapa?.tipo} />
+        <button type="submit" class={classesBotao("azul", "g", "mt-6 w-full")}>Continuar</button>
+      </form>
+    )
+  }
+</PaginaAcesso>

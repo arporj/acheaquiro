@@ -1,0 +1,32 @@
+---
+// Página inicial provisória de cada área logada: as telas de cada papel
+// entram nas etapas 1 e 2 (Especificação Funcional, item 10).
+import { Icone } from "@acheaqui/ui";
+import PaginaAcesso from "./PaginaAcesso.astro";
+
+interface Props {
+  titulo: string;
+  /** O que esta área vai ter, na ordem em que fica pronto. */
+  emBreve: string[];
+}
+
+const { titulo, emBreve } = Astro.props;
+const usuario = Astro.locals.usuario!;
+---
+
+<PaginaAcesso titulo={titulo} logado largura="larga">
+  <p class="mt-1 text-slate-600">Você entrou como <strong class="text-tinta">{usuario.email}</strong>.</p>
+  <div class="mt-6 rounded-2xl bg-fundo p-5">
+    <h2 class="font-display text-xl font-bold text-azul-900">Em construção</h2>
+    <ul class="mt-3 space-y-2">
+      {
+        emBreve.map((item) => (
+          <li class="flex gap-2 text-slate-700">
+            <Icone nome="relogio" class="mt-0.5 size-5 shrink-0 text-azul-600" />
+            {item}
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</PaginaAcesso>

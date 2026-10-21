@@ -1,0 +1,10 @@
+---
+// Verificação "não sou um robô" da Cloudflare. O token vai no campo
+// "tokenRobo" do formulário e quem confere é o Supabase Auth (o token só vale
+// uma vez, por isso o servidor do site não confere antes).
+const chave = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY;
+if (!chave) throw new Error("PUBLIC_TURNSTILE_SITE_KEY não definida.");
+---
+
+<div class="cf-turnstile mt-4 min-h-[65px]" data-sitekey={chave} data-language="pt-br" data-response-field-name="tokenRobo"></div>
+<script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>

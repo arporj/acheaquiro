@@ -1,0 +1,92 @@
+---
+// Esqueci minha senha (item 4.14): o Supabase Auth envia, pelo Brevo, um link
+// para criar outra senha. A resposta é a mesma com ou sem conta no e-mail,
+// para não revelar quem tem conta.
+import { classesBotao } from "@acheaqui/ui";
+import { limitarRecuperacaoSenha } from "@acheaqui/supabase-client";
+import { esquemaRecuperarSenha, mensagensPorCampo } from "@acheaqui/validation";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import Turnstile from "@/components/conta/Turnstile.astro";
+import { clienteServico } from "@/lib/sessao";
+
+const supabase = Astro.locals.supabase!;
+let erro = "";
+let enviado = false;
+let campos: Record<string, string> = {};
+let email = "";
+
+if (Astro.request.method === "POST") {
+  const formulario = await Astro.request.formData();
+  email = String(formulario.get("email") ?? "").slice(0, 254);
+  const dados = esquemaRecuperarSenha.safeParse({ email: formulario.get("email"), tokenRobo: formulario.get("tokenRobo") });
+
+  if (!dados.success) {
+    campos = mensagensPorCampo(dados.error);
+    Astro.response.status = 400;
+  } else {
+    const limite = await limitarRecuperacaoSenha(clienteServico(), dados.data.email);
+    if (!limite.ok) {
+      erro = limite.erro.mensagem;
+      Astro.response.status = limite.erro.codigo === "LIMITE_DE_REQUISICOES" ? 429 : 500;
+    } else {
+      const { error } = await supabase.auth.resetPasswordForEmail(dados.data.email, { captchaToken: dados.data.tokenRobo });
+      if (!error) {
+        enviado = true;
+      } else if (error.code === "captcha_failed") {
+        erro = "Não conseguimos confirmar que você não é um robô. Tente de novo.";
+        Astro.response.status = 400;
+      } else if (error.code === "over_email_send_rate_limit" || error.code === "over_request_rate_limit") {
+        erro = "Muitos pedidos agora. Espere alguns minutos e tente de novo.";
+        Astro.response.status = 429;
+      } else {
+        console.error("recuperar-senha: resetPasswordForEmail falhou", { codigo: error.code, status: error.status, mensagem: error.message });
+        erro = "Não foi possível enviar agora. Tente de novo em instantes.";
+        Astro.response.status = 500;
+      }
+    }
+  }
+}
+---
+
+<PaginaAcesso titulo="Criar uma nova senha">
+  {
+    enviado ? (
+      <>
+        <Aviso tipo="sucesso">
+          Se houver uma conta com o e-mail {email}, enviamos para ele um link para criar uma nova senha. O link vale por 1
+          hora.
+        </Aviso>
+        <p class="mt-4 text-slate-600">Não chegou? Confira a caixa de spam ou de promoções.</p>
+        <a href="/entrar" class={classesBotao("contorno", "m", "mt-6")}>Voltar para entrar</a>
+      </>
+    ) : (
+      <>
+        <p class="mt-1 text-slate-600">Informe o e-mail da sua conta. Vamos enviar um link para você criar outra senha.</p>
+        {erro && <Aviso tipo="erro">{erro}</Aviso>}
+        <form method="post" novalidate>
+          <label for="email" class={classesRotulo}>E-mail</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autocomplete="username"
+            required
+            value={email}
+            class={classesCampo}
+            aria-invalid={campos.email ? "true" : undefined}
+            aria-describedby={campos.email ? "email-erro" : undefined}
+          />
+          {campos.email && <p id="email-erro" class={classesErroCampo}>{campos.email}</p>}
+          <Turnstile />
+          {campos.tokenRobo && <p class={classesErroCampo}>{campos.tokenRobo}</p>}
+          <button type="submit" class={classesBotao("azul", "g", "mt-6 w-full")}>Enviar o link</button>
+        </form>
+        <p class="mt-5 text-center">
+          <a href="/entrar" class="font-bold text-azul-600 hover:underline">Lembrei a senha</a>
+        </p>
+      </>
+    )
+  }
+</PaginaAcesso>

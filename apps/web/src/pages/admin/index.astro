@@ -1,0 +1,16 @@
+---
+// Área de administração (item 4.8). O middleware só deixa entrar o
+// administrador com a segunda etapa feita nesta sessão (aal2).
+import AreaInicial from "@/components/conta/AreaInicial.astro";
+---
+
+<AreaInicial
+  titulo="Administração"
+  emBreve={[
+    "Cadastro assistido de anunciantes, com convite por e-mail",
+    "Cadastro de representantes",
+    "Confirmação dos pagamentos por Pix",
+    "Cadastro de eventos, com programação e barracas",
+    "Categorias, bairros, planos e extras",
+  ]}
+/>

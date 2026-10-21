@@ -1,0 +1,132 @@
+---
+// Cadastro do aplicativo autenticador (item 4.14): obrigatório para o
+// administrador no primeiro acesso, opcional para anunciantes e representantes.
+import { classesBotao } from "@acheaqui/ui";
+import { esquemaCodigoDuasEtapas, mensagensPorCampo } from "@acheaqui/validation";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import { verificarCodigo } from "@/lib/duasEtapas";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+const obrigatoria = usuario.papel === "administrador";
+const ERRO_INTERNO = "Não foi possível preparar a verificação agora. Tente de novo em instantes.";
+
+const fatores = await supabase.auth.mfa.listFactors();
+if (fatores.error) {
+  console.error("conta/duas-etapas: listFactors falhou", { codigo: fatores.error.code, mensagem: fatores.error.message });
+  return Astro.redirect("/entrar?erro=interno", 303);
+}
+const ativa = fatores.data.totp.length > 0;
+// Já tem o aplicativo, mas não digitou o código nesta sessão.
+if (ativa && usuario.nivel !== "aal2") return Astro.redirect("/entrar/codigo", 303);
+
+let erro = "";
+let campos: Record<string, string> = {};
+let fatorId = "";
+let qrCode = "";
+let segredo = "";
+
+if (!ativa && Astro.request.method === "POST") {
+  const formulario = await Astro.request.formData();
+  fatorId = String(formulario.get("fator") ?? "").slice(0, 64);
+  const dados = esquemaCodigoDuasEtapas.safeParse({ codigo: formulario.get("codigo") });
+  if (!dados.success) {
+    campos = mensagensPorCampo(dados.error);
+    Astro.response.status = 400;
+  } else {
+    // O Supabase confere que o fator é desta pessoa.
+    const resultado = await verificarCodigo(supabase, usuario.id, fatorId, dados.data.codigo);
+    if (resultado.ok) return Astro.redirect("/entrar", 303);
+    erro = resultado.erro.mensagem;
+    Astro.response.status = 400;
+  }
+} else if (!ativa) {
+  // Cadastros que ficaram pela metade (página recarregada) saem antes de criar outro.
+  for (const fator of fatores.data.all.filter((f) => f.factor_type === "totp" && f.status === "unverified")) {
+    const { error } = await supabase.auth.mfa.unenroll({ factorId: fator.id });
+    if (error) console.error("conta/duas-etapas: unenroll falhou", { codigo: error.code, mensagem: error.message });
+  }
+  const novo = await supabase.auth.mfa.enroll({ factorType: "totp", issuer: "Ache Aqui RO", friendlyName: "Aplicativo autenticador" });
+  if (novo.error) {
+    console.error("conta/duas-etapas: enroll falhou", { codigo: novo.error.code, mensagem: novo.error.message });
+    erro = ERRO_INTERNO;
+  } else {
+    fatorId = novo.data.id;
+    // O Supabase manda o SVG sem codificar ("data:image/svg+xml;utf-8,<svg..."): um "#" nas cores cortaria a imagem.
+    const [prefixo, ...svg] = novo.data.totp.qr_code.split(",");
+    qrCode = prefixo?.startsWith("data:image/svg+xml") ? `data:image/svg+xml,${encodeURIComponent(svg.join(","))}` : novo.data.totp.qr_code;
+    segredo = novo.data.totp.secret;
+  }
+}
+---
+
+<PaginaAcesso titulo="Verificação em duas etapas" logado>
+  {
+    ativa ? (
+      <>
+        <Aviso tipo="sucesso">A verificação em duas etapas está ativa nesta conta.</Aviso>
+        <p class="mt-4 text-slate-600">
+          A cada entrada, depois da senha, o site pede o código do aplicativo autenticador. Se trocar de celular,
+          fale com a equipe do Ache Aqui antes de apagar o aplicativo.
+        </p>
+        <a href="/conta" class={classesBotao("contorno", "m", "mt-6")}>Voltar para minha conta</a>
+      </>
+    ) : (
+      <>
+        <p class="mt-1 text-slate-600">
+          {obrigatoria
+            ? "Para administradores, a verificação em duas etapas é obrigatória: além da senha, a entrada pede um código do celular."
+            : "Além da senha, a entrada passa a pedir um código do celular. Assim, uma senha descoberta por outra pessoa não basta para entrar."}
+        </p>
+
+        {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+        {qrCode && (
+          <ol class="mt-5 list-decimal space-y-3 pl-5 text-slate-700">
+            <li>
+              Instale um aplicativo autenticador no celular, como o <strong>Google Authenticator</strong> ou o{" "}
+              <strong>Microsoft Authenticator</strong>.
+            </li>
+            <li>
+              No aplicativo, toque em adicionar conta e leia este QR code:
+              <img src={qrCode} alt="QR code para cadastrar o Ache Aqui RO no aplicativo autenticador" class="mt-2 size-48 rounded-xl ring-1 ring-black/10" />
+              <span class="mt-2 block text-sm">
+                Sem câmera? Digite este código no aplicativo: <code class="break-all font-bold text-azul-900">{segredo}</code>
+              </span>
+            </li>
+            <li>Digite abaixo o código de 6 números que aparece no aplicativo.</li>
+          </ol>
+        )}
+
+        {fatorId && (
+          <form method="post" novalidate>
+            <input type="hidden" name="fator" value={fatorId} />
+            <label for="codigo" class={classesRotulo}>Código do aplicativo</label>
+            <input
+              id="codigo"
+              name="codigo"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxlength="6"
+              required
+              class={`${classesCampo} text-center text-2xl tracking-[0.4em]`}
+              aria-invalid={campos.codigo ? "true" : undefined}
+              aria-describedby={campos.codigo ? "codigo-erro" : undefined}
+            />
+            {campos.codigo && <p id="codigo-erro" class={classesErroCampo}>{campos.codigo}</p>}
+            <button type="submit" class={classesBotao("azul", "g", "mt-6 w-full")}>Ativar</button>
+          </form>
+        )}
+
+        {!qrCode && (
+          <p class="mt-4 text-sm text-slate-600">
+            Perdeu o QR code? <a href="/conta/duas-etapas" class="font-bold text-azul-600 hover:underline">Começar de novo</a>
+          </p>
+        )}
+      </>
+    )
+  }
+</PaginaAcesso>

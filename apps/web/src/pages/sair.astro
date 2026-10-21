@@ -1,0 +1,21 @@
+---
+// Sair: só por POST (um link ou uma imagem de outro site não desconecta ninguém).
+import { registrarAcesso } from "@acheaqui/supabase-client";
+import { clienteServico, ipDaRequisicao } from "@/lib/sessao";
+
+if (Astro.request.method !== "POST") return Astro.redirect("/", 303);
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario;
+if (usuario) {
+  await registrarAcesso(clienteServico(), {
+    usuarioId: usuario.id,
+    ip: ipDaRequisicao(Astro.clientAddress),
+    userAgent: Astro.request.headers.get("user-agent"),
+    acao: "logout",
+  });
+}
+const { error } = await supabase.auth.signOut({ scope: "local" });
+if (error) console.error("sair: signOut falhou", { codigo: error.code, status: error.status, mensagem: error.message });
+return Astro.redirect("/entrar?saiu", 303);
+---

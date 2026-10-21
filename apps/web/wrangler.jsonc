@@ -10,9 +10,10 @@
 	"cache": { "enabled": true },
 	// Versão do Worker nas etiquetas do cache (limpeza do cache a cada publicação).
 	"version_metadata": { "binding": "CF_VERSION_METADATA" },
-	// Segredos que o Worker usa. Declarar a lista impede que o build copie o
-	// .env.local inteiro (com a chave service_role) para dist/server/.dev.vars.
-	"secrets": { "required": [] },
+	// Segredos que o Worker usa (wrangler secret put). Declarar a lista impede
+	// que o build copie o .env.local inteiro para dist/server/.dev.vars: só a
+	// produção usa a service_role (limites de acesso e registro de acessos).
+	"secrets": { "required": ["SUPABASE_SERVICE_ROLE_KEY"] },
 	"env": {
 		// Site de apresentação para anunciantes, com dados fictícios e sem login.
 		// Publicar com: npm run deploy:teste -w web

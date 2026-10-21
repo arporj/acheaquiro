@@ -1,0 +1,94 @@
+---
+// Criar a senha: depois do link de recuperação, do convite (cadastro
+// assistido) ou pela página "Minha conta". Senha forte do item 4.14.
+import { classesBotao } from "@acheaqui/ui";
+import { registrarAcesso } from "@acheaqui/supabase-client";
+import { esquemaNovaSenha, mensagensPorCampo } from "@acheaqui/validation";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import RequisitosSenha from "@/components/conta/RequisitosSenha.astro";
+import { clienteServico, ipDaRequisicao } from "@/lib/sessao";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+let erro = "";
+let campos: Record<string, string> = {};
+
+if (Astro.request.method === "POST") {
+  const formulario = await Astro.request.formData();
+  const dados = esquemaNovaSenha.safeParse({ senha: formulario.get("senha"), confirmacao: formulario.get("confirmacao") });
+
+  if (!dados.success) {
+    campos = mensagensPorCampo(dados.error);
+    Astro.response.status = 400;
+  } else {
+    const { error } = await supabase.auth.updateUser({ password: dados.data.senha });
+    if (!error) {
+      await registrarAcesso(clienteServico(), {
+        usuarioId: usuario.id,
+        ip: ipDaRequisicao(Astro.clientAddress),
+        userAgent: Astro.request.headers.get("user-agent"),
+        acao: "troca_de_senha",
+      });
+      return Astro.redirect("/entrar", 303);
+    }
+    Astro.response.status = 400;
+    switch (error.code) {
+      case "same_password":
+        erro = "A nova senha precisa ser diferente da atual.";
+        break;
+      case "weak_password":
+        erro = "Esta senha é fraca. Use pelo menos 10 caracteres, com letra maiúscula, letra minúscula, número e símbolo.";
+        break;
+      case "reauthentication_needed":
+        erro = "Por segurança, para trocar a senha peça um link de nova senha no seu e-mail.";
+        break;
+      default:
+        console.error("nova-senha: updateUser falhou", { codigo: error.code, status: error.status, mensagem: error.message });
+        erro = "Não foi possível trocar a senha agora. Tente de novo em instantes.";
+        Astro.response.status = 500;
+    }
+  }
+}
+---
+
+<PaginaAcesso titulo="Criar senha" logado>
+  <p class="mt-1 text-slate-600">Conta: <strong class="text-tinta">{usuario.email}</strong></p>
+
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+  {erro.startsWith("Por segurança") && (
+    <a href="/recuperar-senha" class={classesBotao("contorno", "m", "mt-4")}>Pedir o link</a>
+  )}
+
+  <form method="post" novalidate>
+    <label for="senha" class={classesRotulo}>Nova senha</label>
+    <input
+      id="senha"
+      name="senha"
+      type="password"
+      autocomplete="new-password"
+      required
+      class={classesCampo}
+      aria-invalid={campos.senha ? "true" : undefined}
+      aria-describedby="senha-requisitos"
+    />
+    <div id="senha-requisitos"><RequisitosSenha campo="senha" /></div>
+    {campos.senha && <p class={classesErroCampo}>{campos.senha}</p>}
+
+    <label for="confirmacao" class={classesRotulo}>Repita a nova senha</label>
+    <input
+      id="confirmacao"
+      name="confirmacao"
+      type="password"
+      autocomplete="new-password"
+      required
+      class={classesCampo}
+      aria-invalid={campos.confirmacao ? "true" : undefined}
+      aria-describedby={campos.confirmacao ? "confirmacao-erro" : undefined}
+    />
+    {campos.confirmacao && <p id="confirmacao-erro" class={classesErroCampo}>{campos.confirmacao}</p>}
+
+    <button type="submit" class={classesBotao("azul", "g", "mt-6 w-full")}>Salvar a senha</button>
+  </form>
+</PaginaAcesso>
