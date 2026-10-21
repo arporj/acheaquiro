@@ -51,6 +51,8 @@ Calendário: pré-cadastro dos Fundadores de 09/11 a 26/11/2026, feito pela equi
 ## Autenticação e papéis
 
 - Papéis: visitante (sem conta), anunciante, representante, administrador.
+- SupraAdmin (decisão de 22/10/2026): sempre um, e só um, administrador marcado como SupraAdmin. Nenhum outro administrador muda o papel dele, o desativa ou retira a marcação. Só o próprio SupraAdmin a transfere para outro administrador ativo, confirmando com o código do aplicativo autenticador, e com isso deixa de ser SupraAdmin (continua administrador). Por isso o sistema nunca fica sem administrador.
+- Ações sensíveis da administração (criar, rebaixar ou desativar administrador e transferir o SupraAdmin) pedem de novo o código do aplicativo autenticador, mesmo com a sessão aberta.
 - Anunciante, representante e administrador entram com e-mail e senha forte: mínimo de 10 caracteres, com letra maiúscula, letra minúscula, número e símbolo.
 - Confirmação do e-mail obrigatória no cadastro. Recuperação de senha por link enviado ao e-mail.
 - Limite de tentativas de login e de recuperação de senha, contra força bruta.
