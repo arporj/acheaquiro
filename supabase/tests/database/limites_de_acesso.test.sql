@@ -17,10 +17,10 @@ select ok(has_function_privilege('service_role', 'public.registrar_falha_login(t
 select is(registrar_falha_login('Teste.Bloqueio@Exemplo.com'), null, '1ª falha não bloqueia');
 select registrar_falha_login('teste.bloqueio@exemplo.com') from generate_series(1, 3);
 select is(login_bloqueado_ate(' teste.bloqueio@exemplo.com '), null, '4 falhas não bloqueiam (e-mail normalizado)');
--- Chamada uma vez só: "x between a and b" vira "x >= a and x <= b" e chamaria a função duas vezes.
-with quinta as materialized (select registrar_falha_login('teste.bloqueio@exemplo.com') as fim)
-select ok(fim between now() + interval '14 minutes 59 seconds' and now() + interval '15 minutes 1 second', '5ª falha bloqueia por 15 minutos')
-from quinta;
+-- A função fica numa subconsulta para ser chamada uma vez só: "x between a and b"
+-- vira "x >= a and x <= b" e a chamaria duas vezes.
+select ok((select fim between now() + interval '14 minutes 59 seconds' and now() + interval '15 minutes 1 second'
+  from (select registrar_falha_login('teste.bloqueio@exemplo.com') as fim) as quinta), '5ª falha bloqueia por 15 minutos');
 select isnt(login_bloqueado_ate('teste.bloqueio@exemplo.com'), null, 'conta bloqueada');
 
 -- Bloqueio vencido: a contagem recomeça.

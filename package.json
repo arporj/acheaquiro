@@ -10,7 +10,8 @@
     "build": "npm run build -w web",
     "lint": "npm run lint -w web",
     "test": "npm run test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:banco": "node --env-file=apps/web/.env.local scripts/testar-banco.mjs"
   },
   "devDependencies": {
     "supabase": "^2.121.0",
