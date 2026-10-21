@@ -2,3 +2,4 @@
 // seção 5). Depende só de packages/types.
 export * from "./senha";
 export * from "./acesso";
+export * from "./arquivos";
