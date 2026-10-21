@@ -1,0 +1,11 @@
+---
+import DocumentoLegal from "@/components/legal/DocumentoLegal.astro";
+import { guardarNoCache } from "@/lib/cache";
+import { textoDocumento } from "@/lib/documentosLegais";
+
+const versao = (Astro.params.versao ?? "").replace(/^v/, "");
+if (!Astro.params.versao?.startsWith("v") || !textoDocumento("termos", versao)) return Astro.rewrite("/404");
+guardarNoCache(Astro);
+---
+
+<DocumentoLegal documento="termos" versao={versao} />

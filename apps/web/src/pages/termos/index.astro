@@ -1,0 +1,10 @@
+---
+// Versão em vigor; o endereço com a versão (/termos/v1) é o fixo, citado no aceite.
+import DocumentoLegal from "@/components/legal/DocumentoLegal.astro";
+import { guardarNoCache } from "@/lib/cache";
+import { DOCUMENTOS } from "@/lib/documentosLegais";
+
+guardarNoCache(Astro);
+---
+
+<DocumentoLegal documento="termos" versao={DOCUMENTOS.termos.vigente} />

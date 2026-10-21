@@ -1,0 +1,32 @@
+---
+// Página de um documento legal, numa versão fixa.
+import Cabecalho from "@/components/Cabecalho.astro";
+import Layout from "@/layouts/Layout.astro";
+import { DOCUMENTOS, enderecoDocumento, textoDocumento, type Documento } from "@/lib/documentosLegais";
+
+interface Props {
+  documento: Documento;
+  versao: string;
+}
+
+const { documento, versao } = Astro.props;
+const texto = textoDocumento(documento, versao)!;
+const { titulo, vigente } = DOCUMENTOS[documento];
+---
+
+<Layout titulo={titulo} descricao={`${titulo} do Ache Aqui RO, versão ${versao}.`}>
+  <Cabecalho comBusca />
+  <main class="mx-auto w-full max-w-3xl px-4 py-10">
+    <h1 class="font-display text-4xl font-extrabold text-azul-900">{titulo}</h1>
+    {
+      versao !== vigente && (
+        <p class="mt-3 rounded-2xl bg-amarelo-200 p-4 font-semibold text-azul-900">
+          Esta é uma versão antiga. <a href={enderecoDocumento(documento)} class="underline">Ver a versão em vigor</a>.
+        </p>
+      )
+    }
+    <article class="texto-legal mt-4">
+      <texto.Content />
+    </article>
+  </main>
+</Layout>

@@ -56,7 +56,8 @@ grant all on sequence public.teste_saida_n_seq to anon, authenticated;`,
     .split("\n")
     .slice(1)
     .map((linha) => linha.replace(/\+$/, "").replace(/\\"/g, '"'));
-  const erradas = linhas.filter((linha) => linha.startsWith("not ok"));
+  // Asserção que falhou, ou quantidade diferente da planejada (pgTAP avisa com "Looks like you planned").
+  const erradas = linhas.filter((linha) => linha.startsWith("not ok") || linha.includes("Looks like you planned"));
   const certas = linhas.filter((linha) => linha.startsWith("ok "));
   console.log(`${arquivo}: ${certas.length} ok, ${erradas.length} com falha`);
   for (const linha of linhas.filter((l) => l.startsWith("not ok") || l.startsWith("#"))) console.log(`  ${linha}`);
