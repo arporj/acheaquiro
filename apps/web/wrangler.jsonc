@@ -14,6 +14,14 @@
 	// que o build copie o .env.local inteiro para dist/server/.dev.vars: só a
 	// produção usa a service_role (limites de acesso e registro de acessos).
 	"secrets": { "required": ["SUPABASE_SERVICE_ROLE_KEY"] },
+	// Arquivos enviados pelos anunciantes (Especificação Técnica, seção 10.4).
+	// Só a produção tem: as ligações não passam para os outros ambientes.
+	"r2_buckets": [
+		// Público, em arquivos.acheaquiro.com.br: fotos e encartes.
+		{ "binding": "MIDIA", "bucket_name": "acheaqui-midia" },
+		// Privado: comprovantes de Pix.
+		{ "binding": "DOCUMENTOS", "bucket_name": "acheaqui-documentos" }
+	],
 	"env": {
 		// Site de apresentação para anunciantes, com dados fictícios e sem login.
 		// Publicar com: npm run deploy:teste -w web

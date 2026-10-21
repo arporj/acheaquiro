@@ -19,9 +19,24 @@ declare namespace App {
   }
 }
 
-/** Segredos do Worker (wrangler secret put; no desenvolvimento, .env.local). */
+/** O que o Worker usa de um bucket do R2 (ligação em wrangler.jsonc). */
+interface BucketR2 {
+  put(
+    chave: string,
+    conteudo: ArrayBuffer | Uint8Array,
+    opcoes?: { httpMetadata?: { contentType?: string; cacheControl?: string } },
+  ): Promise<unknown>;
+  delete(chaves: string | string[]): Promise<void>;
+}
+
+/** Segredos e ligações do Worker (wrangler secret put; no desenvolvimento, .env.local). */
 declare module "cloudflare:workers" {
   export const env: {
     readonly SUPABASE_SERVICE_ROLE_KEY?: string;
+    /** Token da Cloudflare só com permissão de limpar o cache do domínio (remoção de fotos). */
+    readonly CLOUDFLARE_LIMPEZA_CACHE_TOKEN?: string;
+    /** Só na produção. */
+    readonly MIDIA?: BucketR2;
+    readonly DOCUMENTOS?: BucketR2;
   };
 }

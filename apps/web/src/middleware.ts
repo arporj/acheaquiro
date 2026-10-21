@@ -8,7 +8,7 @@ import { clienteDaRequisicao, destinoDepoisDeEntrar, lerUsuario, type UsuarioLog
 const DOMINIO_PRINCIPAL = "acheaquiro.com.br";
 
 /** Páginas que dependem de login. O site de apresentação não as tem, porque não acessa o banco real. */
-const PAGINAS_COM_LOGIN = ["/entrar", "/recuperar-senha", "/nova-senha", "/auth", "/sair", "/conta", "/anunciante", "/admin"];
+const PAGINAS_COM_LOGIN = ["/entrar", "/recuperar-senha", "/nova-senha", "/auth", "/sair", "/conta", "/anunciante", "/admin", "/api/fotos"];
 
 function comecaCom(caminho: string, pagina: string): boolean {
   return caminho === pagina || caminho.startsWith(`${pagina}/`);
@@ -28,7 +28,9 @@ function regraDeAcesso(caminho: string): ((usuario: UsuarioLogado) => boolean) |
   if (comecaCom(caminho, "/admin")) return (u) => u.papel === "administrador";
   if (comecaCom(caminho, "/anunciante")) return (u) => u.papel === "anunciante";
   if (caminho.startsWith("/representante/")) return (u) => u.papel === "representante";
-  if (comecaCom(caminho, "/conta") || caminho === "/nova-senha" || caminho === "/entrar/codigo") return () => true;
+  if (comecaCom(caminho, "/conta") || caminho === "/nova-senha" || caminho === "/entrar/codigo" || comecaCom(caminho, "/api/fotos")) {
+    return () => true;
+  }
   return undefined;
 }
 
@@ -56,7 +58,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   const regra = regraDeAcesso(pathname);
   if (regra) {
-    if (!usuario) return context.redirect(`/entrar?voltar=${encodeURIComponent(pathname)}`, 303);
+    if (!usuario) {
+      // Rotas de API respondem em JSON; páginas levam à tela de entrar.
+      if (pathname.startsWith("/api/")) {
+        return Response.json(
+          { ok: false, erro: { codigo: "NAO_AUTENTICADO", mensagem: "Entre na sua conta para continuar." } },
+          { status: 401, headers: { "Cache-Control": "private, no-store" } },
+        );
+      }
+      return context.redirect(`/entrar?voltar=${encodeURIComponent(pathname)}`, 303);
+    }
     if (!regra(usuario)) return context.redirect(await destinoDepoisDeEntrar(supabase, usuario), 303);
     // Administrador só passa da segunda etapa em diante (o RLS também exige aal2).
     if (comecaCom(pathname, "/admin") && usuario.nivel !== "aal2") {

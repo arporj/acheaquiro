@@ -57,8 +57,8 @@ cross join (values
 ) as v (arquivo, situacao)
 where a.id in ('a1000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000003');
 
-insert into encartes (anunciante_id, cidade_id, titulo, chave, tipo_arquivo, valido_ate)
-select a.id, a.cidade_id, v.titulo, 'encartes/' || a.id || '/' || v.arquivo, 'imagem', v.validade::date
+insert into encartes (anunciante_id, cidade_id, titulo, chave, formato, valido_ate)
+select a.id, a.cidade_id, v.titulo, 'encartes/' || a.id || '/' || v.arquivo, 'webp', v.validade::date
 from anunciantes a
 cross join (values
   ('e1000000-0000-0000-0000-000000000001', 'Ofertas válidas', (now() + interval '3 days')::date::text),
