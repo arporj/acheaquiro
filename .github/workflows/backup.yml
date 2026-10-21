@@ -1,0 +1,83 @@
+# Backup diário do banco (Especificação Técnica, seção 11). O plano Free do
+# Supabase não tem backup automático.
+# - Lê com o usuário backup_leitura (só leitura; migration 20261021190000).
+# - Criptografa com a chave PÚBLICA de infra/backup/certificado.pem: a chave que
+#   abre fica só com o André, fora do GitHub e do repositório.
+# - Grava no bucket privado acheaqui-privado do R2, pasta backups/, que apaga
+#   sozinha as cópias com mais de 30 dias.
+# O repositório é público: nenhum passo pode imprimir segredo nem dado.
+name: Backup diário do banco
+
+on:
+  schedule:
+    - cron: "30 6 * * *" # 03:30 em Brasília
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+env:
+  SUPABASE_REF: tvlcrvsoedkfafxofhht
+  # Pooler em modo sessão (porta 5432): o GitHub Actions não tem IPv6, que a conexão direta exige.
+  DB_HOST: aws-1-sa-east-1.pooler.supabase.com
+  R2_ENDPOINT: https://cd8e8e7488aedefca9ee0ea9af58e349.r2.cloudflarestorage.com
+  R2_BUCKET: acheaqui-privado
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: infra/backup
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
+
+      - name: Exportar estrutura e dados
+        env:
+          BACKUP_DB_PASSWORD: ${{ secrets.BACKUP_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$RUNNER_TEMP/backup"
+          url="postgresql://backup_leitura.${SUPABASE_REF}:${BACKUP_DB_PASSWORD}@${DB_HOST}:5432/postgres"
+          supabase db dump --db-url "$url" -f "$RUNNER_TEMP/backup/esquema.sql"
+          supabase db dump --db-url "$url" -f "$RUNNER_TEMP/backup/dados.sql" --use-copy --data-only
+          # Conferência mínima: sem as contas de login, o backup não serve.
+          grep -Eq 'COPY "?auth"?."?users"?' "$RUNNER_TEMP/backup/dados.sql"
+          grep -Eq 'COPY "?public"?."?categorias"?' "$RUNNER_TEMP/backup/dados.sql"
+
+      - name: Compactar e criptografar
+        run: |
+          set -euo pipefail
+          umask 077
+          cd "$RUNNER_TEMP/backup"
+          tar czf backup.tar.gz esquema.sql dados.sql
+          openssl cms -encrypt -binary -aes-256-cbc -outform DER \
+            -in backup.tar.gz -out backup.tar.gz.p7m "$GITHUB_WORKSPACE/infra/backup/certificado.pem"
+          rm esquema.sql dados.sql backup.tar.gz
+          echo "Tamanho criptografado: $(du -h backup.tar.gz.p7m | cut -f1)"
+
+      - name: Gravar no R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+        run: |
+          set -euo pipefail
+          nome="backups/$(TZ=America/Sao_Paulo date +%Y-%m-%d_%H%M).tar.gz.p7m"
+          aws s3 cp "$RUNNER_TEMP/backup/backup.tar.gz.p7m" "s3://${R2_BUCKET}/${nome}" --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          echo "Gravado: ${nome}"
+
+      - name: Apagar a cópia local
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/backup"
