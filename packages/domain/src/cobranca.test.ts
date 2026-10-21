@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  anoComoFundador,
   aplicarPercentual,
   calcularCobrancaExtra,
   calcularCobrancaPlano,
   dataDeVencimento,
   efeitoDoVencimento,
   perdeCondicaoFundador,
+  percentualFundadorNoAno,
   situacaoAssinatura,
   tornaFundador,
+  validarEscalaFundador,
   type ValoresExtra,
   type ValoresPlano,
 } from "./cobranca";
@@ -185,5 +188,99 @@ describe("perdeCondicaoFundador", () => {
     expect(
       perdeCondicaoFundador({ ...base, renovadaEm: "2026-12-20", periodicidadeRenovacao: "mensal", hoje: "2026-12-20" }),
     ).toBe(true);
+  });
+});
+
+// Decisão de 21/10/2026: 50% nos 3 primeiros anos de assinatura e 25% do 4º em diante.
+const escalaFundador = [{ ateAno: 3, percentual: 50 }, { percentual: 25 }];
+
+describe("percentualFundadorNoAno", () => {
+  it("50% nos 3 primeiros anos e 25% do 4º em diante", () => {
+    expect([1, 2, 3, 4, 5, 10, 30].map((ano) => percentualFundadorNoAno(escalaFundador, ano))).toEqual([
+      50, 50, 50, 25, 25, 25, 25,
+    ]);
+  });
+
+  it("aceita escala com mais degraus, editada pela administração", () => {
+    const escada = [{ ateAno: 3, percentual: 50 }, { ateAno: 4, percentual: 40 }, { ateAno: 5, percentual: 30 }, { percentual: 25 }];
+    expect([1, 3, 4, 5, 6].map((ano) => percentualFundadorNoAno(escada, ano))).toEqual([50, 50, 40, 30, 25]);
+  });
+
+  it("aceita escala de um degrau só (o mesmo percentual para sempre)", () => {
+    expect(percentualFundadorNoAno([{ percentual: 50 }], 8)).toBe(50);
+  });
+
+  it("recusa ano menor que 1 ou fracionado", () => {
+    expect(() => percentualFundadorNoAno(escalaFundador, 0)).toThrow(RangeError);
+    expect(() => percentualFundadorNoAno(escalaFundador, 1.5)).toThrow(RangeError);
+  });
+
+  it("em 10 anos no Premium de autônomo, o Fundador paga R$ 2.018,25 (com 50% para sempre, pagaria R$ 1.495,00)", () => {
+    const premium: ValoresPlano = { valorMensalCentavos: 2990, mesesCobradosNoAnual: 10 };
+    const total = (escala: typeof escalaFundador) =>
+      Array.from({ length: 10 }, (_, i) => i + 1).reduce(
+        (soma, ano) =>
+          soma +
+          calcularCobrancaPlano(premium, "anual", { fundador: true, percentualFundador: percentualFundadorNoAno(escala, ano) })
+            .valorDevidoCentavos,
+        0,
+      );
+    expect(total(escalaFundador)).toBe(201825);
+    expect(total([{ percentual: 50 }])).toBe(149500);
+  });
+});
+
+describe("validarEscalaFundador", () => {
+  it("aceita a escala decidida", () => {
+    expect(() => validarEscalaFundador(escalaFundador)).not.toThrow();
+  });
+
+  it("recusa escala vazia", () => {
+    expect(() => validarEscalaFundador([])).toThrow(RangeError);
+  });
+
+  it("recusa último degrau com ano final (o desconto ficaria sem regra depois dele)", () => {
+    expect(() => validarEscalaFundador([{ ateAno: 3, percentual: 50 }])).toThrow(RangeError);
+  });
+
+  it("recusa degrau do meio sem ano final", () => {
+    expect(() => validarEscalaFundador([{ percentual: 50 }, { percentual: 25 }])).toThrow(RangeError);
+  });
+
+  it("recusa anos fora de ordem, repetidos, zero ou fracionados", () => {
+    expect(() => validarEscalaFundador([{ ateAno: 3, percentual: 50 }, { ateAno: 2, percentual: 40 }, { percentual: 25 }])).toThrow(RangeError);
+    expect(() => validarEscalaFundador([{ ateAno: 3, percentual: 50 }, { ateAno: 3, percentual: 40 }, { percentual: 25 }])).toThrow(RangeError);
+    expect(() => validarEscalaFundador([{ ateAno: 0, percentual: 50 }, { percentual: 25 }])).toThrow(RangeError);
+    expect(() => validarEscalaFundador([{ ateAno: 2.5, percentual: 50 }, { percentual: 25 }])).toThrow(RangeError);
+  });
+
+  it("recusa percentual fora de 0 a 100 ou fracionado", () => {
+    expect(() => validarEscalaFundador([{ percentual: 101 }])).toThrow(RangeError);
+    expect(() => validarEscalaFundador([{ percentual: -1 }])).toThrow(RangeError);
+    expect(() => validarEscalaFundador([{ percentual: 12.5 }])).toThrow(RangeError);
+  });
+});
+
+describe("anoComoFundador", () => {
+  it("o primeiro ano vai do primeiro pagamento até a véspera do 1º aniversário", () => {
+    expect(anoComoFundador("2026-11-20", "2026-11-20")).toBe(1);
+    expect(anoComoFundador("2026-11-20", "2027-11-19")).toBe(1);
+  });
+
+  it("a renovação que começa no aniversário já é o ano seguinte", () => {
+    expect(anoComoFundador("2026-11-20", "2027-11-20")).toBe(2);
+    expect(anoComoFundador("2026-11-20", "2029-11-20")).toBe(4);
+  });
+
+  it("4ª renovação (5º ano) com 25% de desconto", () => {
+    expect(percentualFundadorNoAno(escalaFundador, anoComoFundador("2026-11-20", "2030-11-20"))).toBe(25);
+  });
+
+  it("aniversário em 29/02 conta no último dia de fevereiro", () => {
+    expect(anoComoFundador("2028-02-29", "2029-02-28")).toBe(2);
+  });
+
+  it("recusa período antes de virar Fundador", () => {
+    expect(() => anoComoFundador("2026-11-20", "2026-11-19")).toThrow(RangeError);
   });
 });

@@ -7,14 +7,15 @@ import CardResultado from "@/components/resultados/CardResultado.astro";
 import { listarFundadores, listarPlanos, obterRegrasCobranca } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
-import { formatarCentavos, valorPlano } from "@/lib/precos";
+import { descricaoDescontoFundador, formatarCentavos, percentualInicialFundador, valorPlano } from "@/lib/precos";
 import { formatarData } from "@/lib/texto";
 
 guardarNoCache(Astro);
 
 const regras = await obterRegrasCobranca();
 const prazo = formatarData(regras.prazoFundador);
-const desconto = `${regras.percentualDescontoFundador}%`;
+const desconto = `${percentualInicialFundador(regras)}%`;
+const escala = descricaoDescontoFundador(regras.escalaDescontoFundador);
 
 const beneficios: { icone: NomeIcone; titulo: string; texto: string }[] = [
   {
@@ -24,9 +25,8 @@ const beneficios: { icone: NomeIcone; titulo: string; texto: string }[] = [
   },
   {
     icone: "dinheiro",
-    titulo: `${desconto} de desconto todo ano`,
-    texto:
-      "Nos planos e nos pacotes extras: categoria adicional, fotos, encarte, produtos e endereço. Os destaques e os links patrocinados, que têm vagas limitadas, não têm desconto.",
+    titulo: "Desconto enquanto for Fundador",
+    texto: `${escala[0]!.toUpperCase()}${escala.slice(1)}, nos planos e nos pacotes extras: categoria adicional, fotos, encarte, produtos e endereço. Os destaques e os links patrocinados, que têm vagas limitadas, não têm desconto.`,
   },
   {
     icone: "estrela",
@@ -68,10 +68,10 @@ const chip =
 
 <Layout
   titulo="Fundadores"
-  descricao={`Quem paga a assinatura anual até ${prazo} vira Fundador do Ache Aqui RO, com ${desconto} de desconto em todo ano renovado no anual.`}
+  descricao={`Quem paga a assinatura anual até ${prazo} vira Fundador do Ache Aqui RO, com desconto em todo ano renovado no anual: ${escala}.`}
   previa={{
     titulo: "Fundadores do Ache Aqui RO",
-    descricao: `Pague o anual até ${prazo} e tenha ${desconto} de desconto todo ano, selo e vitrine própria.`,
+    descricao: `Pague o anual até ${prazo} e tenha desconto de ${escala}, selo e vitrine própria.`,
   }}
 >
   <Topo pagina="interna" />
@@ -79,9 +79,9 @@ const chip =
   <main>
     <Abertura
       chamada="Fundadores do Ache Aqui RO"
-      subtitulo={`Pague a assinatura anual de um plano pago até ${prazo}. Não há limite de vagas.`}
+      subtitulo={`Pague a assinatura anual de um plano pago até ${prazo}. Desconto de ${escala}. Não há limite de vagas.`}
     >
-      Seja Fundador e tenha <span class="text-amarelo-400">{desconto} de desconto</span> todo ano
+      Seja Fundador e tenha <span class="text-amarelo-400">{desconto} de desconto</span> já no primeiro ano
       <Fragment slot="acoes">
         <BotaoContato rotulo="Quero ser Fundador" />
       </Fragment>

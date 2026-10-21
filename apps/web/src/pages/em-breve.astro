@@ -7,6 +7,7 @@ import { obterRegrasCobranca } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { ABERTURA } from "@/lib/ambiente";
 import { guardarNoCache } from "@/lib/cache";
+import { percentualInicialFundador } from "@/lib/precos";
 import { formatarData } from "@/lib/texto";
 
 guardarNoCache(Astro);
@@ -44,7 +45,7 @@ const regras = await obterRegrasCobranca();
           <Icone nome="medalha" class="mt-0.5 size-6 shrink-0" />
           <p>
             <strong>Quer anunciar?</strong> Quem paga a assinatura anual até {formatarData(regras.prazoFundador)} vira
-            Fundador e tem {regras.percentualDescontoFundador}% de desconto.
+            Fundador e tem {percentualInicialFundador(regras)}% de desconto já no primeiro ano.
           </p>
         </div>
       </section>

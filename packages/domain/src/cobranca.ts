@@ -1,6 +1,6 @@
 // Valor da cobrança, desconto de Fundador e vencimento (itens 4.15, 4.16 e 6.1;
 // Especificação Técnica, seções 8.3 e 8.5). Valores sempre em centavos.
-import type { TipoAnunciante } from "@acheaqui/types";
+import type { DegrauDescontoFundador, TipoAnunciante } from "@acheaqui/types";
 import { somarDias, somarMeses, type DataISO } from "./datas";
 
 export type Periodicidade = "mensal" | "anual";
@@ -31,8 +31,52 @@ export function aplicarPercentual(centavos: number, percentual: number): number 
 
 export interface DescontoFundador {
   fundador: boolean;
-  /** Percentual vindo da tabela de configurações (hoje, 50). */
+  /** Percentual do ano de assinatura do Fundador (percentualFundadorNoAno). */
   percentualFundador: number;
+}
+
+/**
+ * Confere a escala do desconto de Fundador, que vem da tabela de configurações:
+ * ao menos um degrau, anos crescentes a partir do 1, percentuais inteiros de 0
+ * a 100 e só o último degrau sem fim.
+ */
+export function validarEscalaFundador(escala: readonly DegrauDescontoFundador[]): void {
+  if (escala.length === 0) throw new RangeError("A escala do desconto de Fundador precisa de ao menos um degrau.");
+  let anoAnterior = 0;
+  escala.forEach((degrau, posicao) => {
+    if (!Number.isInteger(degrau.percentual) || degrau.percentual < 0 || degrau.percentual > 100) {
+      throw new RangeError("Percentual do desconto de Fundador precisa ser inteiro, de 0 a 100.");
+    }
+    const ultimo = posicao === escala.length - 1;
+    if (ultimo) {
+      if (degrau.ateAno !== undefined) throw new RangeError("O último degrau do desconto de Fundador não tem ano final.");
+      return;
+    }
+    if (degrau.ateAno === undefined || !Number.isInteger(degrau.ateAno) || degrau.ateAno <= anoAnterior) {
+      throw new RangeError("Os anos da escala do desconto de Fundador precisam ser inteiros e crescentes, a partir do 1.");
+    }
+    anoAnterior = degrau.ateAno;
+  });
+}
+
+/** Percentual de desconto do Fundador no ano de assinatura (1 = primeiro ano). */
+export function percentualFundadorNoAno(escala: readonly DegrauDescontoFundador[], ano: number): number {
+  validarEscalaFundador(escala);
+  if (!Number.isInteger(ano) || ano < 1) throw new RangeError("O ano de assinatura começa em 1.");
+  const degrau = escala.find((d) => d.ateAno === undefined || ano <= d.ateAno);
+  // validarEscalaFundador garante o último degrau sem fim: sempre há um degrau.
+  return degrau!.percentual;
+}
+
+/**
+ * Em qual ano de assinatura cai um período, contado pelos aniversários do
+ * primeiro pagamento anual: o período que começa no 1º aniversário já é o 2º ano.
+ */
+export function anoComoFundador(fundadorDesde: DataISO, inicioDoPeriodo: DataISO): number {
+  if (inicioDoPeriodo < fundadorDesde) throw new RangeError("O período não pode começar antes de a pessoa virar Fundador.");
+  let ano = 1;
+  while (somarMeses(fundadorDesde, 12 * ano) <= inicioDoPeriodo) ano += 1;
+  return ano;
 }
 
 /**

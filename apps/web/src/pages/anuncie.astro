@@ -9,7 +9,7 @@ import TabelaPlanos from "@/components/institucional/TabelaPlanos.astro";
 import { listarExtras, listarPlanos, obterRegrasCobranca } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
-import { formatarCentavos } from "@/lib/precos";
+import { descricaoDescontoFundador, formatarCentavos, percentualInicialFundador } from "@/lib/precos";
 import { formatarData } from "@/lib/texto";
 
 guardarNoCache(Astro);
@@ -89,7 +89,7 @@ const perguntas = [
   descricao="Planos para profissionais autônomos e comércios de Rio das Ostras. Contato direto pelo WhatsApp, sem comissão."
   previa={{
     titulo: "Anuncie no Ache Aqui RO",
-    descricao: `Profissional autônomo a partir de ${formatarCentavos(menorPrecoProfissional)} por mês. Fundador tem ${regras.percentualDescontoFundador}% de desconto.`,
+    descricao: `Profissional autônomo a partir de ${formatarCentavos(menorPrecoProfissional)} por mês. Fundador tem ${percentualInicialFundador(regras)}% de desconto no 1º ano.`,
   }}
 >
   <Topo pagina="interna" />
@@ -143,8 +143,8 @@ const perguntas = [
               Pague o anual até {prazo} e seja Fundador
             </p>
             <p class="mt-1 text-white/90">
-              {regras.percentualDescontoFundador}% de desconto nos planos e pacotes, selo Fundador e vitrine própria,
-              todo ano em que você renovar no anual.
+              Desconto de {descricaoDescontoFundador(regras.escalaDescontoFundador)} nos planos e pacotes, selo
+              Fundador e vitrine própria, enquanto você renovar no anual.
             </p>
           </div>
         </div>

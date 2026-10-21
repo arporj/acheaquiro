@@ -84,9 +84,19 @@ export interface Extra {
   permiteAnual: boolean;
 }
 
+/**
+ * Um degrau do desconto de Fundador: o percentual vale até o ano de assinatura
+ * indicado (inclusive). O último degrau não tem fim. Decisão de 21/10/2026:
+ * [{ ateAno: 3, percentual: 50 }, { percentual: 25 }].
+ */
+export interface DegrauDescontoFundador {
+  ateAno?: number;
+  percentual: number;
+}
+
 /** Regras de cobrança da tabela de configurações da cidade. */
 export interface RegrasCobranca {
-  percentualDescontoFundador: number;
+  escalaDescontoFundador: DegrauDescontoFundador[];
   /** Último dia para pagar o anual e virar Fundador (AAAA-MM-DD). */
   prazoFundador: string;
   /** Dias depois do vencimento até o Fundador perder a condição. */

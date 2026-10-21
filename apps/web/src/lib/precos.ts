@@ -5,17 +5,42 @@ import {
   calcularCobrancaPlano,
   calcularComissao,
   PERCENTUAIS_COMISSAO_MENSAL,
+  percentualFundadorNoAno,
+  validarEscalaFundador,
   type Periodicidade,
 } from "@acheaqui/domain";
-import type { Extra, Plano, RegrasCobranca } from "@acheaqui/types";
+import type { DegrauDescontoFundador, Extra, Plano, RegrasCobranca } from "@acheaqui/types";
 import { formatarPreco } from "./contato";
 
 export function formatarCentavos(centavos: number): string {
   return formatarPreco(centavos / 100);
 }
 
+/**
+ * As páginas mostram o preço do 1º ano: é o que o Fundador paga no
+ * pré-cadastro. Os anos seguintes seguem a escala (descricaoDescontoFundador).
+ */
 function desconto(fundador: boolean, regras: RegrasCobranca) {
-  return { fundador, percentualFundador: regras.percentualDescontoFundador };
+  return { fundador, percentualFundador: percentualInicialFundador(regras) };
+}
+
+/** Desconto do Fundador no 1º ano de assinatura. */
+export function percentualInicialFundador(regras: RegrasCobranca): number {
+  return percentualFundadorNoAno(regras.escalaDescontoFundador, 1);
+}
+
+/** A escala em texto: "50% nos 3 primeiros anos e 25% a partir do 4º ano". */
+export function descricaoDescontoFundador(escala: readonly DegrauDescontoFundador[]): string {
+  validarEscalaFundador(escala);
+  let anoAnterior = 0;
+  const partes = escala.map(({ ateAno, percentual }) => {
+    const inicio = anoAnterior + 1;
+    anoAnterior = ateAno ?? anoAnterior;
+    if (ateAno === undefined) return inicio === 1 ? `${percentual}% todo ano` : `${percentual}% a partir do ${inicio}º ano`;
+    if (inicio === 1) return ateAno === 1 ? `${percentual}% no 1º ano` : `${percentual}% nos ${ateAno} primeiros anos`;
+    return inicio === ateAno ? `${percentual}% no ${inicio}º ano` : `${percentual}% do ${inicio}º ao ${ateAno}º ano`;
+  });
+  return partes.length === 1 ? partes[0]! : `${partes.slice(0, -1).join(", ")} e ${partes.at(-1)}`;
 }
 
 /** Valor devido pelo plano no período, com ou sem o desconto de Fundador. */

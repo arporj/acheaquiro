@@ -8,7 +8,7 @@ import Passos from "@/components/institucional/Passos.astro";
 import { obterRegrasCobranca, planoPorId } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
-import { exemploComissao, formatarCentavos, valorPlano } from "@/lib/precos";
+import { exemploComissao, formatarCentavos, percentualInicialFundador, valorPlano } from "@/lib/precos";
 
 guardarNoCache(Astro);
 
@@ -54,7 +54,7 @@ const regrasComissao: { icone: NomeIcone; titulo: string; texto: string }[] = [
   {
     icone: "etiqueta",
     titulo: "Sobre o valor pago",
-    texto: `A comissão é calculada sobre o que o anunciante efetivamente paga, já com descontos, como os ${regras.percentualDescontoFundador}% do Fundador.`,
+    texto: `A comissão é calculada sobre o que o anunciante efetivamente paga, já com descontos, como os ${percentualInicialFundador(regras)}% do Fundador no 1º ano.`,
   },
   {
     icone: "sacola",
@@ -164,7 +164,7 @@ const regrasComissao: { icone: NomeIcone; titulo: string; texto: string }[] = [
             <div class="mt-4 flex gap-3 rounded-2xl bg-amarelo-200 p-4 text-azul-900">
               <Icone nome="info" class="mt-0.5 size-5 shrink-0" />
               <p>
-                Até o prazo dos Fundadores, quem paga o anual tem {regras.percentualDescontoFundador}% de desconto, e a
+                Até o prazo dos Fundadores, quem paga o anual tem {percentualInicialFundador(regras)}% de desconto, e a
                 comissão acompanha o valor pago. Depois desse prazo, as novas vendas não têm o desconto de Fundador.
               </p>
             </div>
