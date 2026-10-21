@@ -50,9 +50,9 @@ port = 54329
 # Configure one of the supported pooler modes: `transaction`, `session`.
 pool_mode = "transaction"
 # How many server connections to allow per user/database pair.
-default_pool_size = 20
+default_pool_size = 15
 # Maximum number of client connections allowed.
-max_client_conn = 100
+max_client_conn = 200
 
 # [db.vault]
 # secret_key = "env(SECRET_VALUE)"
@@ -146,7 +146,7 @@ max_catalogs = 2
 
 # Store vector embeddings in S3 for large and durable datasets
 [storage.vector]
-enabled = true
+enabled = false
 max_buckets = 10
 max_indexes = 5
 
@@ -157,11 +157,15 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "http://127.0.0.1:3000"
+# Ache Aqui RO: até 26/11/2026, o site real fica em prod.acheaquiro.com.br.
+# Em 27/11/2026, trocar para https://acheaquiro.com.br (CLAUDE.md).
+site_url = "https://prod.acheaquiro.com.br"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# Para onde os links dos e-mails podem levar. O localhost é do desenvolvimento
+# (astro dev); retirar antes da abertura.
+additional_redirect_urls = ["https://prod.acheaquiro.com.br/**", "https://acheaquiro.com.br/**", "http://localhost:4321/**"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -174,16 +178,18 @@ enable_refresh_token_rotation = true
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
-enable_signup = true
+# Ache Aqui RO: fechado até o cadastro do anunciante existir (etapa 2). Até lá,
+# as contas entram só por convite (auth.admin.inviteUserByEmail, no servidor).
+enable_signup = false
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
+minimum_password_length = 10
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
-password_requirements = ""
+password_requirements = "lower_upper_letters_digits_symbols"
 
 # Configure passkey sign-ins.
 # [auth.passkey]
@@ -197,7 +203,8 @@ password_requirements = ""
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
-email_sent = 2
+# Ache Aqui RO: o Brevo Free envia 300 por dia; a fila do sistema usa até 280 (Especificação Técnica, seção 11).
+email_sent = 30
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
 sms_sent = 30
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
@@ -219,41 +226,60 @@ web3 = 30
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
+# Ache Aqui RO: precisa ficar ligado. Desligado, desliga também a entrada por
+# e-mail e senha; quem fecha o cadastro é o enable_signup geral, acima.
 enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
-secure_password_change = false
+secure_password_change = true
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
-max_frequency = "1s"
+max_frequency = "1m0s"
 # Number of characters used in the email OTP.
-otp_length = 6
+otp_length = 8
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
-# Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# Ache Aqui RO: e-mails do Auth pelo Brevo (plano Free, 300 por dia). A chave
+# SMTP fica só no apps/web/.env.local (SUPABASE_AUTH_SMTP_PASS).
+[auth.email.smtp]
+enabled = true
+host = "smtp-relay.brevo.com"
+port = 587
+user = "bef696001@smtp-brevo.com"
+pass = "env(SUPABASE_AUTH_SMTP_PASS)"
+admin_email = "nao-responda@acheaquiro.com.br"
+sender_name = "Ache Aqui RO"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# Ache Aqui RO: textos em português. Os links levam a /auth/confirmar, que
+# confere o código no servidor (token_hash) e segue para a página certa.
+[auth.email.template.confirmation]
+subject = "Confirme o seu e-mail no Ache Aqui RO"
+content_path = "./supabase/templates/confirmacao.html"
 
-# Uncomment to customize notification email template
-# [auth.email.notification.password_changed]
-# enabled = true
-# subject = "Your password has been changed"
-# content_path = "./supabase/templates/password_changed_notification.html"
+[auth.email.template.invite]
+subject = "Seu acesso ao Ache Aqui RO"
+content_path = "./supabase/templates/convite.html"
+
+[auth.email.template.recovery]
+subject = "Criar uma nova senha no Ache Aqui RO"
+content_path = "./supabase/templates/recuperacao.html"
+
+[auth.email.template.email_change]
+subject = "Confirme a troca de e-mail no Ache Aqui RO"
+content_path = "./supabase/templates/troca_email.html"
+
+[auth.email.template.reauthentication]
+subject = "Código de confirmação do Ache Aqui RO"
+content_path = "./supabase/templates/reautenticacao.html"
+
+[auth.email.notification.password_changed]
+enabled = true
+subject = "Sua senha do Ache Aqui RO foi trocada"
+content_path = "./supabase/templates/aviso_senha_trocada.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.
@@ -282,9 +308,10 @@ max_frequency = "5s"
 # uri = "pg-functions://postgres/auth/before-user-created-hook"
 
 # This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
-# [auth.hook.custom_access_token]
-# enabled = true
-# uri = "pg-functions://<database>/<schema>/<hook_name>"
+# Ache Aqui RO: copia o papel do usuário para o token (migration da estrutura base).
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/public/custom_access_token_hook"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 [auth.sms.twilio]
@@ -301,8 +328,8 @@ max_enrolled_factors = 10
 
 # Control MFA via App Authenticator (TOTP)
 [auth.mfa.totp]
-enroll_enabled = false
-verify_enabled = false
+enroll_enabled = true
+verify_enabled = true
 
 # Configure MFA via Phone Messaging
 [auth.mfa.phone]
