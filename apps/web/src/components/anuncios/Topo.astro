@@ -10,14 +10,14 @@ interface Props {
 }
 
 const { pagina } = Astro.props;
-const exclusivo = destaqueExclusivo();
+const exclusivo = await destaqueExclusivo();
 const destaque = exclusivo && {
   item: exclusivo.item,
   descricao: exclusivo.anunciante.descricao,
   bairro:
-    exclusivo.anunciante.tipo === "comercio" ? nomeBairro(exclusivo.anunciante.enderecos[0].bairroId) : "Rio das Ostras",
+    exclusivo.anunciante.tipo === "comercio" ? await nomeBairro(exclusivo.anunciante.enderecos[0].bairroId) : "Rio das Ostras",
 };
 ---
 
 <Cabecalho comBusca={pagina === "interna"} />
-<FaixaAnuncios pagina={pagina} destaque={destaque} superDestaques={superDestaques()} />
+<FaixaAnuncios pagina={pagina} destaque={destaque} superDestaques={await superDestaques()} />

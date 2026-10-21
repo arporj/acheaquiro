@@ -5,21 +5,23 @@ import Topo from "@/components/anuncios/Topo.astro";
 import BotaoCompartilhar from "@/components/BotaoCompartilhar.astro";
 import LateralResultados from "@/components/resultados/LateralResultados.astro";
 import ListaResultados from "@/components/resultados/ListaResultados.astro";
-import { buscarPorCategoria, categoriaPorSlugLista, cidadeAtual, listarBairros, listarCategorias } from "@/dados/consultas";
+import { buscarPorCategoria, categoriaPorSlugLista, listarBairros, obterCidade, listarCategorias } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
 
-const categoria = categoriaPorSlugLista(Astro.params.categoria ?? "");
+const categoria = await categoriaPorSlugLista(Astro.params.categoria ?? "");
 if (!categoria) return Astro.rewrite("/404");
 guardarNoCache(Astro);
 
-const itens = buscarPorCategoria(categoria.id);
+const itens = await buscarPorCategoria(categoria.id);
+const bairros = await listarBairros();
+const cidade = await obterCidade();
 const totalAnunciantes = itens.filter((i) => !i.patrocinado).length;
-const relacionadas = listarCategorias().filter((c) => c.grupo === categoria.grupo && c.id !== categoria.id);
-const titulo = `${categoria.nomePlural} em ${cidadeAtual.nome}`;
+const relacionadas = (await listarCategorias()).filter((c) => c.grupo === categoria.grupo && c.id !== categoria.id);
+const titulo = `${categoria.nomePlural} em ${cidade.nome}`;
 ---
 
-<Layout titulo={titulo} descricao={`Encontre ${categoria.nomePlural.toLowerCase()} em ${cidadeAtual.nome} e fale direto pelo WhatsApp.`}>
+<Layout titulo={titulo} descricao={`Encontre ${categoria.nomePlural.toLowerCase()} em ${cidade.nome} e fale direto pelo WhatsApp.`}>
   <Topo pagina="interna" />
   <main class="mx-auto w-full max-w-6xl px-4 pt-4 pb-12">
     <nav aria-label="Você está em" class="flex items-center gap-1 text-sm font-semibold text-slate-500">
@@ -50,7 +52,7 @@ const titulo = `${categoria.nomePlural} em ${cidadeAtual.nome}`;
     </div>
 
     <div class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <ListaResultados itens={itens} bairros={listarBairros()} />
+      <ListaResultados itens={itens} bairros={bairros} />
       <LateralResultados relacionadas={relacionadas} />
     </div>
   </main>

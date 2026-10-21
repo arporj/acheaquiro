@@ -14,8 +14,8 @@ import { formatarData } from "@/lib/texto";
 
 guardarNoCache(Astro);
 
-const planos = { profissional: listarPlanos("profissional"), comercio: listarPlanos("comercio") };
-const regras = obterRegrasCobranca();
+const planos = { profissional: await listarPlanos("profissional"), comercio: await listarPlanos("comercio") };
+const regras = await obterRegrasCobranca();
 const menorPrecoProfissional = Math.min(...planos.profissional.map((p) => p.valorMensalCentavos));
 const temGratuito = planos.comercio.some((p) => p.valorMensalCentavos === 0);
 const prazo = formatarData(regras.prazoFundador);
@@ -158,7 +158,7 @@ const perguntas = [
         Para somar a qualquer plano. Os mensais, quando contratados junto com a assinatura anual, também podem ser pagos
         no anual, pelo equivalente a {mesesAnual} mensalidades. O Destaque Exclusivo é comprado por dia, num calendário.
       </p>
-      <ListaExtras extras={listarExtras()} regras={regras} />
+      <ListaExtras extras={await listarExtras()} regras={regras} />
     </section>
 
     <section class="bg-white py-10">

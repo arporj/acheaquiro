@@ -9,12 +9,12 @@ import CartaoContato from "@/components/perfil/CartaoContato.astro";
 import Galeria from "@/components/perfil/Galeria.astro";
 import Horario from "@/components/perfil/Horario.astro";
 import Secao from "@/components/perfil/Secao.astro";
-import { anunciantePorSlug, categoriaPorId, nomeBairro, planoPorId, situacaoComercio } from "@/dados/consultas";
+import { anunciantePorSlug, listarBairros, listarCategorias, planoPorId, situacaoComercio } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
 import { formatarPreco, linkComoChegar } from "@/lib/contato";
 
-const anunciante = anunciantePorSlug(Astro.params.slug ?? "");
+const anunciante = await anunciantePorSlug(Astro.params.slug ?? "");
 if (!anunciante) return Astro.rewrite("/404");
 guardarNoCache(Astro);
 
@@ -25,10 +25,14 @@ function dataCurta(iso: string): string {
   return `${dia}/${mes}`;
 }
 
+const [categorias, bairros] = await Promise.all([listarCategorias(), listarBairros()]);
+const categoriaPorId = (id: string) => categorias.find((c) => c.id === id);
+const nomeBairro = (id: string) => bairros.find((b) => b.id === id)?.nome ?? id;
+
 const categoria = categoriaPorId(anunciante.categoriaId)!;
 const adicionais = anunciante.categoriasAdicionais.map(categoriaPorId).filter((c): c is Categoria => Boolean(c));
-const selo = planoPorId(anunciante.planoId)?.selo ?? "nenhum";
-const situacao = anunciante.tipo === "comercio" ? situacaoComercio(anunciante.id) : undefined;
+const selo = (await planoPorId(anunciante.planoId))?.selo ?? "nenhum";
+const situacao = anunciante.tipo === "comercio" ? await situacaoComercio(anunciante.id) : undefined;
 const local =
   anunciante.tipo === "profissional"
     ? anunciante.atendeTodaCidade

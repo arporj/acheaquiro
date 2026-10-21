@@ -8,6 +8,7 @@ import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
 
 guardarNoCache(Astro);
+const [atalhos, grupos] = await Promise.all([categoriasAtalho(), categoriasPorGrupo()]);
 const buscasPopulares = ["Diarista", "Pizza", "Bombeiro hidráulico", "Farmácia", "Pet shop", "Marmita"];
 
 // Estrela de 16 pontas do selo "R$ 1,99" do flyer.
@@ -62,7 +63,7 @@ const passos: { icone: NomeIcone; titulo: string; texto: string }[] = [
       </div>
       <ul class="grid grid-cols-3 gap-2.5 sm:gap-3 md:grid-cols-5">
         {
-          categoriasAtalho().map((categoria) => (
+          atalhos.map((categoria) => (
             <li>
               <a
                 href={`/${categoria.slugLista}`}
@@ -132,7 +133,7 @@ const passos: { icone: NomeIcone; titulo: string; texto: string }[] = [
       <h2 class="mb-5 font-display text-3xl font-extrabold text-azul-900">Todas as categorias</h2>
       <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {
-          categoriasPorGrupo().map(({ grupo, categorias }) => (
+          grupos.map(({ grupo, categorias }) => (
             <details class="group rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 open:shadow-md">
               <summary class="flex cursor-pointer list-none items-center justify-between gap-2 font-display text-lg font-bold text-azul-900">
                 <span class="flex items-center gap-2">

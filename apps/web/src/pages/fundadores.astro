@@ -12,7 +12,7 @@ import { formatarData } from "@/lib/texto";
 
 guardarNoCache(Astro);
 
-const regras = obterRegrasCobranca();
+const regras = await obterRegrasCobranca();
 const prazo = formatarData(regras.prazoFundador);
 const desconto = `${regras.percentualDescontoFundador}%`;
 
@@ -47,8 +47,8 @@ const beneficios: { icone: NomeIcone; titulo: string; texto: string }[] = [
 ];
 
 const gruposPreco = [
-  { titulo: "Profissionais autônomos", planos: listarPlanos("profissional") },
-  { titulo: "Comércios", planos: listarPlanos("comercio") },
+  { titulo: "Profissionais autônomos", planos: await listarPlanos("profissional") },
+  { titulo: "Comércios", planos: await listarPlanos("comercio") },
 ].map((grupo) => ({
   titulo: grupo.titulo,
   linhas: grupo.planos
@@ -60,7 +60,7 @@ const gruposPreco = [
     })),
 }));
 
-const fundadores = listarFundadores();
+const fundadores = await listarFundadores();
 const categoriasVitrine = [...new Set(fundadores.map((f) => f.categoriaNome))].sort((a, b) => a.localeCompare(b, "pt-BR"));
 const chip =
   "inline-flex h-9 shrink-0 items-center rounded-full bg-white px-3.5 text-sm font-bold text-tinta ring-1 ring-azul-100 not-aria-pressed:hover:bg-azul-50 aria-pressed:bg-azul-600 aria-pressed:text-white aria-pressed:ring-azul-600";

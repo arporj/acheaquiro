@@ -8,7 +8,7 @@ interface Props {
 }
 
 const { variante = "compacta" } = Astro.props;
-const bairros = listarBairros();
+const bairros = await listarBairros();
 ---
 
 {

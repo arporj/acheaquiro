@@ -12,7 +12,7 @@ import { formatarData } from "@/lib/texto";
 guardarNoCache(Astro);
 
 const abertura = formatarData(ABERTURA);
-const regras = obterRegrasCobranca();
+const regras = await obterRegrasCobranca();
 ---
 
 <Layout descricao={`O Ache Aqui RO abre em ${abertura}: profissionais autônomos e comércios de Rio das Ostras, num lugar só.`}>

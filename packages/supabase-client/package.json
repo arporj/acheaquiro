@@ -1,0 +1,16 @@
+{
+  "name": "@acheaqui/supabase-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@acheaqui/types": "*",
+    "@supabase/supabase-js": "^2.118.0"
+  }
+}

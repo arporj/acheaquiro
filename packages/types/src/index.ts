@@ -214,3 +214,21 @@ export type CodigoErro =
 export type Resultado<T> =
   | { ok: true; dados: T }
   | { ok: false; erro: { codigo: CodigoErro; mensagem: string; campos?: Record<string, string> } };
+
+/**
+ * Dados públicos do catálogo de uma cidade, lidos de uma vez pelas páginas
+ * (função catalogo_publico no banco). Os ids são os nomes fixos: slug do
+ * bairro, link curto da categoria e código do plano e do extra.
+ */
+export interface CatalogoPublico {
+  cidade: Cidade;
+  bairros: Bairro[];
+  categorias: Categoria[];
+  /** Links curtos das categorias dos atalhos da página inicial, na ordem. */
+  ordemAtalhos: string[];
+  planos: Plano[];
+  extras: Extra[];
+  regras: RegrasCobranca;
+  /** AAAA-MM-DD */
+  aberturaAoPublico: string;
+}
