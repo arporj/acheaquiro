@@ -160,7 +160,16 @@ const chip =
         <h2 class="font-display text-3xl font-extrabold text-azul-900">Vitrine dos Fundadores</h2>
         <p class="mt-1 text-slate-600">Os anunciantes que acreditaram no Ache Aqui RO desde o começo.</p>
 
-        <div class="mt-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]" role="group" aria-label="Filtrar por categoria">
+        {
+          fundadores.length === 0 && (
+            <p class="mt-5 flex gap-3 rounded-2xl bg-fundo p-4 text-slate-600">
+              <Icone nome="info" class="mt-0.5 size-5 shrink-0 text-azul-600" />
+              Os primeiros Fundadores aparecem aqui assim que os perfis forem publicados.
+            </p>
+          )
+        }
+
+        <div hidden={fundadores.length === 0} class="mt-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]" role="group" aria-label="Filtrar por categoria">
           <button type="button" data-categoria="" aria-pressed="true" class={chip}>Todas</button>
           {
             categoriasVitrine.map((categoria) => (

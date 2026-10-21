@@ -11,7 +11,8 @@ import type {
   Selo,
   TipoAnunciante,
 } from "@acheaqui/types";
-import { anunciantes } from "@/mocks/anunciantes";
+import { ambiente } from "@/lib/ambiente";
+import { anunciantes as anunciantesFicticios } from "@/mocks/anunciantes";
 import { categorias, ordemAtalhos } from "@/mocks/categorias";
 import { destaqueExclusivoId, linksPatrocinados, simulacaoComercios, superDestaqueIds } from "@/mocks/extras";
 import { bairros, cidadeAtual } from "@/mocks/localidades";
@@ -19,6 +20,10 @@ import { extrasDisponiveis, planos, regrasCobranca } from "@/mocks/planos";
 import { normalizar } from "@/lib/texto";
 
 export { cidadeAtual };
+
+// Os anunciantes fictícios aparecem só no site de apresentação. Na produção, a
+// lista fica vazia até as tabelas de anunciantes existirem (etapa 2).
+const anunciantes = ambiente === "apresentacao" ? anunciantesFicticios : [];
 
 /** Dados prontos para exibir um anunciante em listas e carrosséis. */
 export interface ItemResultado {

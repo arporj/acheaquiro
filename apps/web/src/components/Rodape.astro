@@ -1,14 +1,19 @@
 ---
+import { ambiente } from "@/lib/ambiente";
 import Logo from "./Logo.astro";
 
 // Termos de Uso, Política de Privacidade e Fale conosco voltam para esta lista
 // quando as páginas existirem (Termos e Política depois da revisão jurídica).
-const links = [
-  { href: "/sobre", rotulo: "Sobre o Ache Aqui RO" },
-  { href: "/anuncie", rotulo: "Anuncie aqui" },
-  { href: "/fundadores", rotulo: "Fundadores" },
-  { href: "/representante", rotulo: "Seja um representante" },
-];
+// A página "em breve" não tem outras páginas para onde levar.
+const links =
+  ambiente === "em-breve"
+    ? []
+    : [
+        { href: "/sobre", rotulo: "Sobre o Ache Aqui RO" },
+        { href: "/anuncie", rotulo: "Anuncie aqui" },
+        { href: "/fundadores", rotulo: "Fundadores" },
+        { href: "/representante", rotulo: "Seja um representante" },
+      ];
 ---
 
 <footer class="mt-auto bg-azul-900 text-white/80">
@@ -20,20 +25,22 @@ const links = [
         telefone.
       </p>
     </div>
-    <nav aria-label="Institucional">
-      <h2 class="mb-3 font-display text-lg font-bold text-amarelo-400">O Ache Aqui</h2>
-      <ul class="space-y-2 text-sm">
-        {
-          links.map((link) => (
-            <li>
-              <a href={link.href} class="hover:text-white hover:underline">
-                {link.rotulo}
-              </a>
-            </li>
-          ))
-        }
-      </ul>
-    </nav>
+    {
+      links.length > 0 && (
+        <nav aria-label="Institucional">
+          <h2 class="mb-3 font-display text-lg font-bold text-amarelo-400">O Ache Aqui</h2>
+          <ul class="space-y-2 text-sm">
+            {links.map((link) => (
+              <li>
+                <a href={link.href} class="hover:text-white hover:underline">
+                  {link.rotulo}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )
+    }
   </div>
   <div class="border-t border-white/10">
     <p class="mx-auto max-w-6xl px-4 py-4 text-xs leading-relaxed text-white/60">

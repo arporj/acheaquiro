@@ -9,7 +9,10 @@
     "preview": "astro build && wrangler dev",
     "lint": "eslint .",
     "typecheck": "astro check",
-    "deploy:teste": "astro build --mode teste && wrangler deploy"
+    "deploy:teste": "astro build --mode teste && wrangler deploy",
+    "deploy:producao": "astro build && wrangler deploy",
+    "deploy:em-breve": "astro build --mode embreve && wrangler deploy",
+    "deploy:todos": "npm run deploy:producao && npm run deploy:teste && npm run deploy:em-breve"
   },
   "dependencies": {
     "@acheaqui/domain": "*",

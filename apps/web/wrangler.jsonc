@@ -1,9 +1,12 @@
 {
 	"$schema": "../../node_modules/wrangler/config-schema.json",
-	// Produção: o domínio acheaquiro.com.br entra na abertura (27/11/2026).
+	// Produção: o site real, com banco e login. Publicar com: npm run deploy:producao -w web
+	// Até a abertura fica em prod.acheaquiro.com.br; em 27/11/2026 recebe
+	// acheaquiro.com.br e www, e prod. passa a redirecionar para lá.
 	"name": "acheaqui",
 	"compatibility_date": "2026-10-01",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"routes": [{ "pattern": "prod.acheaquiro.com.br", "custom_domain": true }],
 	"cache": { "enabled": true },
 	// Versão do Worker nas etiquetas do cache (limpeza do cache a cada publicação).
 	"version_metadata": { "binding": "CF_VERSION_METADATA" },
@@ -11,11 +14,22 @@
 	// .env.local inteiro (com a chave service_role) para dist/server/.dev.vars.
 	"secrets": { "required": [] },
 	"env": {
-		// Site de apresentação para anunciantes, com dados fictícios.
+		// Site de apresentação para anunciantes, com dados fictícios e sem login.
 		// Publicar com: npm run deploy:teste -w web
 		"teste": {
 			"name": "acheaqui-teste",
 			"routes": [{ "pattern": "teste.acheaquiro.com.br", "custom_domain": true }],
+			"version_metadata": { "binding": "CF_VERSION_METADATA" },
+			"secrets": { "required": [] }
+		},
+		// Aviso "abre em 27/11" no domínio principal, até a abertura. Sem banco.
+		// Publicar com: npm run deploy:em-breve -w web. Apagar em 27/11/2026.
+		"em-breve": {
+			"name": "acheaqui-em-breve",
+			"routes": [
+				{ "pattern": "acheaquiro.com.br", "custom_domain": true },
+				{ "pattern": "www.acheaquiro.com.br", "custom_domain": true }
+			],
 			"version_metadata": { "binding": "CF_VERSION_METADATA" },
 			"secrets": { "required": [] }
 		}

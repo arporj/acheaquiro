@@ -6,10 +6,11 @@
 /.astro
 /.wrangler
 
-# Variáveis de ambiente (exceto o modelo e a escolha do ambiente de teste, sem segredos)
+# Variáveis de ambiente (exceto o modelo e a escolha dos ambientes, sem segredos)
 .env*
 !.env.example
 !.env.teste
+!.env.embreve
 
 # Diversos
 .DS_Store

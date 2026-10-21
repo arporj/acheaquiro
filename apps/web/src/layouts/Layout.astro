@@ -2,6 +2,7 @@
 import { Font } from "astro:assets";
 import FaixaApresentacao from "@/components/FaixaApresentacao.astro";
 import Rodape from "@/components/Rodape.astro";
+import { ambiente } from "@/lib/ambiente";
 import "@/styles/global.css";
 
 interface Props {
@@ -26,7 +27,7 @@ const { titulo, descricao = DESCRICAO_PADRAO, previa } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{titulo ? `${titulo} · Ache Aqui RO` : TITULO_PADRAO}</title>
     <meta name="description" content={descricao} />
-    {/* ANTES DA ABERTURA: o site de teste não deve aparecer no Google. Remover em 27/11/2026. */}
+    {/* ANTES DA ABERTURA: nenhum dos três sites deve aparecer no Google. Em 27/11/2026, só a produção passa a indexar. */}
     <meta name="robots" content="noindex, nofollow" />
     <meta name="theme-color" content="#1747C9" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -42,7 +43,7 @@ const { titulo, descricao = DESCRICAO_PADRAO, previa } = Astro.props;
     <Font cssVariable="--font-nunito" preload />
   </head>
   <body class="flex min-h-full flex-col font-sans">
-    {import.meta.env.PUBLIC_SITE_APRESENTACAO === "true" && <FaixaApresentacao />}
+    {ambiente === "apresentacao" && <FaixaApresentacao />}
     <slot />
     <Rodape />
   </body>
