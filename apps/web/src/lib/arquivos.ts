@@ -8,7 +8,7 @@ import { env } from "cloudflare:workers";
 export const ENDERECO_ARQUIVOS = "https://arquivos.acheaquiro.com.br";
 
 /** Zona acheaquiro.com.br na Cloudflare (não é segredo); usada para limpar o cache. */
-const ZONA_CLOUDFLARE = "";
+const ZONA_CLOUDFLARE = "eee3470af1941808ebcd27b5352bf77a";
 
 const EXTENSAO: Record<FormatoFoto | "pdf", string> = { webp: "webp", jpeg: "jpg", pdf: "pdf" };
 const TIPO_CONTEUDO: Record<FormatoFoto | "pdf", string> = { webp: "image/webp", jpeg: "image/jpeg", pdf: "application/pdf" };
