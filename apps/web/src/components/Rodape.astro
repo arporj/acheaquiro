@@ -13,8 +13,6 @@ const links =
         { href: "/anuncie", rotulo: "Anuncie aqui" },
         { href: "/fundadores", rotulo: "Fundadores" },
         { href: "/representante", rotulo: "Seja um representante" },
-        // Entrada de anunciantes, representantes e equipe; o site de apresentação não tem login.
-        ...(ambiente === "producao" ? [{ href: "/entrar", rotulo: "Área do anunciante" }] : []),
       ];
 ---
 

@@ -1,0 +1,151 @@
+---
+// Registro de atividades (decisão de 21/10/2026): toda alteração feita por
+// qualquer conta logada, com quem fez, quando e o que mudou. Só leitura: a
+// auditoria não pode ser alterada nem apagada (gatilho no banco).
+import { classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { listarEquipe } from "@/lib/equipe";
+
+const supabase = Astro.locals.supabase!;
+const POR_PAGINA = 50;
+
+const TABELAS: Record<string, string> = {
+  perfis_usuario: "Contas e papéis",
+  representantes: "Representantes",
+  anunciantes: "Perfis de anunciantes",
+  anunciante_categorias: "Categorias do anunciante",
+  anunciante_bairros: "Bairros do anunciante",
+  enderecos: "Endereços",
+  horarios: "Horários",
+  fotos: "Fotos",
+  encartes: "Encartes",
+  produtos: "Produtos",
+  autorizacoes_edicao: "Autorizações de edição",
+  planos: "Planos",
+  extras: "Extras",
+  configuracoes: "Configurações",
+  documentos_legais: "Termos e Política",
+};
+const ACOES: Record<string, string> = { insert: "Criou", update: "Alterou", delete: "Apagou" };
+const IGNORAR = new Set(["atualizado_em"]);
+
+const parametros = Astro.url.searchParams;
+const filtroTabela = TABELAS[parametros.get("tabela") ?? ""] ? parametros.get("tabela")! : "";
+const filtroAcao = ACOES[parametros.get("acao") ?? ""] ? parametros.get("acao")! : "";
+const filtroPessoa = /^[0-9a-f-]{36}$/.test(parametros.get("pessoa") ?? "") ? parametros.get("pessoa")! : "";
+const antesDe = Number.parseInt(parametros.get("antes") ?? "", 10);
+
+let consulta = supabase
+  .from("auditoria")
+  .select("id, ator_id, papel, acao, tabela, registro_id, antes, depois, criado_em")
+  .order("id", { ascending: false })
+  .limit(POR_PAGINA + 1);
+if (filtroTabela) consulta = consulta.eq("tabela", filtroTabela);
+if (filtroAcao) consulta = consulta.eq("acao", filtroAcao);
+if (filtroPessoa) consulta = consulta.eq("ator_id", filtroPessoa);
+if (Number.isInteger(antesDe) && antesDe > 0) consulta = consulta.lt("id", antesDe);
+
+const [{ data, error }, equipe] = await Promise.all([consulta, listarEquipe(supabase)]);
+let erro = "";
+if (error) {
+  console.error("admin/atividades: leitura falhou", { codigo: error.code, mensagem: error.message });
+  erro = "Não foi possível ler o registro agora. Tente de novo em instantes.";
+}
+
+type Linha = { id: number; ator_id: string | null; papel: string; acao: string; tabela: string; registro_id: string | null; antes: Record<string, unknown> | null; depois: Record<string, unknown> | null; criado_em: string };
+const todas = (data ?? []) as Linha[];
+const linhas = todas.slice(0, POR_PAGINA);
+const proxima = todas.length > POR_PAGINA ? linhas.at(-1)?.id : undefined;
+
+const ids = [...new Set(linhas.map((l) => l.ator_id).filter((id): id is string => Boolean(id)))];
+const emails = new Map<string, string>();
+if (ids.length > 0) {
+  const resposta = await supabase.rpc("emails_de_usuarios", { p_ids: ids });
+  if (resposta.error) console.error("admin/atividades: e-mails falharam", { codigo: resposta.error.code, mensagem: resposta.error.message });
+  for (const { usuario_id, email } of (resposta.data ?? []) as { usuario_id: string; email: string }[]) emails.set(usuario_id, email);
+}
+
+const texto = (valor: unknown) => {
+  if (valor === null || valor === undefined) return "vazio";
+  const s = typeof valor === "string" ? valor : JSON.stringify(valor);
+  return s.length > 80 ? `${s.slice(0, 80)}…` : s;
+};
+function mudancas(l: Linha): string[] {
+  if (l.acao !== "update" || !l.antes || !l.depois) return [];
+  return Object.keys(l.depois)
+    .filter((campo) => !IGNORAR.has(campo) && JSON.stringify(l.antes![campo]) !== JSON.stringify(l.depois![campo]))
+    .map((campo) => `${campo}: ${texto(l.antes![campo])} → ${texto(l.depois![campo])}`);
+}
+const dataHora = (iso: string) =>
+  new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium", timeZone: "America/Sao_Paulo" }).format(new Date(iso));
+const linkProxima = () => {
+  const p = new URLSearchParams(parametros);
+  p.set("antes", String(proxima));
+  return `?${p.toString()}`;
+};
+---
+
+<PaginaAdmin titulo="Registro de atividades" descricao="Toda alteração feita por qualquer conta logada, com quem fez e quando.">
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <form method="get" class="mt-5 grid gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:grid-cols-4 sm:items-end">
+    <div>
+      <label class={classesRotulo} for="filtro-pessoa">Quem</label>
+      <select id="filtro-pessoa" name="pessoa" class={classesCampo}>
+        <option value="">Todas as pessoas</option>
+        {(equipe.ok ? equipe.dados : []).map((m) => <option value={m.usuario_id} selected={m.usuario_id === filtroPessoa}>{m.nome || m.email}</option>)}
+      </select>
+    </div>
+    <div>
+      <label class={classesRotulo} for="filtro-tabela">O quê</label>
+      <select id="filtro-tabela" name="tabela" class={classesCampo}>
+        <option value="">Tudo</option>
+        {Object.entries(TABELAS).map(([valor, rotulo]) => <option value={valor} selected={valor === filtroTabela}>{rotulo}</option>)}
+      </select>
+    </div>
+    <div>
+      <label class={classesRotulo} for="filtro-acao">Ação</label>
+      <select id="filtro-acao" name="acao" class={classesCampo}>
+        <option value="">Todas</option>
+        {Object.entries(ACOES).map(([valor, rotulo]) => <option value={valor} selected={valor === filtroAcao}>{rotulo}</option>)}
+      </select>
+    </div>
+    <button type="submit" class={classesBotao("azul", "m", "h-12")}>Filtrar</button>
+  </form>
+
+  {linhas.length === 0 && !erro && <Aviso tipo="info">Nenhuma atividade com esses filtros.</Aviso>}
+
+  <ol class="mt-5 space-y-2">
+    {
+      linhas.map((l) => {
+        const lista = mudancas(l);
+        return (
+          <li class="rounded-2xl bg-white p-4 text-sm shadow-sm ring-1 ring-black/5">
+            <p class="flex flex-wrap items-baseline gap-x-2">
+              <span class="font-bold text-azul-900">{l.ator_id ? (emails.get(l.ator_id) ?? l.ator_id) : "Sistema"}</span>
+              <span class="text-slate-500">({l.papel})</span>
+              <span class="font-semibold">{ACOES[l.acao] ?? l.acao}</span>
+              <span>{TABELAS[l.tabela] ?? l.tabela}</span>
+              <span class="ml-auto text-xs text-slate-500">{dataHora(l.criado_em)}</span>
+            </p>
+            {lista.length > 0 && (
+              <ul class="mt-2 space-y-0.5 font-mono text-xs break-all text-slate-700">
+                {lista.map((m) => (
+                  <li>{m}</li>
+                ))}
+              </ul>
+            )}
+            <details class="mt-2">
+              <summary class="cursor-pointer text-xs font-bold text-azul-600">Ver registro completo</summary>
+              <pre class="mt-2 max-h-72 overflow-auto rounded-xl bg-fundo p-3 text-xs">{JSON.stringify({ registro: l.registro_id, antes: l.antes, depois: l.depois }, null, 2)}</pre>
+            </details>
+          </li>
+        );
+      })
+    }
+  </ol>
+
+  {proxima && <a href={linkProxima()} class={classesBotao("contorno", "m", "mt-5")}>Mais antigas</a>}
+</PaginaAdmin>

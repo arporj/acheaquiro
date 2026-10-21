@@ -1,0 +1,245 @@
+---
+// Equipe (administração, fase 1): administradores e representantes.
+// Ações sensíveis pedem o código do aplicativo de novo (CLAUDE.md); as travas
+// do SupraAdmin ficam no banco e as mensagens delas aparecem aqui.
+import { Icone, Modal, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { convidar, listarEquipe, mudarPapel, mudarSituacao, reenviarConvite, transferirSupraAdmin, type PapelEquipe } from "@/lib/equipe";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+
+const AVISOS: Record<string, string> = {
+  "convite-enviado": "Convite enviado. O link vale por 1 hora; se vencer, use \"Reenviar convite\".",
+  "convite-reenviado": "Convite reenviado.",
+  "situacao-alterada": "Situação alterada.",
+  "papel-alterado": "Papel alterado.",
+  "supra-transferido": "Marcação de SupraAdmin transferida. Você continua administrador.",
+};
+const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
+let erro = "";
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const campo = (nome: string) => String(f.get(nome) ?? "").slice(0, 300);
+  const alvo = campo("usuario");
+  const papel = (campo("papel") === "administrador" ? "administrador" : "representante") as PapelEquipe;
+  let resultado;
+  let chaveAviso = "";
+  switch (campo("acao")) {
+    case "convidar":
+      resultado = await convidar(supabase, usuario.id, {
+        nome: campo("nome"),
+        email: campo("email"),
+        papel,
+        codigoRepresentante: campo("codigo_representante").trim().toLowerCase(),
+        codigoAutenticador: campo("codigo"),
+      });
+      chaveAviso = "convite-enviado";
+      break;
+    case "reenviar":
+      resultado = await reenviarConvite(campo("email"));
+      chaveAviso = "convite-reenviado";
+      break;
+    case "situacao":
+      resultado = await mudarSituacao(supabase, usuario.id, alvo, campo("ativo") === "sim", campo("codigo"));
+      chaveAviso = "situacao-alterada";
+      break;
+    case "papel":
+      resultado = await mudarPapel(supabase, usuario.id, alvo, papel, {
+        codigoRepresentante: campo("codigo_representante").trim().toLowerCase(),
+        codigoAutenticador: campo("codigo"),
+      });
+      chaveAviso = "papel-alterado";
+      break;
+    case "transferir":
+      resultado = await transferirSupraAdmin(supabase, usuario.id, alvo, campo("codigo"));
+      chaveAviso = "supra-transferido";
+      break;
+    default:
+      resultado = { ok: false as const, erro: { codigo: "DADOS_INVALIDOS" as const, mensagem: "Ação desconhecida." } };
+  }
+  if (resultado.ok) return Astro.redirect(`/admin/equipe?aviso=${chaveAviso}`, 303);
+  erro = resultado.erro.mensagem;
+  Astro.response.status = resultado.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const lista = await listarEquipe(supabase);
+if (!lista.ok) erro ||= lista.erro.mensagem;
+const equipe = lista.ok ? lista.dados : [];
+const euSupra = equipe.some((m) => m.usuario_id === usuario.id && m.supra_admin);
+
+const dataHora = (iso: string | null) =>
+  iso
+    ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(iso))
+    : "nunca";
+const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-extrabold";
+---
+
+<PaginaAdmin titulo="Equipe" descricao="Administradores e representantes do Ache Aqui RO.">
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <div class="mt-5">
+    <button type="button" data-abrir-modal="modal-convidar" class={classesBotao("azul", "m")}>
+      <Icone nome="usuarios" class="size-4" />
+      Convidar pessoa
+    </button>
+  </div>
+
+  <ul class="mt-5 space-y-3">
+    {
+      equipe.map((m) => {
+        const eu = m.usuario_id === usuario.id;
+        const idModal = `modal-${m.usuario_id}`;
+        return (
+          <li class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+            <div class="min-w-0 flex-1">
+              <p class="font-bold text-azul-900">
+                {m.nome || "Sem nome"} {eu && <span class="text-sm font-semibold text-slate-500">(você)</span>}
+              </p>
+              <p class="truncate text-sm text-slate-600">{m.email}</p>
+              <p class="mt-1.5 flex flex-wrap gap-1.5">
+                <span class={`${etiqueta} ${m.papel === "administrador" ? "bg-azul-600 text-white" : "bg-azul-50 text-azul-700"}`}>
+                  {m.papel === "administrador" ? "Administrador" : "Representante"}
+                </span>
+                {m.supra_admin && <span class={`${etiqueta} bg-amarelo-400 text-azul-900`}>SupraAdmin</span>}
+                {!m.ativo && <span class={`${etiqueta} bg-vermelho-500 text-white`}>Desativado</span>}
+                {!m.convite_aceito && <span class={`${etiqueta} bg-amarelo-200 text-azul-900`}>Convite pendente</span>}
+                {m.codigo_representante && <span class={`${etiqueta} bg-fundo text-slate-600`}>/r/{m.codigo_representante}</span>}
+              </p>
+            </div>
+            <p class="text-xs text-slate-500">Último acesso: {dataHora(m.ultimo_acesso)}</p>
+            {(!eu || euSupra) && (
+              <button type="button" data-abrir-modal={idModal} class={classesBotao("contorno", "p")}>
+                Gerenciar
+              </button>
+            )}
+
+            <Modal id={idModal} titulo={m.nome || m.email}>
+              <div class="space-y-6">
+                {!m.convite_aceito && (
+                  <form method="post">
+                    <input type="hidden" name="acao" value="reenviar" />
+                    <input type="hidden" name="email" value={m.email} />
+                    <p class="text-sm text-slate-600">Esta pessoa ainda não criou a senha. O convite vale por 1 hora.</p>
+                    <button type="submit" class={classesBotao("contorno", "m", "mt-2 w-full")}>Reenviar convite</button>
+                  </form>
+                )}
+
+                {!eu && !m.supra_admin && (
+                  <form method="post">
+                    <input type="hidden" name="acao" value="papel" />
+                    <input type="hidden" name="usuario" value={m.usuario_id} />
+                    <label class={classesRotulo} for={`papel-${m.usuario_id}`}>Papel</label>
+                    <select id={`papel-${m.usuario_id}`} name="papel" class={classesCampo}>
+                      <option value="representante" selected={m.papel === "representante"}>Representante</option>
+                      <option value="administrador" selected={m.papel === "administrador"}>Administrador</option>
+                    </select>
+                    {!m.codigo_representante && (
+                      <>
+                        <label class={classesRotulo} for={`rep-${m.usuario_id}`}>Código do representante (se virar representante)</label>
+                        <input id={`rep-${m.usuario_id}`} name="codigo_representante" class={classesCampo} placeholder="ex.: joao" />
+                      </>
+                    )}
+                    <label class={classesRotulo} for={`cod-papel-${m.usuario_id}`}>Seu código do aplicativo (se envolver administrador)</label>
+                    <input id={`cod-papel-${m.usuario_id}`} name="codigo" inputmode="numeric" maxlength="6" autocomplete="one-time-code" class={classesCampo} />
+                    <button type="submit" class={classesBotao("azul", "m", "mt-3 w-full")}>Salvar papel</button>
+                  </form>
+                )}
+
+                {!eu && !m.supra_admin && (
+                  <form method="post">
+                    <input type="hidden" name="acao" value="situacao" />
+                    <input type="hidden" name="usuario" value={m.usuario_id} />
+                    <input type="hidden" name="ativo" value={m.ativo ? "nao" : "sim"} />
+                    <p class="text-sm text-slate-600">
+                      {m.ativo
+                        ? "Desativar tira o acesso na hora e impede novas entradas. Nada é apagado."
+                        : "Reativar devolve o acesso com o mesmo papel."}
+                    </p>
+                    {m.papel === "administrador" && (
+                      <>
+                        <label class={classesRotulo} for={`cod-sit-${m.usuario_id}`}>Seu código do aplicativo</label>
+                        <input id={`cod-sit-${m.usuario_id}`} name="codigo" inputmode="numeric" maxlength="6" autocomplete="one-time-code" class={classesCampo} />
+                      </>
+                    )}
+                    <button type="submit" class={classesBotao(m.ativo ? "perigo" : "zap", "m", "mt-3 w-full")}>
+                      {m.ativo ? "Desativar" : "Reativar"}
+                    </button>
+                  </form>
+                )}
+
+                {euSupra && !eu && m.papel === "administrador" && m.ativo && m.convite_aceito && (
+                  <form method="post" class="rounded-2xl bg-amarelo-200 p-4">
+                    <input type="hidden" name="acao" value="transferir" />
+                    <input type="hidden" name="usuario" value={m.usuario_id} />
+                    <p class="text-sm font-semibold text-azul-900">
+                      Transferir a marcação de SupraAdmin para esta pessoa. Você continua administrador, mas deixa de ser SupraAdmin.
+                    </p>
+                    <label class={classesRotulo} for={`cod-supra-${m.usuario_id}`}>Seu código do aplicativo</label>
+                    <input id={`cod-supra-${m.usuario_id}`} name="codigo" inputmode="numeric" maxlength="6" autocomplete="one-time-code" class={classesCampo} />
+                    <button type="submit" class={classesBotao("azul", "m", "mt-3 w-full")}>Transferir SupraAdmin</button>
+                  </form>
+                )}
+
+                {eu && !euSupra && <p class="text-sm text-slate-600">Ninguém muda o próprio papel nem desativa a própria conta.</p>}
+                {m.supra_admin && !eu && <p class="text-sm text-slate-600">O SupraAdmin não pode ser alterado por outros administradores.</p>}
+                {eu && euSupra && (
+                  <p class="text-sm text-slate-600">
+                    Você é o SupraAdmin. Para transferir a marcação, abra "Gerenciar" no administrador que vai recebê-la.
+                  </p>
+                )}
+              </div>
+            </Modal>
+          </li>
+        );
+      })
+    }
+  </ul>
+
+  <Modal id="modal-convidar" titulo="Convidar pessoa">
+    <form method="post" data-convite>
+      <input type="hidden" name="acao" value="convidar" />
+      <label class={classesRotulo} for="convite-nome">Nome</label>
+      <input id="convite-nome" name="nome" required maxlength="120" class={classesCampo} />
+      <label class={classesRotulo} for="convite-email">E-mail</label>
+      <input id="convite-email" name="email" type="email" required maxlength="254" class={classesCampo} />
+      <fieldset class="mt-4">
+        <legend class="text-sm font-bold text-azul-900">Papel</legend>
+        <label class="mt-2 flex items-center gap-2"><input type="radio" name="papel" value="representante" checked /> Representante</label>
+        <label class="mt-1 flex items-center gap-2"><input type="radio" name="papel" value="administrador" /> Administrador</label>
+      </fieldset>
+      <div data-so-representante>
+        <label class={classesRotulo} for="convite-rep">Código do representante</label>
+        <input id="convite-rep" name="codigo_representante" maxlength="30" class={classesCampo} placeholder="ex.: joao" />
+        <p class="mt-1 text-xs text-slate-500">Forma o link dele: acheaquiro.com.br/r/codigo. Letras minúsculas, números e hífens.</p>
+      </div>
+      <div data-so-administrador hidden>
+        <label class={classesRotulo} for="convite-codigo">Seu código do aplicativo</label>
+        <input id="convite-codigo" name="codigo" inputmode="numeric" maxlength="6" autocomplete="one-time-code" class={classesCampo} />
+        <p class="mt-1 text-xs text-slate-500">Criar administrador é uma ação sensível: confirme com o código do celular.</p>
+      </div>
+      <p class="mt-4 text-sm text-slate-600">
+        A pessoa recebe um e-mail para criar a senha. Administradores também cadastram o aplicativo autenticador no primeiro acesso.
+      </p>
+      <button type="submit" class={classesBotao("azul", "m", "mt-4 w-full")}>Enviar convite</button>
+    </form>
+  </Modal>
+</PaginaAdmin>
+
+<script>
+  // Mostra só os campos do papel escolhido no convite.
+  const formulario = document.querySelector<HTMLFormElement>("[data-convite]");
+  if (formulario) {
+    const atualizar = () => {
+      const papel = new FormData(formulario).get("papel");
+      formulario.querySelector<HTMLElement>("[data-so-representante]")!.hidden = papel !== "representante";
+      formulario.querySelector<HTMLElement>("[data-so-administrador]")!.hidden = papel !== "administrador";
+    };
+    formulario.addEventListener("change", atualizar);
+    atualizar();
+  }
+</script>

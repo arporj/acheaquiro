@@ -1,5 +1,6 @@
 ---
 import { Icone, classesBotao } from "@acheaqui/ui";
+import { ambiente } from "@/lib/ambiente";
 import FormBusca from "./FormBusca.astro";
 import Logo from "./Logo.astro";
 
@@ -23,6 +24,14 @@ const { comBusca = false } = Astro.props;
       <a href="/fundadores" class="hidden rounded-full px-4 py-2 text-sm font-bold text-white/90 hover:bg-white/10 md:inline-flex">
         Fundadores
       </a>
+      {
+        // Entrada de anunciantes, representantes e equipe (decisão de 22/10/2026). O site de apresentação não tem login.
+        ambiente === "producao" && (
+          <a href="/entrar" class="rounded-full px-3 py-2 text-sm font-bold text-white/90 hover:bg-white/10 sm:px-4">
+            Entrar
+          </a>
+        )
+      }
       <a href="/anuncie" class={classesBotao("amarelo", "p", "shadow-none")}>
         <Icone nome="megafone" class="size-4" />
         Anuncie aqui

@@ -1,16 +1,63 @@
 ---
-// Área de administração (item 4.8). O middleware só deixa entrar o
-// administrador com a segunda etapa feita nesta sessão (aal2).
-import AreaInicial from "@/components/conta/AreaInicial.astro";
+// Painel da administração (item 4.8): números da equipe e dos perfis e
+// atalhos. O middleware só deixa entrar o administrador com a segunda etapa
+// feita nesta sessão (aal2).
+import { Icone, type NomeIcone } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { listarEquipe } from "@/lib/equipe";
+
+const supabase = Astro.locals.supabase!;
+
+const [equipe, anunciantes] = await Promise.all([listarEquipe(supabase), supabase.from("anunciantes").select("status")]);
+if (anunciantes.error) console.error("admin: contagem de anunciantes falhou", { codigo: anunciantes.error.code, mensagem: anunciantes.error.message });
+
+const membros = equipe.ok ? equipe.dados : [];
+const porStatus = new Map<string, number>();
+for (const { status } of (anunciantes.data ?? []) as { status: string }[]) porStatus.set(status, (porStatus.get(status) ?? 0) + 1);
+
+const cartoes: { rotulo: string; valor: number; icone: NomeIcone; href?: string }[] = [
+  { rotulo: "Administradores ativos", valor: membros.filter((m) => m.papel === "administrador" && m.ativo).length, icone: "escudo", href: "/admin/equipe" },
+  { rotulo: "Representantes ativos", valor: membros.filter((m) => m.papel === "representante" && m.ativo).length, icone: "usuarios", href: "/admin/equipe" },
+  { rotulo: "Convites pendentes", valor: membros.filter((m) => !m.convite_aceito).length, icone: "relogio", href: "/admin/equipe" },
+  { rotulo: "Perfis publicados", valor: porStatus.get("publicado") ?? 0, icone: "megafone" },
+  { rotulo: "Perfis em análise", valor: porStatus.get("em_analise") ?? 0, icone: "info" },
+  { rotulo: "Cadastros em andamento", valor: (porStatus.get("rascunho") ?? 0) + (porStatus.get("aguardando_anunciante") ?? 0), icone: "etiqueta" },
+];
 ---
 
-<AreaInicial
-  titulo="Administração"
-  emBreve={[
-    "Cadastro assistido de anunciantes, com convite por e-mail",
-    "Cadastro de representantes",
-    "Confirmação dos pagamentos por Pix",
-    "Cadastro de eventos, com programação e barracas",
-    "Categorias, bairros, planos e extras",
-  ]}
-/>
+<PaginaAdmin titulo="Painel" descricao="Resumo da equipe e dos perfis.">
+  {!equipe.ok && <Aviso tipo="erro">{equipe.erro.mensagem}</Aviso>}
+  <ul class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    {
+      cartoes.map((c) => {
+        const conteudo = (
+          <>
+            <span class="grid size-11 place-items-center rounded-2xl bg-azul-50 text-azul-600">
+              <Icone nome={c.icone} class="size-5" />
+            </span>
+            <span>
+              <span class="block font-display text-3xl leading-none font-extrabold text-azul-900">{c.valor}</span>
+              <span class="text-sm font-semibold text-slate-600">{c.rotulo}</span>
+            </span>
+          </>
+        );
+        return (
+          <li>
+            {c.href ? (
+              <a href={c.href} class="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 hover:ring-azul-200">
+                {conteudo}
+              </a>
+            ) : (
+              <div class="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">{conteudo}</div>
+            )}
+          </li>
+        );
+      })
+    }
+  </ul>
+  <p class="mt-6 text-sm text-slate-600">
+    As seções marcadas como "em breve" no menu entram nas próximas fases: anunciantes e cadastro assistido até 08/11; catálogo,
+    pagamentos, denúncias e agenda até a abertura.
+  </p>
+</PaginaAdmin>

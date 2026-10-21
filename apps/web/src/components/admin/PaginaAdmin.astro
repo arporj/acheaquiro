@@ -1,0 +1,74 @@
+---
+// Moldura da administração (item 4.8): cabeçalho da conta, menu das seções e
+// o conteúdo. As seções ainda não feitas aparecem no menu como "em breve".
+import { Icone, type NomeIcone } from "@acheaqui/ui";
+import CabecalhoConta from "@/components/conta/CabecalhoConta.astro";
+import Layout from "@/layouts/Layout.astro";
+
+interface Props {
+  titulo: string;
+  /** Texto curto abaixo do título. */
+  descricao?: string;
+}
+
+const { titulo, descricao } = Astro.props;
+const atual = Astro.url.pathname.replace(/\/$/, "") || "/admin";
+
+const secoes: { href: string; rotulo: string; icone: NomeIcone; pronta: boolean }[] = [
+  { href: "/admin", rotulo: "Painel", icone: "grafico", pronta: true },
+  { href: "/admin/equipe", rotulo: "Equipe", icone: "usuarios", pronta: true },
+  { href: "/admin/anunciantes", rotulo: "Anunciantes", icone: "megafone", pronta: false },
+  { href: "/admin/pagamentos", rotulo: "Pagamentos", icone: "dinheiro", pronta: false },
+  { href: "/admin/denuncias", rotulo: "Denúncias", icone: "bandeira", pronta: false },
+  { href: "/admin/catalogo", rotulo: "Catálogo e valores", icone: "etiqueta", pronta: false },
+  { href: "/admin/agenda", rotulo: "Agenda", icone: "estrela", pronta: false },
+  { href: "/admin/atividades", rotulo: "Registro de atividades", icone: "relogio", pronta: true },
+];
+---
+
+<Layout titulo={`${titulo} · Administração`}>
+  <CabecalhoConta logado />
+  <div class="mx-auto grid w-full max-w-6xl flex-1 gap-6 px-4 py-6 lg:grid-cols-[14rem_1fr] lg:py-8">
+    <nav aria-label="Administração" class="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:overflow-visible lg:px-0">
+      <ul class="flex gap-1.5 lg:sticky lg:top-6 lg:flex-col">
+        {
+          secoes.map((secao) => (
+            <li class="shrink-0">
+              {secao.pronta ? (
+                <a
+                  href={secao.href}
+                  aria-current={atual === secao.href ? "page" : undefined}
+                  class="flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-bold text-tinta hover:bg-white aria-[current=page]:bg-azul-600 aria-[current=page]:text-white"
+                >
+                  <Icone nome={secao.icone} class="size-4" />
+                  {secao.rotulo}
+                </a>
+              ) : (
+                <span class="flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-bold text-slate-400" title="Em breve">
+                  <Icone nome={secao.icone} class="size-4" />
+                  {secao.rotulo}
+                  <span class="rounded-full bg-slate-200 px-1.5 text-[0.65rem] font-extrabold uppercase">em breve</span>
+                </span>
+              )}
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    <main class="min-w-0">
+      <h1 class="font-display text-3xl font-extrabold text-azul-900">{titulo}</h1>
+      {descricao && <p class="mt-1 text-slate-600">{descricao}</p>}
+      <slot />
+    </main>
+  </div>
+</Layout>
+
+<script>
+  // Botões que abrem um modal da própria interface (nada de alert ou confirm do navegador).
+  for (const botao of document.querySelectorAll<HTMLElement>("[data-abrir-modal]")) {
+    botao.addEventListener("click", () => {
+      const dialogo = document.getElementById(botao.dataset.abrirModal ?? "");
+      if (dialogo instanceof HTMLDialogElement) dialogo.showModal();
+    });
+  }
+</script>

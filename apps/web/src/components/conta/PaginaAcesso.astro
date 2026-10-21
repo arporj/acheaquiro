@@ -1,7 +1,7 @@
 ---
 // Moldura das telas de acesso e das áreas logadas: cabeçalho simples, sem a
 // busca nem os anúncios, e um cartão central com o conteúdo.
-import Logo from "@/components/Logo.astro";
+import CabecalhoConta from "./CabecalhoConta.astro";
 import Layout from "@/layouts/Layout.astro";
 
 interface Props {
@@ -16,25 +16,7 @@ const { titulo, logado = false, largura = "estreita" } = Astro.props;
 ---
 
 <Layout titulo={titulo}>
-  <header class="fundo-raios text-white">
-    <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 lg:py-4">
-      <Logo />
-      {
-        logado && (
-          <nav class="flex items-center gap-1 sm:gap-2" aria-label="Conta">
-            <a href="/conta" class="rounded-full px-4 py-2 text-sm font-bold text-white/90 hover:bg-white/10">
-              Minha conta
-            </a>
-            <form method="post" action="/sair">
-              <button type="submit" class="rounded-full px-4 py-2 text-sm font-bold text-white/90 hover:bg-white/10">
-                Sair
-              </button>
-            </form>
-          </nav>
-        )
-      }
-    </div>
-  </header>
+  <CabecalhoConta logado={logado} />
   <main class="mx-auto w-full flex-1 px-4 py-10">
     <div class={`mx-auto rounded-3xl bg-white p-6 shadow-sm ring-1 ring-black/5 sm:p-8 ${largura === "estreita" ? "max-w-md" : "max-w-3xl"}`}>
       <h1 class="font-display text-3xl font-extrabold text-azul-900">{titulo}</h1>
