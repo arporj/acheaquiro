@@ -64,6 +64,7 @@ const VEICULOS = "Veículos";
 const TURISMO = "Turismo e hospedagem";
 const PROFISSIONAIS = "Serviços profissionais";
 const RELIGIAO = "Religião e espiritualidade";
+const ONGS = "ONGs";
 const OUTROS = "Outros serviços";
 
 export const categorias: Categoria[] = [
@@ -224,7 +225,6 @@ export const categorias: Categoria[] = [
   c("adestrador", "Adestrador", "Adestradores", PETS, "bone", cor.marrom),
   c("passeador-de-caes", "Passeador de cães", "Passeadores de cães", PETS, "dog", cor.amarelo),
   c("hotel-para-caes", "Hotel para cães", "Hotéis para cães", PETS, "dog", cor.laranja),
-  c("ong-protecao-animal", "ONG de proteção animal", "ONGs de proteção animal", PETS, "heart", cor.verde),
 
   // Eventos e comida
   c("fotografo", "Fotógrafo", "Fotógrafos", EVENTOS, "camera", cor.grafite),
@@ -291,6 +291,10 @@ export const categorias: Categoria[] = [
   }),
   c("terapias-holisticas", "Terapias holísticas", "Terapias holísticas", RELIGIAO, "leaf", cor.verde),
 
+  // ONGs
+  c("ong", "ONG e projeto social", "ONGs e projetos sociais", ONGS, "hand-heart", cor.vermelho, { sinonimos: ["ong", "projeto social"] }),
+  c("ong-protecao-animal", "ONG de proteção animal", "ONGs de proteção animal", ONGS, "heart", cor.verde),
+
   // Outros serviços
   c("artesanato", "Artesanato", "Artesanato", OUTROS, "palette", cor.roxo, { sinonimos: ["artesã", "crochê"], atalho: true }),
   c("lavanderia", "Lavanderia", "Lavanderias", OUTROS, "washing-machine", cor.celeste),
@@ -306,7 +310,6 @@ export const categorias: Categoria[] = [
   c("tornearia", "Tornearia e solda", "Tornearia e solda", OUTROS, "cog", cor.grafite),
   c("poco-artesiano", "Poço artesiano", "Poços artesianos", OUTROS, "droplets", cor.celeste),
   c("reciclagem", "Reciclagem", "Reciclagem", OUTROS, "recycle", cor.verde),
-  c("ong", "ONG e projeto social", "ONGs e projetos sociais", OUTROS, "hand-heart", cor.vermelho, { sinonimos: ["ong", "projeto social"] }),
 ];
 
 
