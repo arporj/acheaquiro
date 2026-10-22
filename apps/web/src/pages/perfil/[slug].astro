@@ -10,7 +10,7 @@ import CartaoContato from "@/components/perfil/CartaoContato.astro";
 import Galeria from "@/components/perfil/Galeria.astro";
 import Horario from "@/components/perfil/Horario.astro";
 import Secao from "@/components/perfil/Secao.astro";
-import { agendaDoComercio, anunciantePorSlug, listarBairros, listarCategorias, planoPorId, situacaoComercio } from "@/dados/consultas";
+import { agendaDosMeses, anunciantePorSlug, mesesNaPagina, listarBairros, listarCategorias, planoPorId, situacaoComercio } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
 import { formatarPreco, linkComoChegar } from "@/lib/contato";
@@ -35,7 +35,8 @@ const adicionais = anunciante.categoriasAdicionais.map(categoriaPorId).filter((c
 const selo = (await planoPorId(anunciante.planoId))?.selo ?? "nenhum";
 const situacao = anunciante.tipo === "comercio" ? await situacaoComercio(anunciante.id) : undefined;
 // Comércio com o extra de Agenda (bares e quiosques com música ao vivo).
-const agenda = anunciante.tipo === "comercio" ? await agendaDoComercio(anunciante.id) : [];
+const mesesAgenda = mesesNaPagina();
+const agenda = anunciante.tipo === "comercio" ? await agendaDosMeses(mesesAgenda, anunciante.id) : [];
 const local =
   anunciante.tipo === "profissional"
     ? anunciante.atendeTodaCidade
@@ -136,7 +137,7 @@ const fundoMapa =
               <a slot="extra" href="/agenda" class="text-sm font-bold text-azul-600 hover:underline">
                 Ver toda a Agenda
               </a>
-              <AgendaCalendario itens={agenda} mostrarLugar={false} />
+              <AgendaCalendario itens={agenda} meses={mesesAgenda} anuncianteId={anunciante.id} mostrarLugar={false} formato="faixa" />
             </Secao>
           )
         }

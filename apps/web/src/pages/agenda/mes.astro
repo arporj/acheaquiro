@@ -1,0 +1,27 @@
+---
+// Shows de um mês, buscados pelo calendário da Agenda quando o visitante
+// navega para fora dos meses que a página já leva (src/lib/agendaCalendario.ts).
+// Devolve só os itens da lista, com o mesmo componente da página. Cada mês
+// fica no cache, como as páginas: o mesmo mês pedido de novo não chega ao banco.
+import ItemAgendaLista from "@/components/agenda/ItemAgendaLista.astro";
+import { agendaDosMeses } from "@/dados/consultas";
+import { guardarNoCache } from "@/lib/cache";
+
+export const partial = true;
+
+const mes = Astro.url.searchParams.get("mes") ?? "";
+const anuncianteId = Astro.url.searchParams.get("anunciante") ?? undefined;
+const mostrarLugar = Astro.url.searchParams.get("lugar") !== "0";
+
+// Validação no servidor: só AAAA-MM de 2020 a 2099 e um id simples de anunciante.
+const mesValido = /^20[2-9]\d-(0[1-9]|1[0-2])$/.test(mes);
+const anuncianteValido = anuncianteId === undefined || /^[a-z0-9-]{1,40}$/.test(anuncianteId);
+if (!mesValido || !anuncianteValido) {
+  return new Response("Mês inválido", { status: 400 });
+}
+guardarNoCache(Astro);
+
+const itens = await agendaDosMeses([mes], anuncianteId);
+---
+
+{itens.map((it) => <ItemAgendaLista it={it} mostrarLugar={mostrarLugar} />)}

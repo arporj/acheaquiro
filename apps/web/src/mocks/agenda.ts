@@ -103,6 +103,9 @@ export const apresentacoes: Relativa<Apresentacao>[] = [
   { id: "ap24", artistaId: "ar3", anuncianteId: "c20", diasDepoisDeHoje: 51, inicio: "19:00", fim: "22:00" },
   { id: "ap25", artistaId: "ar1", anuncianteId: "c20", diasDepoisDeHoje: 58, inicio: "21:00", fim: "00:00" },
   { id: "ap26", artistaId: "ar5", anuncianteId: "c21", diasDepoisDeHoje: 70, inicio: "23:00" },
+  // Fora dos meses que a página leva pronta: o calendário busca em /agenda/mes.
+  { id: "ap27", artistaId: "ar3", anuncianteId: "c20", diasDepoisDeHoje: 110, inicio: "19:00", fim: "22:00" },
+  { id: "ap28", artistaId: "ar1", anuncianteId: "c21", diasDepoisDeHoje: -75, inicio: "21:00" },
   // Já passaram: aparecem em "Shows anteriores" na página do artista.
   { id: "ap17", artistaId: "ar1", anuncianteId: "c21", diasDepoisDeHoje: -6, inicio: "21:00" },
   { id: "ap18", artistaId: "ar3", anuncianteId: "c21", diasDepoisDeHoje: -4, inicio: "20:00" },

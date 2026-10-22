@@ -384,13 +384,35 @@ export async function agendaProximosDias(): Promise<ItemAgenda[]> {
   return itensAgenda((a) => a.data >= hoje);
 }
 
-/** Todas as apresentações, passadas e futuras: o calendário navega pelos meses. */
-export async function agendaCompleta(): Promise<ItemAgenda[]> {
-  return itensAgenda(() => true);
+/** Meses que a página da Agenda já leva prontos: 1 antes e 3 depois do mês atual. */
+export const MESES_ANTES_NA_PAGINA = 1;
+export const MESES_DEPOIS_NA_PAGINA = 3;
+
+/** "2026-10" + 2 → "2026-12". */
+export function somarMeses(mes: string, meses: number): string {
+  const [ano, m] = mes.split("-").map(Number);
+  return new Date(Date.UTC(ano, m - 1 + meses, 1)).toISOString().slice(0, 7);
 }
 
-export async function agendaDoComercio(anuncianteId: string): Promise<ItemAgenda[]> {
-  return itensAgenda((a) => a.anuncianteId === anuncianteId);
+/** Meses (AAAA-MM) que a página leva prontos; os outros o navegador busca em /agenda/mes. */
+export function mesesNaPagina(): string[] {
+  const atual = hojeNaCidade().slice(0, 7);
+  const meses: string[] = [];
+  for (let i = -MESES_ANTES_NA_PAGINA; i <= MESES_DEPOIS_NA_PAGINA; i++) meses.push(somarMeses(atual, i));
+  return meses;
+}
+
+/** Apresentações nos meses pedidos (AAAA-MM), de toda a cidade ou de um comércio. */
+export async function agendaDosMeses(meses: string[], anuncianteId?: string): Promise<ItemAgenda[]> {
+  return itensAgenda((a) => meses.includes(a.data.slice(0, 7)) && (!anuncianteId || a.anuncianteId === anuncianteId));
+}
+
+/** Bairros com alguma apresentação, em qualquer data, para o filtro de bairro. */
+export async function bairrosDaAgenda(): Promise<{ id: string; nome: string }[]> {
+  const itens = await itensAgenda(() => true);
+  return [...new Map(itens.map((i) => [i.lugar.bairroId, i.lugar.bairro])).entries()]
+    .map(([id, nome]) => ({ id, nome }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
 export async function agendaDoArtista(artistaId: string): Promise<ItemAgenda[]> {
