@@ -150,3 +150,20 @@ export function ligarConfirmacoes(): void {
     form?.submit();
   });
 }
+
+/**
+ * Pagamento: marcar ou desmarcar "Preço de Patrocinador Fundador" preenche o
+ * valor com o da cota (data-valor-fundador ou data-valor-cheio). O campo
+ * continua editável, para um valor combinado diferente.
+ */
+export function ligarPagamentos(): void {
+  for (const form of document.querySelectorAll<HTMLFormElement>("form[data-form-pagamento]")) {
+    const marcador = form.querySelector<HTMLInputElement>("[data-preco-fundador]");
+    const valor = form.querySelector<HTMLInputElement>('input[name="valor"]');
+    if (!marcador || !valor) continue;
+    marcador.addEventListener("change", () => {
+      const novo = marcador.checked ? form.dataset.valorFundador : form.dataset.valorCheio;
+      if (novo) valor.value = novo;
+    });
+  }
+}

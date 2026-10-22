@@ -220,7 +220,12 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
                     </form>
                   )}
 
-                  <form method="post">
+                  <form
+                    method="post"
+                    data-form-pagamento
+                    data-valor-cheio={cota ? reais(cota.valor_centavos) : ""}
+                    data-valor-fundador={cota ? reais(cota.valor_fundador_centavos) : ""}
+                  >
                     <input type="hidden" name="acao" value="pagamento" />
                     <input type="hidden" name="id" value={p.id} />
                     <p class="text-sm font-bold text-azul-900">Pagamento (Pix à vista)</p>
@@ -242,7 +247,7 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
                       </div>
                     </div>
                     <label class="mt-3 flex items-center gap-2 text-sm font-semibold">
-                      <input type="checkbox" name="preco_fundador" value="sim" checked={p.pagamento?.preco_fundador ?? true} />
+                      <input type="checkbox" name="preco_fundador" value="sim" data-preco-fundador checked={p.pagamento?.preco_fundador ?? true} />
                       Preço de Patrocinador Fundador
                     </label>
                     <label class={classesRotulo} for={`obs-${p.id}`}>Observação</label>
@@ -418,8 +423,9 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
 </PaginaAdmin>
 
 <script>
-  import { ligarFormularioPatrocinio, ligarConfirmacoes } from "@/lib/formularioPatrocinio";
+  import { ligarConfirmacoes, ligarFormularioPatrocinio, ligarPagamentos } from "@/lib/formularioPatrocinio";
 
   for (const form of document.querySelectorAll<HTMLFormElement>("[data-form-patrocinio]")) ligarFormularioPatrocinio(form);
   ligarConfirmacoes();
+  ligarPagamentos();
 </script>
