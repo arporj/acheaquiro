@@ -4,6 +4,9 @@ import type { Anunciante } from "@acheaqui/types";
 export const MENSAGEM_ORCAMENTO = "Olá! Encontrei você no Ache Aqui RO e gostaria de um orçamento.";
 export const MENSAGEM_INFORMACAO = "Olá! Encontrei você no Ache Aqui RO e gostaria de uma informação.";
 
+/** WhatsApp da equipe, destino de todos os botões de contato (decisão de 22/10/2026). */
+export const WHATSAPP_EQUIPE = "5521988520666";
+
 export function linkWhatsApp(numero: string, mensagem: string): string {
   return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
 }

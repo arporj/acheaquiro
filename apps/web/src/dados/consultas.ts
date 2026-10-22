@@ -4,7 +4,7 @@
 // anunciantes existirem (etapa 2), mostra a lista de anunciantes vazia. A
 // página "em breve" não acessa o banco: usa as regras de src/mocks/planos.ts.
 import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, CotaPatrocinioVenda, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
-import { dadosPublicosDoArtista } from "@acheaqui/domain";
+import { dadosPublicosDoArtista, novaVagaAPartirDe, somarDias } from "@acheaqui/domain";
 import { criarClientePublico, lerCatalogoPublico } from "@acheaqui/supabase-client";
 import { ambiente } from "@/lib/ambiente";
 import { normalizar } from "@/lib/texto";
@@ -324,11 +324,6 @@ export function hojeNaCidade(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 }
 
-export function somarDias(iso: string, dias: number): string {
-  const [ano, mes, dia] = iso.split("-").map(Number);
-  return new Date(Date.UTC(ano, mes - 1, dia + dias)).toISOString().slice(0, 10);
-}
-
 /** Uma apresentação com o artista e o lugar já resolvidos, pronta para a tela. */
 export interface ItemAgenda {
   id: string;
@@ -450,6 +445,8 @@ export async function anuncianteSlugPorId(id: string): Promise<string | undefine
 export interface CotaComVagas extends CotaPatrocinioVenda {
   vagasTotais: number;
   vagasLivres: number;
+  /** Cota esgotada: dia em que abre de novo uma vaga (AAAA-MM-DD). */
+  novaVagaEm?: string;
 }
 
 /**
@@ -459,9 +456,14 @@ export interface CotaComVagas extends CotaPatrocinioVenda {
 export async function listarCotasPatrocinio(): Promise<CotaComVagas[]> {
   if (!ficticio) return [];
   const [grupos, categorias] = await Promise.all([categoriasPorGrupo(), listarCategorias()]);
+  // No site de apresentação, os patrocinadores fictícios só mostram o layout
+  // (rodapé, página, categoria): não ocupam vaga, e a página mostra as vagas reais.
+  const contratos: Patrocinador[] = ficticio ? [] : patrocinadores;
   return cotasPatrocinio.map((cota) => {
     const vagasTotais = cota.vagas ?? (cota.cota === "grupo" ? grupos.length : categorias.length);
-    const ocupadas = patrocinadores.filter((p) => p.cota === cota.cota).length;
-    return { ...cota, vagasTotais, vagasLivres: Math.max(0, vagasTotais - ocupadas) };
+    const daCota = contratos.filter((p) => p.cota === cota.cota);
+    const vagasLivres = Math.max(0, vagasTotais - daCota.length);
+    const novaVagaEm = vagasLivres === 0 ? novaVagaAPartirDe(daCota.map((p) => p.fim)) : undefined;
+    return { ...cota, vagasTotais, vagasLivres, novaVagaEm };
   });
 }

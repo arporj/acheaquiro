@@ -260,6 +260,8 @@ export interface Patrocinador {
   grupo?: string;
   /** Cota "categoria": id da categoria. */
   categoriaId?: string;
+  /** Último dia do contrato (AAAA-MM-DD): 12 meses desde a entrada no ar, mais o tempo de site fora do ar. */
+  fim: string;
 }
 
 

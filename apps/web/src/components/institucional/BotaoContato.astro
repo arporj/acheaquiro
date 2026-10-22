@@ -1,19 +1,23 @@
 ---
-// Botão de contato com a equipe. Ainda sem destino: a página Fale conosco e o
-// WhatsApp da equipe entram depois (decisão de 20/10/2026). Quando existirem,
-// basta trocar o <button> por um link aqui.
+// Botão de contato com a equipe: abre o WhatsApp da equipe (WHATSAPP_EQUIPE)
+// com uma mensagem pronta. Sem mensagem própria, a mensagem repete o rótulo
+// ("Quero anunciar"), para a equipe saber de onde veio o contato.
 import { Icone, classesBotao, type VarianteBotao } from "@acheaqui/ui";
+import { WHATSAPP_EQUIPE, linkWhatsApp } from "@/lib/contato";
 
 interface Props {
   rotulo: string;
+  /** Texto que chega no WhatsApp. */
+  mensagem?: string;
   variante?: VarianteBotao;
   class?: string;
 }
 
-const { rotulo, variante = "amarelo", class: classe = "" } = Astro.props;
+const { rotulo, mensagem, variante = "amarelo", class: classe = "" } = Astro.props;
+const texto = mensagem ?? `Olá! Vim pelo site do Ache Aqui RO. ${rotulo}.`;
 ---
 
-<button type="button" class={classesBotao(variante, "g", classe)}>
+<a href={linkWhatsApp(WHATSAPP_EQUIPE, texto)} target="_blank" rel="noopener noreferrer" class={classesBotao(variante, "g", classe)}>
   <Icone nome="mensagem" class="size-5" />
   {rotulo}
-</button>
+</a>

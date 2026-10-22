@@ -94,7 +94,9 @@ const regrasCombinadas = [
                       }`}
                     >
                       {esgotada
-                        ? "Esgotada"
+                        ? c.novaVagaEm
+                          ? `Nova vaga aberta a partir de ${formatarData(c.novaVagaEm)}`
+                          : "Esgotada"
                         : `${c.vagasLivres} de ${c.vagasTotais} ${c.vagasTotais === 1 ? "vaga livre" : "vagas livres"}`}
                     </span>
                   </div>
@@ -121,7 +123,7 @@ const regrasCombinadas = [
                     Logo: {formato.largura} × {formato.altura} pixels
                     {(c.cota === "grupo" || c.cota === "categoria") && ` · uma empresa por ${c.cota === "grupo" ? "grupo" : "categoria"}`}
                   </p>
-                  {!esgotada && <BotaoContato rotulo="Quero esta cota" variante="azul" class="mt-4 w-full" />}
+                  {!esgotada && <BotaoContato rotulo="Quero esta cota" mensagem={`Olá! Vim pelo site do Ache Aqui RO. Quero a cota de patrocínio ${c.nome}.`} variante="azul" class="mt-4 w-full" />}
                 </li>
               );
             })

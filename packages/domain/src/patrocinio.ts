@@ -1,5 +1,6 @@
 // Patrocinadores (proposta Patrocinadores v3, ainda em discussão).
 import type { CotaPatrocinio } from "@acheaqui/types";
+import { somarDias } from "./datas";
 
 /**
  * Tamanho em que o logo deve ser enviado em cada cota (largura x altura, em
@@ -13,3 +14,13 @@ export const FORMATOS_LOGO_PATROCINIO: Record<CotaPatrocinio, { largura: number;
   categoria: { largura: 400, altura: 200 },
   agenda: { largura: 400, altura: 200 },
 };
+
+/**
+ * Quando abre de novo uma vaga numa cota esgotada: no dia seguinte ao fim do
+ * contrato que vence primeiro. `fins` são os últimos dias (AAAA-MM-DD) dos
+ * contratos ativos da cota; sem nenhum, não há data a mostrar.
+ */
+export function novaVagaAPartirDe(fins: string[]): string | undefined {
+  if (fins.length === 0) return undefined;
+  return somarDias([...fins].sort()[0]!, 1);
+}

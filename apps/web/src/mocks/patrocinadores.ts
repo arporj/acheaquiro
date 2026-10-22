@@ -15,7 +15,8 @@ function p(
   cota: CotaPatrocinio,
   onde: { grupo?: string; categoriaId?: string } = {},
 ): Patrocinador {
-  return { id, slug, nome, ramo, frase, whatsapp: WHATS, logo: `/mock/patrocinadores/${slug}.svg`, cota, ...onde };
+  // Contratos fictícios de 12 meses a partir da abertura (27/11/2026).
+  return { id, slug, nome, ramo, frase, whatsapp: WHATS, logo: `/mock/patrocinadores/${slug}.svg`, cota, fim: "2027-11-26", ...onde };
 }
 
 export const patrocinadores: Patrocinador[] = [
