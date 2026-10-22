@@ -31,7 +31,7 @@ export const patrocinadores: Patrocinador[] = [
   p("p08", "ponto-final", "Gráfica Ponto Final", "Gráfica", "Cartões, banners e adesivos em 24 horas.", "apoio"),
   p("p09", "movimento", "Academia Movimento", "Academia", "Treine perto de casa, de segunda a sábado.", "apoio"),
   p("p10", "contabil-ancora", "Contábil Âncora", "Contabilidade", "Abra e mantenha sua empresa em dia.", "apoio"),
-  p("p11", "pedra-forte", "Depósito Pedra Forte", "Material de construção", "Areia, pedra e cimento com entrega no mesmo dia.", "grupo", { grupo: "Comércios" }),
+  p("p11", "pedra-forte", "Depósito Pedra Forte", "Material de construção", "Areia, pedra e cimento com entrega no mesmo dia.", "grupo", { grupo: "Construção e reforma" }),
   p("p12", "ferragens-ancora", "Ferragens Âncora", "Ferragens", "Ferramentas e ferragens para o profissional.", "grupo", { grupo: "Serviços para casa" }),
   p("p13", "serra-azul", "Laticínios Serra Azul", "Distribuidora de laticínios", "Queijos e frios para pizzarias e restaurantes.", "categoria", { categoriaId: "pizzaria" }),
   p("p14", "faisca", "Elétrica Faísca", "Loja de material elétrico", "Fios, disjuntores e lâmpadas com preço de atacado.", "categoria", { categoriaId: "eletricista" }),
@@ -54,7 +54,7 @@ const cotasSemFormato: Omit<CotaPatrocinioVenda, "formatoLogo">[] = [
   },
   {
     cota: "grupo", nome: "Grupo de categorias", valorCentavos: 259000, valorFundadorCentavos: 215000,
-    beneficios: ["Nome ao lado do grupo, em todas as categorias dele (exemplo: Comércios)", "1 post por mês no Instagram"],
+    beneficios: ["Nome ao lado do grupo, em todas as categorias dele (exemplo: Comer e beber)", "1 post por mês no Instagram"],
   },
   {
     cota: "categoria", nome: "Categoria", valorCentavos: 129000, valorFundadorCentavos: 107000,

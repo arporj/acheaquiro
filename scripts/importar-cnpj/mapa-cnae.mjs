@@ -45,7 +45,7 @@ export const MAPA_CNAE = [
   ["4756300", "instrumentos-musicais"], ["4789004", "pet-shops"], ["4789005", "lojas-de-descartaveis"],
   ["4789099", "lojas-de-variedades"], ["4759899", "lojas-de-variedades"], ["4789003", "presentes"],
   ["4785799", "lojas-de-variedades"], ["4785701", "lojas-de-variedades"], ["4762800", "lojas-de-variedades"],
-  ["4789007", "lojas-de-variedades"], ["4789008", "presentes"], ["4789009", null],
+  ["4789007", "lojas-de-variedades"], ["4789008", "presentes"], ["4789009", "esporte-pesca-e-camping"],
   ["4771704", "farmacias"], ["4789006", "lojas-de-variedades"], ["4783", "joias-e-bijuterias"],
   ["1813", "graficas"], ["1821100", "graficas"], ["1822901", "graficas"], ["1822999", "graficas"],
   ["4623108", "agropecuarias"], ["4771", "farmacias"], ["4789", "lojas-de-variedades"], ["4759", "lojas-de-variedades"],
@@ -103,7 +103,7 @@ export const MAPA_CNAE = [
   ["8711503", "casas-de-repouso"], ["8711504", "casas-de-repouso"], ["8711505", "casas-de-repouso"],
   ["8720499", "casas-de-repouso"], ["8730199", "casas-de-repouso"], ["8730101", "casas-de-repouso"],
   ["8621601", "medicos"], ["8621602", "medicos"], ["8622400", "medicos"], ["8630505", "medicos"],
-  ["8660700", null], ["7500100", "veterinarios"],
+  ["8660700", null], ["7500100", "veterinarios"], ["6550200", "planos-de-saude"],
 
   // Educação
   ["8511200", "creches"], ["8512100", "colegios"], ["8513900", "colegios"], ["8520100", "colegios"],
