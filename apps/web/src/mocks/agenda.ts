@@ -8,6 +8,8 @@ type Relativa<T extends { data: string }> = Omit<T, "data"> & { diasDepoisDeHoje
 // Números inválidos de propósito, como nos anunciantes fictícios.
 const zap = (n: number) => `55229000001${String(n).padStart(2, "0")}`;
 const fotos = (prefixo: string, legendas: string[]) => legendas.map((legenda, i) => ({ id: `${prefixo}-${i + 1}`, legenda }));
+// Fotos geradas por IA (FLUX.1 schnell, no Workers AI), em public/mock/fotos.
+const foto = (id: string, legenda?: string) => ({ id, legenda, url: `/mock/fotos/${id}.webp` });
 const video = (titulo: string) => ({ titulo, url: "https://exemplo.invalid/video" });
 
 export const artistas: Artista[] = [
@@ -16,6 +18,7 @@ export const artistas: Artista[] = [
     descricao: "Clássicos do pop rock nacional e internacional, de Legião Urbana a Coldplay. Tocamos em bares, casamentos e festas de empresa, com som próprio.",
     formacao: "Voz, guitarra, baixo e bateria", atende: ["Bares e quiosques", "Casamentos", "Festas de empresa", "Aniversários"],
     instagram: "bandamarealta", whatsapp: zap(1),
+    foto: foto("ar1-perfil", "Banda Maré Alta"), capa: foto("ar1-capa", "Show ao pôr do sol"),
     galeria: fotos("ar1-g", ["Show no Quiosque Maré Cheia", "Festival de Inverno", "Casamento na praia", "Ensaio"]),
     videos: [video("Ao vivo no Festival de Inverno"), video("Medley pop rock anos 80")],
   },
@@ -29,7 +32,8 @@ export const artistas: Artista[] = [
     id: "ar3", slug: "julia-voz-e-violao", nome: "Júlia Voz e Violão", estilo: "MPB", cor: "#D81B7A",
     descricao: "MPB e bossa nova em formato acústico, para jantares, cerimônias e fins de tarde.",
     formacao: "Voz e violão", atende: ["Bares e quiosques", "Casamentos", "Jantares"],
-    instagram: "juliavozeviolao", whatsapp: zap(3), galeria: fotos("ar3-g", ["Pôr do sol no quiosque", "Cerimônia de casamento", "Show acústico"]), videos: [video("Garota de Ipanema (acústico)")],
+    instagram: "juliavozeviolao", whatsapp: zap(3),
+    foto: foto("ar3-perfil", "Júlia"), capa: foto("ar3-capa", "Show acústico no quiosque"), galeria: fotos("ar3-g", ["Pôr do sol no quiosque", "Cerimônia de casamento", "Show acústico"]), videos: [video("Garota de Ipanema (acústico)")],
   },
   {
     id: "ar4", slug: "trio-forro-do-litoral", nome: "Trio Forró do Litoral", estilo: "Forró", cor: "#15803D",

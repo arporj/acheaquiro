@@ -1,5 +1,5 @@
 ---
-// Avatar provisório do artista (cor e ícone) enquanto não houver foto.
+// Foto do artista; sem foto, um avatar provisório com a cor e o ícone.
 import { IconeCategoria } from "@acheaqui/ui";
 import type { Artista } from "@acheaqui/types";
 
@@ -11,6 +11,21 @@ interface Props {
 const { artista, class: classe = "size-12" } = Astro.props;
 ---
 
-<span class={`grid shrink-0 place-items-center rounded-full text-white ${classe}`} style={`background-color: ${artista.cor}`} aria-hidden="true">
-  <IconeCategoria nome="music" class="size-1/2" strokeWidth={2} />
-</span>
+{
+  artista.foto?.url ? (
+    <img
+      src={artista.foto.url}
+      alt=""
+      width="600"
+      height="600"
+      loading="lazy"
+      decoding="async"
+      class={`shrink-0 rounded-full object-cover ${classe}`}
+      style={`background-color: ${artista.cor}`}
+    />
+  ) : (
+    <span class={`grid shrink-0 place-items-center rounded-full text-white ${classe}`} style={`background-color: ${artista.cor}`} aria-hidden="true">
+      <IconeCategoria nome="music" class="size-1/2" strokeWidth={2} />
+    </span>
+  )
+}

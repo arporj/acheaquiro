@@ -272,8 +272,12 @@ export interface Artista {
   /** Estilo musical ou tipo de apresentação. */
   estilo: string;
   descricao: string;
-  /** Cor do avatar provisório. */
+  /** Cor do avatar e da capa enquanto não houver foto. */
   cor: string;
+  /** Foto do artista ou da banda, quadrada. */
+  foto?: Foto;
+  /** Capa do perfil, larga. */
+  capa?: Foto;
   instagram?: string;
   /** Para contratar o artista ou a banda. */
   whatsapp?: string;
