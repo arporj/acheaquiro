@@ -1,0 +1,81 @@
+---
+// Página dos patrocinadores (proposta Patrocinadores v3, ainda em discussão).
+// Por enquanto só o site de apresentação tem patrocinadores; sem nenhum, a
+// página não existe.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import type { CotaPatrocinio, Patrocinador } from "@acheaqui/types";
+import Topo from "@/components/anuncios/Topo.astro";
+import LogoPatrocinador from "@/components/patrocinadores/LogoPatrocinador.astro";
+import { categoriaPorId, listarPatrocinadores } from "@/dados/consultas";
+import Layout from "@/layouts/Layout.astro";
+import { guardarNoCache } from "@/lib/cache";
+import { linkWhatsApp } from "@/lib/contato";
+
+const todos = await listarPatrocinadores();
+if (todos.length === 0) return Astro.rewrite("/404");
+guardarNoCache(Astro);
+
+const MENSAGEM = "Olá! Vi vocês como patrocinadores do Ache Aqui RO e gostaria de uma informação.";
+
+const secoes: { cota: CotaPatrocinio; titulo: string; tamanho: "g" | "m" | "p" }[] = [
+  { cota: "master", titulo: "Patrocinador Master", tamanho: "g" },
+  { cota: "ouro", titulo: "Patrocinadores Ouro", tamanho: "m" },
+  { cota: "apoio", titulo: "Apoio", tamanho: "p" },
+  { cota: "grupo", titulo: "Patrocinadores de grupos de categorias", tamanho: "m" },
+  { cota: "categoria", titulo: "Patrocinadores de categorias", tamanho: "m" },
+];
+
+async function ondeAparece(p: Patrocinador): Promise<string | undefined> {
+  if (p.cota === "grupo") return `Grupo ${p.grupo}`;
+  if (p.cota === "categoria" && p.categoriaId) return `Categoria ${(await categoriaPorId(p.categoriaId))?.nomePlural ?? ""}`;
+  return undefined;
+}
+
+const grupos = await Promise.all(
+  secoes.map(async (s) => ({
+    ...s,
+    itens: await Promise.all(
+      todos.filter((p) => p.cota === s.cota).map(async (p) => ({ p, onde: await ondeAparece(p) })),
+    ),
+  })),
+);
+---
+
+<Layout titulo="Patrocinadores" descricao="As empresas que apoiam o Ache Aqui RO e o pequeno negócio de Rio das Ostras.">
+  <Topo pagina="interna" />
+  <main class="mx-auto w-full max-w-6xl px-4 pt-6 pb-12">
+    <h1 class="font-display text-3xl font-extrabold text-azul-900">Patrocinadores</h1>
+    <p class="mt-1 max-w-2xl text-slate-600">
+      Estas empresas apoiam o Ache Aqui RO e o pequeno negócio de Rio das Ostras. O patrocínio não muda a ordem dos
+      anunciantes nas buscas.
+    </p>
+
+    {
+      grupos
+        .filter((g) => g.itens.length > 0)
+        .map((g) => (
+          <section class="mt-8">
+            <h2 class="mb-3 font-display text-xl font-bold text-azul-900">{g.titulo}</h2>
+            <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {g.itens.map(({ p, onde }) => (
+                <li id={p.id} class="flex flex-col gap-3 rounded-2xl border border-azul-100 bg-azul-50/40 p-4">
+                  <LogoPatrocinador patrocinador={p} tamanho={g.tamanho} />
+                  {onde && <p class="text-xs font-bold tracking-wide text-slate-500 uppercase">{onde}</p>}
+                  <p class="text-sm text-slate-700">{p.frase}</p>
+                  <a
+                    href={linkWhatsApp(p.whatsapp, MENSAGEM)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class={classesBotao("zap", "p", "mt-auto self-start")}
+                  >
+                    <Icone nome="mensagem" class="size-4" />
+                    Falar com a empresa
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+    }
+  </main>
+</Layout>

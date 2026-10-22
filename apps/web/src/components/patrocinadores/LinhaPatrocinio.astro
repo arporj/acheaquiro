@@ -1,0 +1,22 @@
+---
+// "Patrocinado por ..." no topo da página da categoria. Não muda a ordem da
+// lista nem ocupa o topo, que continua dos anunciantes com destaque.
+import type { Patrocinador } from "@acheaqui/types";
+
+interface Props {
+  patrocinador: Patrocinador;
+  /** Texto antes do "Patrocinado por", como o nome do grupo. */
+  rotulo?: string;
+}
+
+const { patrocinador, rotulo } = Astro.props;
+---
+
+<p class="flex flex-wrap items-center gap-x-1.5 text-xs font-semibold text-slate-500">
+  {rotulo && <span class="text-slate-600">{rotulo} –</span>}
+  <span>Patrocinado por</span>
+  <a href={`/patrocinadores#${patrocinador.id}`} class="inline-flex items-center gap-1 text-azul-700 hover:underline">
+    <span class="size-2.5 rounded-full" style={`background-color: ${patrocinador.cor}`} aria-hidden="true"></span>
+    {patrocinador.nome}
+  </a>
+</p>

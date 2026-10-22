@@ -240,3 +240,22 @@ export interface CatalogoPublico {
   /** AAAA-MM-DD */
   aberturaAoPublico: string;
 }
+
+/** Cotas de patrocínio (proposta Patrocinadores v3, ainda em discussão). */
+export type CotaPatrocinio = "master" | "ouro" | "apoio" | "grupo" | "categoria";
+
+export interface Patrocinador {
+  id: string;
+  nome: string;
+  /** Ramo da empresa: só entra uma de cada ramo por cota (menos Apoio). */
+  ramo: string;
+  frase: string;
+  whatsapp: string;
+  /** Cor do logo provisório, enquanto não houver logo enviado. */
+  cor: string;
+  cota: CotaPatrocinio;
+  /** Cota "grupo": nome do grupo de categorias. */
+  grupo?: string;
+  /** Cota "categoria": id da categoria. */
+  categoriaId?: string;
+}

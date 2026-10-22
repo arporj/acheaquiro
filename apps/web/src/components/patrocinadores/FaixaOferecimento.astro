@@ -1,0 +1,51 @@
+---
+// Faixa "Oferecimento" no fim de todas as páginas (proposta Patrocinadores v3).
+// Os 6 de Apoio revezam: o script embaralha a ordem a cada visita, porque a
+// página fica no cache e uma ordem sorteada no servidor ficaria congelada.
+import LogoPatrocinador from "./LogoPatrocinador.astro";
+import { listarPatrocinadores } from "@/dados/consultas";
+
+const todos = await listarPatrocinadores();
+const master = todos.filter((p) => p.cota === "master");
+const ouro = todos.filter((p) => p.cota === "ouro");
+const apoio = todos.filter((p) => p.cota === "apoio");
+const temAlgum = master.length + ouro.length + apoio.length > 0;
+---
+
+{
+  temAlgum && (
+    <section aria-label="Oferecimento" class="border-b border-white/10">
+      <div class="mx-auto max-w-6xl space-y-4 px-4 py-8 text-center">
+        <h2 class="text-xs font-bold tracking-widest text-white/60 uppercase">
+          Oferecimento · <a href="/patrocinadores" class="hover:text-white hover:underline">conheça os patrocinadores</a>
+        </h2>
+        {master.length > 0 && (
+          <div class="flex flex-wrap justify-center gap-4">
+            {master.map((p) => <LogoPatrocinador patrocinador={p} tamanho="g" />)}
+          </div>
+        )}
+        {ouro.length > 0 && (
+          <div class="flex flex-wrap justify-center gap-3">
+            {ouro.map((p) => <LogoPatrocinador patrocinador={p} tamanho="m" />)}
+          </div>
+        )}
+        {apoio.length > 0 && (
+          <div class="flex flex-wrap justify-center gap-2" data-revezar>
+            {apoio.map((p) => <LogoPatrocinador patrocinador={p} tamanho="p" />)}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+<script>
+  for (const lista of document.querySelectorAll<HTMLElement>("[data-revezar]")) {
+    const itens = [...lista.children];
+    for (let i = itens.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [itens[i], itens[j]] = [itens[j], itens[i]];
+    }
+    lista.replaceChildren(...itens);
+  }
+</script>

@@ -3,7 +3,7 @@
 // bairros, categorias, planos, extras e regras) e, até as tabelas de
 // anunciantes existirem (etapa 2), mostra a lista de anunciantes vazia. A
 // página "em breve" não acessa o banco: usa as regras de src/mocks/planos.ts.
-import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Plano, RegrasCobranca, Selo, TipoAnunciante } from "@acheaqui/types";
+import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, Plano, RegrasCobranca, Selo, TipoAnunciante } from "@acheaqui/types";
 import { criarClientePublico, lerCatalogoPublico } from "@acheaqui/supabase-client";
 import { ambiente } from "@/lib/ambiente";
 import { normalizar } from "@/lib/texto";
@@ -11,6 +11,7 @@ import { anunciantes as anunciantesFicticios } from "@/mocks/anunciantes";
 import { categorias, ordemAtalhos } from "@/mocks/categorias";
 import { destaqueExclusivoId, linksPatrocinados, simulacaoComercios, superDestaqueIds } from "@/mocks/extras";
 import { bairros, cidadeAtual } from "@/mocks/localidades";
+import { patrocinadores as patrocinadoresFicticios } from "@/mocks/patrocinadores";
 import { extrasDisponiveis, planos, regrasCobranca } from "@/mocks/planos";
 
 /** Anunciantes, destaques e patrocinados fictícios. */
@@ -283,4 +284,24 @@ export async function superDestaques(): Promise<ItemResultado[]> {
     .map((id) => anunciantes.find((a) => a.id === id))
     .filter((a): a is Anunciante => Boolean(a))
     .map((a) => paraItem(c, a));
+}
+
+/**
+ * Patrocinadores (proposta Patrocinadores v3, ainda em discussão). Por
+ * enquanto só existem no site de apresentação; a produção não tem nenhum.
+ */
+const patrocinadores: Patrocinador[] = ficticio ? patrocinadoresFicticios : [];
+
+export async function listarPatrocinadores(): Promise<Patrocinador[]> {
+  return patrocinadores;
+}
+
+/** Patrocinador do grupo e da categoria, para o topo da página da categoria. */
+export async function patrocinadoresDaCategoria(
+  categoria: Categoria,
+): Promise<{ grupo?: Patrocinador; categoria?: Patrocinador }> {
+  return {
+    grupo: patrocinadores.find((p) => p.cota === "grupo" && p.grupo === categoria.grupo),
+    categoria: patrocinadores.find((p) => p.cota === "categoria" && p.categoriaId === categoria.id),
+  };
 }

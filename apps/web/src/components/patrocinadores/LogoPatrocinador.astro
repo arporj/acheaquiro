@@ -1,0 +1,32 @@
+---
+// Logo provisório (iniciais na cor da empresa) enquanto o patrocinador não
+// envia o logo. O tamanho segue a cota: Master maior, Ouro médio, Apoio pequeno.
+import type { Patrocinador } from "@acheaqui/types";
+
+interface Props {
+  patrocinador: Patrocinador;
+  tamanho: "g" | "m" | "p";
+}
+
+const { patrocinador, tamanho } = Astro.props;
+const iniciais = patrocinador.nome
+  .split(" ")
+  .filter((parte) => parte.length > 2)
+  .slice(0, 2)
+  .map((parte) => parte[0])
+  .join("")
+  .toUpperCase();
+
+const caixa = { g: "h-20 gap-3 px-5", m: "h-14 gap-2.5 px-4", p: "h-10 gap-2 px-3" }[tamanho];
+const sigla = { g: "size-12 text-lg", m: "size-9 text-sm", p: "size-6 text-[0.65rem]" }[tamanho];
+const nome = { g: "text-lg", m: "text-sm", p: "text-xs" }[tamanho];
+---
+
+<span class={`inline-flex items-center rounded-xl bg-white text-azul-900 shadow-sm ${caixa}`}>
+  <span
+    class={`grid shrink-0 place-items-center rounded-lg font-display font-extrabold text-white ${sigla}`}
+    style={`background-color: ${patrocinador.cor}`}
+    aria-hidden="true">{iniciais}</span
+  >
+  <span class={`font-display leading-tight font-bold ${nome}`}>{patrocinador.nome}</span>
+</span>

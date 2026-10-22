@@ -1,6 +1,7 @@
 ---
 import { ambiente } from "@/lib/ambiente";
 import Logo from "./Logo.astro";
+import FaixaOferecimento from "./patrocinadores/FaixaOferecimento.astro";
 
 // Fale conosco entra na lista quando a página existir.
 // A página "em breve" não tem outras páginas para onde levar.
@@ -12,12 +13,15 @@ const links =
         { href: "/anuncie", rotulo: "Anuncie aqui" },
         { href: "/fundadores", rotulo: "Fundadores" },
         { href: "/representante", rotulo: "Seja um representante" },
+        // Patrocinadores: por enquanto só no site de apresentação (proposta v3).
+        ...(ambiente === "apresentacao" ? [{ href: "/patrocinadores", rotulo: "Patrocinadores" }] : []),
         { href: "/termos", rotulo: "Termos de Uso" },
         { href: "/privacidade", rotulo: "Política de Privacidade" },
       ];
 ---
 
 <footer class="mt-auto bg-azul-900 text-white/80">
+  {ambiente !== "em-breve" && <FaixaOferecimento />}
   <div class="mx-auto grid max-w-6xl gap-8 px-4 py-10 md:grid-cols-[1.4fr_1fr]">
     <div class="space-y-3">
       <Logo />
