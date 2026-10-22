@@ -3,10 +3,10 @@
 // site de apresentação; sem nenhum artista, a página não existe.
 import { Icone } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
-import AgendaPorDia from "@/components/agenda/AgendaPorDia.astro";
+import AgendaCalendario from "@/components/agenda/AgendaCalendario.astro";
 import AvatarArtista from "@/components/agenda/AvatarArtista.astro";
 import LinhaPatrocinio from "@/components/patrocinadores/LinhaPatrocinio.astro";
-import { agendaProximosDias, listarArtistas, listarEventos, nomeBairro, patrocinadorDaAgenda } from "@/dados/consultas";
+import { agendaCompleta, listarArtistas, listarEventos, nomeBairro, patrocinadorDaAgenda } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
 import { dataLonga, normalizar } from "@/lib/texto";
@@ -15,7 +15,7 @@ const artistas = await listarArtistas();
 if (artistas.length === 0) return Astro.rewrite("/404");
 guardarNoCache(Astro);
 
-const [itens, eventos, patrocinador] = await Promise.all([agendaProximosDias(), listarEventos(), patrocinadorDaAgenda()]);
+const [itens, eventos, patrocinador] = await Promise.all([agendaCompleta(), listarEventos(), patrocinadorDaAgenda()]);
 const eventosComBairro = await Promise.all(eventos.map(async (e) => ({ ...e, bairro: await nomeBairro(e.bairroId) })));
 ---
 
@@ -36,7 +36,7 @@ const eventosComBairro = await Promise.all(eventos.map(async (e) => ({ ...e, bai
 
     <div class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <section aria-label="Shows por dia">
-        <AgendaPorDia itens={itens} filtroBairro />
+        <AgendaCalendario itens={itens} filtroBairro filtroArtista />
       </section>
 
       <aside class="space-y-6">

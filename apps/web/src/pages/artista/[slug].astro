@@ -21,10 +21,10 @@ const MENSAGEM = "Olá! Encontrei vocês na Agenda do Ache Aqui RO e gostaria de
 const hoje = hojeNaCidade();
 const todos = await agendaDoArtista(artista.id);
 const perfil = artista.anuncianteId ? await anuncianteSlugPorId(artista.anuncianteId) : undefined;
-const secoes = [
-  { titulo: "Próximos shows", itens: todos.filter((i) => i.data >= hoje), vazio: "Nenhum show marcado por enquanto." },
-  { titulo: "Shows anteriores", itens: todos.filter((i) => i.data < hoje).reverse(), vazio: undefined },
-].filter((s) => s.itens.length > 0 || s.vazio);
+/** Quantos próximos shows o card mostra; o resto fica na agenda do artista. */
+const SHOWS_NO_CARD = 4;
+const proximos = todos.filter((i) => i.data >= hoje);
+const linkAgenda = `/agenda?artista=${artista.slug}`;
 ---
 
 <Layout
@@ -90,30 +90,39 @@ const secoes = [
           }
         </Secao>
 
-        {
-          secoes.map((s) => (
-            <Secao titulo={s.titulo}>
-              {s.itens.length === 0 ? (
-                <p class="text-sm text-slate-500">{s.vazio}</p>
-              ) : (
-                <ul class="divide-y divide-slate-100">
-                  {s.itens.map((it) => (
-                    <li class="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                      <span class="font-bold text-azul-900 first-letter:uppercase">
-                        {it.data === hoje ? "Hoje" : dataCurtaComSemana(it.data)} · {it.inicio}
-                      </span>
-                      <a href={it.lugar.href} class="inline-flex items-center gap-1 text-sm font-bold text-azul-600 hover:underline">
-                        <Icone nome="pin" class="size-3.5 text-vermelho-500" />
-                        {it.lugar.nome}
-                        <span class="font-semibold text-slate-500">· {it.lugar.bairro}</span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Secao>
-          ))
-        }
+        <Secao titulo="Shows">
+          <a slot="extra" href={linkAgenda} class="text-sm font-bold text-azul-600 hover:underline">
+            Ver agenda completa
+          </a>
+          {
+            proximos.length === 0 ? (
+              <p class="text-sm text-slate-500">Nenhum show marcado por enquanto.</p>
+            ) : (
+              <ul class="divide-y divide-slate-100">
+                {proximos.slice(0, SHOWS_NO_CARD).map((it) => (
+                  <li class="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                    <span class="font-bold text-azul-900 first-letter:uppercase">
+                      {it.data === hoje ? "Hoje" : dataCurtaComSemana(it.data)} · {it.inicio}
+                    </span>
+                    <a href={it.lugar.href} class="inline-flex items-center gap-1 text-sm font-bold text-azul-600 hover:underline">
+                      <Icone nome="pin" class="size-3.5 text-vermelho-500" />
+                      {it.lugar.nome}
+                      <span class="font-semibold text-slate-500">· {it.lugar.bairro}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )
+          }
+          {
+            proximos.length > SHOWS_NO_CARD && (
+              <p class="mt-2 text-sm text-slate-500">
+                E mais {proximos.length - SHOWS_NO_CARD} {proximos.length - SHOWS_NO_CARD === 1 ? "show" : "shows"} na{" "}
+                <a href={linkAgenda} class="font-bold text-azul-600 hover:underline">agenda completa</a>.
+              </p>
+            )
+          }
+        </Secao>
 
         {
           artista.galeria.length > 0 && (
@@ -159,7 +168,7 @@ const secoes = [
       <aside class="space-y-4 lg:sticky lg:top-4">
         <section class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5">
           <h2 class="font-display text-xl font-bold text-azul-900">Contratar</h2>
-          <p class="mb-4 text-sm text-slate-500">Fale direto com {artista.nome}, sem intermediários.</p>
+          <p class="mb-4 text-sm text-slate-500">Peça um orçamento para o seu evento pelo contato informado por {artista.nome}.</p>
           <div class="space-y-2">
             {
               artista.whatsapp && (
@@ -191,8 +200,8 @@ const secoes = [
             }
           </div>
         </section>
-        <a href="/agenda" class="flex items-center justify-between rounded-3xl bg-azul-600 p-5 font-bold text-white hover:bg-azul-700">
-          Ver toda a Agenda
+        <a href={linkAgenda} class="flex items-center justify-between rounded-3xl bg-azul-600 p-5 font-bold text-white hover:bg-azul-700">
+          Ver a agenda de {artista.nome}
           <Icone nome="direita" class="size-5" />
         </a>
       </aside>

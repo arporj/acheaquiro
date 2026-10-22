@@ -384,9 +384,13 @@ export async function agendaProximosDias(): Promise<ItemAgenda[]> {
   return itensAgenda((a) => a.data >= hoje);
 }
 
+/** Todas as apresentações, passadas e futuras: o calendário navega pelos meses. */
+export async function agendaCompleta(): Promise<ItemAgenda[]> {
+  return itensAgenda(() => true);
+}
+
 export async function agendaDoComercio(anuncianteId: string): Promise<ItemAgenda[]> {
-  const hoje = hojeNaCidade();
-  return itensAgenda((a) => a.anuncianteId === anuncianteId && a.data >= hoje);
+  return itensAgenda((a) => a.anuncianteId === anuncianteId);
 }
 
 export async function agendaDoArtista(artistaId: string): Promise<ItemAgenda[]> {

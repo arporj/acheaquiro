@@ -2,7 +2,7 @@
 import { EtiquetaAberto, EtiquetaFundador, FotoMarcador, Icone, IconeCategoria, Selo } from "@acheaqui/ui";
 import type { Categoria, FormaPagamento } from "@acheaqui/types";
 import Topo from "@/components/anuncios/Topo.astro";
-import AgendaPorDia from "@/components/agenda/AgendaPorDia.astro";
+import AgendaCalendario from "@/components/agenda/AgendaCalendario.astro";
 import BotaoCompartilhar from "@/components/BotaoCompartilhar.astro";
 import BarraContato from "@/components/perfil/BarraContato.astro";
 import BotaoDenunciar from "@/components/perfil/BotaoDenunciar.astro";
@@ -136,7 +136,7 @@ const fundoMapa =
               <a slot="extra" href="/agenda" class="text-sm font-bold text-azul-600 hover:underline">
                 Ver toda a Agenda
               </a>
-              <AgendaPorDia itens={agenda} mostrarLugar={false} />
+              <AgendaCalendario itens={agenda} mostrarLugar={false} />
             </Secao>
           )
         }

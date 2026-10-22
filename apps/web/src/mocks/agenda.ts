@@ -33,7 +33,7 @@ export const artistas: Artista[] = [
     descricao: "MPB e bossa nova em formato acústico, para jantares, cerimônias e fins de tarde.",
     formacao: "Voz e violão", atende: ["Bares e quiosques", "Casamentos", "Jantares"],
     instagram: "juliavozeviolao", whatsapp: zap(3),
-    foto: foto("ar3-perfil", "Júlia"), capa: foto("ar3-capa", "Show acústico no quiosque"), galeria: fotos("ar3-g", ["Pôr do sol no quiosque", "Cerimônia de casamento", "Show acústico"]), videos: [video("Garota de Ipanema (acústico)")],
+    foto: foto("ar3-perfil", "Júlia"), capa: foto("ar3-capa", "Show acústico no quiosque"), galeria: [foto("ar3-g-1", "Pôr do sol no quiosque"), foto("ar3-g-2", "Cerimônia de casamento"), foto("ar3-g-3", "Show acústico")], videos: [video("Garota de Ipanema (acústico)")],
   },
   {
     id: "ar4", slug: "trio-forro-do-litoral", nome: "Trio Forró do Litoral", estilo: "Forró", cor: "#15803D",
@@ -95,6 +95,14 @@ export const apresentacoes: Relativa<Apresentacao>[] = [
   { id: "ap14", artistaId: "ar6", anuncianteId: "c21", diasDepoisDeHoje: 5, inicio: "20:00" },
   { id: "ap15", artistaId: "ar2", anuncianteId: "c21", diasDepoisDeHoje: 8, inicio: "21:00" },
   { id: "ap16", artistaId: "ar5", anuncianteId: "c21", diasDepoisDeHoje: 12, inicio: "22:00" },
+  // Mais à frente, para mostrar a navegação pelos meses do calendário.
+  { id: "ap20", artistaId: "ar3", anuncianteId: "c20", diasDepoisDeHoje: 16, inicio: "19:00", fim: "22:00" },
+  { id: "ap21", artistaId: "ar2", anuncianteId: "c21", diasDepoisDeHoje: 22, inicio: "21:00" },
+  { id: "ap22", artistaId: "ar1", anuncianteId: "c20", diasDepoisDeHoje: 30, inicio: "20:00", fim: "23:00" },
+  { id: "ap23", artistaId: "ar3", anuncianteId: "c21", diasDepoisDeHoje: 37, inicio: "20:00" },
+  { id: "ap24", artistaId: "ar3", anuncianteId: "c20", diasDepoisDeHoje: 51, inicio: "19:00", fim: "22:00" },
+  { id: "ap25", artistaId: "ar1", anuncianteId: "c20", diasDepoisDeHoje: 58, inicio: "21:00", fim: "00:00" },
+  { id: "ap26", artistaId: "ar5", anuncianteId: "c21", diasDepoisDeHoje: 70, inicio: "23:00" },
   // Já passaram: aparecem em "Shows anteriores" na página do artista.
   { id: "ap17", artistaId: "ar1", anuncianteId: "c21", diasDepoisDeHoje: -6, inicio: "21:00" },
   { id: "ap18", artistaId: "ar3", anuncianteId: "c21", diasDepoisDeHoje: -4, inicio: "20:00" },
