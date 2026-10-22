@@ -1,10 +1,13 @@
 ---
+import { listarPatrocinadores } from "@/dados/consultas";
 import { ambiente } from "@/lib/ambiente";
 import Logo from "./Logo.astro";
 import FaixaOferecimento from "./patrocinadores/FaixaOferecimento.astro";
 
 // Fale conosco entra na lista quando a página existir.
-// A página "em breve" não tem outras páginas para onde levar.
+// A página "em breve" não tem outras páginas para onde levar. "Patrocinadores"
+// só aparece com algum patrocinador no ar; "Patrocine" sempre, para vender.
+const temPatrocinador = ambiente !== "em-breve" && (await listarPatrocinadores()).length > 0;
 const links =
   ambiente === "em-breve"
     ? []
@@ -13,11 +16,8 @@ const links =
         { href: "/anuncie", rotulo: "Anuncie aqui" },
         { href: "/fundadores", rotulo: "Fundadores" },
         { href: "/representante", rotulo: "Seja um representante" },
-        // Patrocinadores: por enquanto só no site de apresentação (proposta v3).
-        ...(ambiente === "apresentacao" ? [
-              { href: "/patrocinadores", rotulo: "Patrocinadores" },
-              { href: "/patrocine", rotulo: "Patrocine" },
-            ] : []),
+        ...(temPatrocinador ? [{ href: "/patrocinadores", rotulo: "Patrocinadores" }] : []),
+        { href: "/patrocine", rotulo: "Patrocine" },
         { href: "/termos", rotulo: "Termos de Uso" },
         { href: "/privacidade", rotulo: "Política de Privacidade" },
       ];

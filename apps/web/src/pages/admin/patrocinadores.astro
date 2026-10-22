@@ -1,0 +1,425 @@
+---
+// Patrocinadores (administração): cotas (valores, vagas, tamanho do logo) e
+// patrocínios (cadastro, logo, entrada no ar, pagamento, prazo e encerramento).
+// Regras em packages/domain; travas repetidas no banco; tudo auditado.
+import { Icone, Modal, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { formatarCentavos } from "@/lib/precos";
+import {
+  apagarRascunho,
+  colocarNoAr,
+  encerrar,
+  listarCotasAdmin,
+  listarGruposECategorias,
+  listarPatrociniosAdmin,
+  registrarPagamento,
+  salvarCota,
+  salvarPatrocinio,
+  somarDiasAoPrazo,
+  type CotaAdmin,
+  type PatrocinioAdmin,
+} from "@/lib/patrocinios";
+import { formatarData } from "@/lib/texto";
+import type { CotaPatrocinio, Resultado } from "@acheaqui/types";
+import { COTAS_PATROCINIO } from "@acheaqui/validation";
+
+const supabase = Astro.locals.supabase!;
+
+const AVISOS: Record<string, string> = {
+  salvo: "Patrocínio salvo.",
+  "no-ar": "Patrocínio no ar. O site mostra a mudança em até 5 minutos.",
+  encerrado: "Patrocínio encerrado. O logo sai do site em até 5 minutos.",
+  apagado: "Rascunho apagado.",
+  pagamento: "Pagamento registrado.",
+  prazo: "Dias somados ao prazo.",
+  cota: "Cota salva. A página Patrocine mostra os novos valores em até 5 minutos.",
+};
+const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
+let erro = "";
+
+/** Logo enviado: 2 MB do arquivo mais os campos de texto. */
+const TAMANHO_MAXIMO_PEDIDO = 2 * 1024 * 1024 + 64 * 1024;
+
+if (Astro.request.method === "POST") {
+  const tamanho = Number(Astro.request.headers.get("content-length") ?? "0");
+  let resultado: Resultado<unknown>;
+  let chaveAviso = "";
+  if (!tamanho || tamanho > TAMANHO_MAXIMO_PEDIDO) {
+    resultado = { ok: false, erro: { codigo: "DADOS_INVALIDOS", mensagem: "Envio maior que o permitido (logo de até 2 MB)." } };
+  } else {
+    const f = await Astro.request.formData();
+    const campo = (nome: string) => String(f.get(nome) ?? "").slice(0, 1500);
+    const id = campo("id");
+    switch (campo("acao")) {
+      case "salvar": {
+        const arquivo = f.get("logo");
+        const logo = arquivo instanceof File && arquivo.size > 0 ? new Uint8Array(await arquivo.arrayBuffer()) : null;
+        resultado = await salvarPatrocinio(
+          supabase,
+          id || null,
+          { cota: campo("cota"), nome: campo("nome"), ramo: campo("ramo"), frase: campo("frase"), whatsapp: campo("whatsapp"), grupo: campo("grupo"), categoriaId: campo("categoria") },
+          logo,
+        );
+        chaveAviso = "salvo";
+        break;
+      }
+      case "no-ar":
+        resultado = await colocarNoAr(supabase, id, campo("inicio"));
+        chaveAviso = "no-ar";
+        break;
+      case "encerrar":
+        resultado = await encerrar(supabase, id);
+        chaveAviso = "encerrado";
+        break;
+      case "apagar":
+        resultado = await apagarRascunho(supabase, id);
+        chaveAviso = "apagado";
+        break;
+      case "pagamento":
+        resultado = await registrarPagamento(supabase, id, {
+          valor: campo("valor"),
+          pagoEm: campo("pago_em"),
+          precoFundador: campo("preco_fundador") === "sim",
+          observacao: campo("observacao"),
+        });
+        chaveAviso = "pagamento";
+        break;
+      case "prazo":
+        resultado = await somarDiasAoPrazo(supabase, id, Number(campo("dias")));
+        chaveAviso = "prazo";
+        break;
+      case "cota": {
+        const cota = campo("cota") as CotaPatrocinio;
+        resultado = (COTAS_PATROCINIO as readonly string[]).includes(cota)
+          ? await salvarCota(supabase, cota, {
+              nome: campo("nome"),
+              beneficios: campo("beneficios"),
+              valorCentavos: campo("valor"),
+              valorFundadorCentavos: campo("valor_fundador"),
+              vagas: campo("vagas"),
+              larguraLogo: campo("largura"),
+              alturaLogo: campo("altura"),
+            })
+          : { ok: false, erro: { codigo: "DADOS_INVALIDOS", mensagem: "Cota desconhecida." } };
+        chaveAviso = "cota";
+        break;
+      }
+      default:
+        resultado = { ok: false, erro: { codigo: "DADOS_INVALIDOS", mensagem: "Ação desconhecida." } };
+    }
+  }
+  if (resultado.ok) return Astro.redirect(`/admin/patrocinadores?aviso=${chaveAviso}`, 303);
+  erro = resultado.erro.mensagem;
+  Astro.response.status = resultado.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const [cotasR, patrociniosR, catalogoR] = await Promise.all([listarCotasAdmin(supabase), listarPatrociniosAdmin(supabase), listarGruposECategorias(supabase)]);
+if (!cotasR.ok) erro ||= cotasR.erro.mensagem;
+if (!patrociniosR.ok) erro ||= patrociniosR.erro.mensagem;
+if (!catalogoR.ok) erro ||= catalogoR.erro.mensagem;
+const cotas = cotasR.ok ? cotasR.dados : [];
+const patrocinios = patrociniosR.ok ? patrociniosR.dados : [];
+const { grupos, categorias } = catalogoR.ok ? catalogoR.dados : { grupos: [], categorias: [] };
+
+const nomeCota = (c: CotaPatrocinio) => cotas.find((x) => x.cota === c)?.nome ?? c;
+const vagasDe = (c: CotaAdmin) => c.vagas ?? (c.cota === "grupo" ? grupos.length : categorias.length);
+const noArDa = (c: CotaPatrocinio) => patrocinios.filter((p) => p.cota === c && p.situacao === "no_ar").length;
+const reais = (centavos: number) => (centavos / 100).toFixed(2).replace(".", ",");
+const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+
+const ROTULO_SITUACAO: Record<PatrocinioAdmin["situacao"], { texto: string; classe: string }> = {
+  rascunho: { texto: "Rascunho", classe: "bg-amarelo-200 text-azul-900" },
+  no_ar: { texto: "No ar", classe: "bg-zap-600 text-white" },
+  encerrado: { texto: "Encerrado", classe: "bg-slate-200 text-slate-600" },
+};
+const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-extrabold";
+---
+
+<PaginaAdmin titulo="Patrocinadores" descricao="Empresas que apoiam o site como marca. Não mudam a ordem dos anunciantes.">
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <section class="mt-5">
+    <h2 class="font-display text-xl font-bold text-azul-900">Vagas</h2>
+    <ul class="mt-3 grid gap-2 sm:grid-cols-3">
+      {
+        cotas.map((c) => (
+          <li class="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5">
+            <p class="text-sm font-bold text-azul-900">{c.nome}</p>
+            <p class="font-display text-2xl font-extrabold text-azul-900">
+              {noArDa(c.cota)} <span class="text-base font-bold text-slate-400">de {vagasDe(c)}</span>
+            </p>
+            <p class="text-xs text-slate-500">
+              Logo {c.largura_logo} × {c.altura_logo} px · {formatarCentavos(c.valor_fundador_centavos)} (Fundador) · {formatarCentavos(c.valor_centavos)}
+            </p>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <section class="mt-8">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 class="font-display text-xl font-bold text-azul-900">Patrocínios</h2>
+      <button type="button" data-abrir-modal="modal-novo" class={classesBotao("azul", "m")}>
+        <Icone nome="estrela" class="size-4" />
+        Novo patrocínio
+      </button>
+    </div>
+    {patrocinios.length === 0 && <p class="mt-3 rounded-2xl bg-white p-6 text-center text-slate-500 ring-1 ring-black/5">Nenhum patrocínio cadastrado.</p>}
+    <ul class="mt-3 space-y-3">
+      {
+        patrocinios.map((p) => {
+          const idModal = `modal-${p.id}`;
+          const cota = cotas.find((c) => c.cota === p.cota);
+          return (
+            <li class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+              {p.logo ? (
+                <img src={p.logo} alt="" class="h-12 w-24 shrink-0 rounded-lg object-contain ring-1 ring-slate-100" />
+              ) : (
+                <span class="grid h-12 w-24 shrink-0 place-items-center rounded-lg bg-slate-50 text-xs font-bold text-slate-400">sem logo</span>
+              )}
+              <div class="min-w-0 flex-1">
+                <p class="font-bold text-azul-900">{p.nome}</p>
+                <p class="text-sm text-slate-600">
+                  {nomeCota(p.cota)}
+                  {p.grupo && ` · ${p.grupo}`}
+                  {p.categoria && ` · ${p.categoria}`} · {p.ramo}
+                </p>
+                <p class="mt-1.5 flex flex-wrap gap-1.5">
+                  <span class={`${etiqueta} ${ROTULO_SITUACAO[p.situacao].classe}`}>{ROTULO_SITUACAO[p.situacao].texto}</span>
+                  {p.inicio && p.fim && <span class={`${etiqueta} bg-fundo text-slate-600`}>{formatarData(p.inicio)} a {formatarData(p.fim)}</span>}
+                  {p.dias_somados > 0 && <span class={`${etiqueta} bg-fundo text-slate-600`}>+{p.dias_somados} dias</span>}
+                  {p.pagamento ? (
+                    <span class={`${etiqueta} bg-zap-50 text-zap-700`}>Pago {formatarCentavos(p.pagamento.valor_centavos)}</span>
+                  ) : (
+                    <span class={`${etiqueta} bg-vermelho-50 text-vermelho-700`}>Sem pagamento</span>
+                  )}
+                  {p.situacao !== "rascunho" && <span class={`${etiqueta} bg-fundo text-slate-600`}>{p.cliques} cliques</span>}
+                </p>
+              </div>
+              <button type="button" data-abrir-modal={idModal} class={classesBotao("contorno", "p")}>
+                Gerenciar
+              </button>
+
+              <Modal id={idModal} titulo={p.nome}>
+                <div class="space-y-6">
+                  {p.situacao === "rascunho" && (
+                    <form method="post">
+                      <input type="hidden" name="acao" value="no-ar" />
+                      <input type="hidden" name="id" value={p.id} />
+                      <label class={classesRotulo} for={`inicio-${p.id}`}>Entra no ar em</label>
+                      <input id={`inicio-${p.id}`} type="date" name="inicio" value={hoje} required class={classesCampo} />
+                      <p class="mt-1 text-xs text-slate-500">O prazo de 12 meses conta deste dia. Confira o pagamento antes.</p>
+                      <button type="submit" class={classesBotao("zap", "m", "mt-2 w-full")} disabled={!p.logo}>
+                        Colocar no ar
+                      </button>
+                      {!p.logo && <p class="mt-1 text-xs font-bold text-vermelho-700">Envie o logo antes.</p>}
+                    </form>
+                  )}
+
+                  <form method="post">
+                    <input type="hidden" name="acao" value="pagamento" />
+                    <input type="hidden" name="id" value={p.id} />
+                    <p class="text-sm font-bold text-azul-900">Pagamento (Pix à vista)</p>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <label class={classesRotulo} for={`valor-${p.id}`}>Valor (R$)</label>
+                        <input
+                          id={`valor-${p.id}`}
+                          name="valor"
+                          inputmode="decimal"
+                          required
+                          class={classesCampo}
+                          value={p.pagamento ? reais(p.pagamento.valor_centavos) : cota ? reais(cota.valor_fundador_centavos) : ""}
+                        />
+                      </div>
+                      <div>
+                        <label class={classesRotulo} for={`pago-${p.id}`}>Pago em</label>
+                        <input id={`pago-${p.id}`} type="date" name="pago_em" required class={classesCampo} value={p.pagamento?.pago_em ?? hoje} />
+                      </div>
+                    </div>
+                    <label class="mt-3 flex items-center gap-2 text-sm font-semibold">
+                      <input type="checkbox" name="preco_fundador" value="sim" checked={p.pagamento?.preco_fundador ?? true} />
+                      Preço de Patrocinador Fundador
+                    </label>
+                    <label class={classesRotulo} for={`obs-${p.id}`}>Observação</label>
+                    <input id={`obs-${p.id}`} name="observacao" maxlength="300" class={classesCampo} value={p.pagamento?.observacao ?? ""} />
+                    <button type="submit" class={classesBotao("contorno", "m", "mt-2 w-full")}>
+                      Registrar pagamento
+                    </button>
+                  </form>
+
+                  {p.situacao === "no_ar" && (
+                    <form method="post">
+                      <input type="hidden" name="acao" value="prazo" />
+                      <input type="hidden" name="id" value={p.id} />
+                      <label class={classesRotulo} for={`dias-${p.id}`}>Somar dias ao prazo</label>
+                      <input id={`dias-${p.id}`} type="number" name="dias" min="1" max="365" required class={classesCampo} />
+                      <p class="mt-1 text-xs text-slate-500">Quando o site fica fora do ar por mais de 3 dias seguidos, some o período inteiro.</p>
+                      <button type="submit" class={classesBotao("contorno", "m", "mt-2 w-full")}>
+                        Somar dias
+                      </button>
+                    </form>
+                  )}
+
+                  <button type="button" data-abrir-modal={`editar-${p.id}`} class={classesBotao("contorno", "m", "w-full")}>
+                    Editar dados e logo
+                  </button>
+
+                  {p.situacao === "no_ar" && (
+                    <form method="post" data-confirmar="Encerrar este patrocínio? O logo sai do site e a vaga fica livre.">
+                      <input type="hidden" name="acao" value="encerrar" />
+                      <input type="hidden" name="id" value={p.id} />
+                      <button type="submit" class={classesBotao("perigo", "m", "w-full")}>
+                        Encerrar patrocínio
+                      </button>
+                    </form>
+                  )}
+                  {p.situacao === "rascunho" && (
+                    <form method="post" data-confirmar="Apagar este rascunho? O logo enviado também é apagado.">
+                      <input type="hidden" name="acao" value="apagar" />
+                      <input type="hidden" name="id" value={p.id} />
+                      <button type="submit" class={classesBotao("perigo", "m", "w-full")}>
+                        Apagar rascunho
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </Modal>
+
+              <Modal id={`editar-${p.id}`} titulo={`Editar: ${p.nome}`}>
+                <form method="post" enctype="multipart/form-data" data-form-patrocinio>
+                  <input type="hidden" name="acao" value="salvar" />
+                  <input type="hidden" name="id" value={p.id} />
+                  <div data-campos-patrocinio data-valores={JSON.stringify(p)} />
+                </form>
+              </Modal>
+            </li>
+          );
+        })
+      }
+    </ul>
+  </section>
+
+  <section class="mt-8">
+    <h2 class="font-display text-xl font-bold text-azul-900">Cotas e valores</h2>
+    <p class="mt-1 text-sm text-slate-600">Aparecem na página Patrocine. Benefícios: um por linha.</p>
+    <div class="mt-3 space-y-2">
+      {
+        cotas.map((c) => (
+          <details class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+            <summary class="cursor-pointer font-bold text-azul-900">
+              {c.nome} <span class="text-sm font-semibold text-slate-500">· {formatarCentavos(c.valor_centavos)}</span>
+            </summary>
+            <form method="post" class="mt-2">
+              <input type="hidden" name="acao" value="cota" />
+              <input type="hidden" name="cota" value={c.cota} />
+              <label class={classesRotulo} for={`cota-nome-${c.cota}`}>Nome</label>
+              <input id={`cota-nome-${c.cota}`} name="nome" required maxlength="40" class={classesCampo} value={c.nome} />
+              <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div>
+                  <label class={classesRotulo} for={`cota-valor-${c.cota}`}>Valor por 12 meses (R$)</label>
+                  <input id={`cota-valor-${c.cota}`} name="valor" required inputmode="decimal" class={classesCampo} value={reais(c.valor_centavos)} />
+                </div>
+                <div>
+                  <label class={classesRotulo} for={`cota-fundador-${c.cota}`}>Fundador (R$)</label>
+                  <input id={`cota-fundador-${c.cota}`} name="valor_fundador" required inputmode="decimal" class={classesCampo} value={reais(c.valor_fundador_centavos)} />
+                </div>
+                <div>
+                  <label class={classesRotulo} for={`cota-vagas-${c.cota}`}>Vagas</label>
+                  {c.vagas === null ? (
+                    <p class="mt-2 text-sm text-slate-500">1 por {c.cota === "grupo" ? "grupo" : "categoria"}</p>
+                  ) : (
+                    <input id={`cota-vagas-${c.cota}`} name="vagas" type="number" min="1" max="100" required class={classesCampo} value={c.vagas} />
+                  )}
+                </div>
+                <div>
+                  <label class={classesRotulo} for={`cota-largura-${c.cota}`}>Largura do logo (px)</label>
+                  <input id={`cota-largura-${c.cota}`} name="largura" type="number" min="100" max="2000" required class={classesCampo} value={c.largura_logo} />
+                </div>
+                <div>
+                  <label class={classesRotulo} for={`cota-altura-${c.cota}`}>Altura do logo (px)</label>
+                  <input id={`cota-altura-${c.cota}`} name="altura" type="number" min="100" max="2000" required class={classesCampo} value={c.altura_logo} />
+                </div>
+              </div>
+              <label class={classesRotulo} for={`cota-beneficios-${c.cota}`}>Benefícios</label>
+              <textarea id={`cota-beneficios-${c.cota}`} name="beneficios" rows="4" class={classesCampo}>{c.beneficios.join("\n")}</textarea>
+              <p class="mt-1 text-xs text-slate-500">Mudar o tamanho do logo vale para os próximos envios; os logos já enviados continuam como estão.</p>
+              <button type="submit" class={classesBotao("azul", "m", "mt-3")}>
+                Salvar cota
+              </button>
+            </form>
+          </details>
+        ))
+      }
+    </div>
+  </section>
+
+  <Modal id="modal-novo" titulo="Novo patrocínio">
+    <form method="post" enctype="multipart/form-data" data-form-patrocinio>
+      <input type="hidden" name="acao" value="salvar" />
+      <div data-campos-patrocinio data-valores="{}" />
+    </form>
+  </Modal>
+
+  <Modal id="modal-confirmar" titulo="Confirmar">
+    <p data-confirmar-texto class="text-slate-700"></p>
+    <div class="mt-5 flex gap-2">
+      <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>Cancelar</button>
+      <button type="button" data-confirmar-sim class={classesBotao("perigo", "m", "flex-1")}>Confirmar</button>
+    </div>
+  </Modal>
+
+  <template id="campos-patrocinio">
+    <label class={classesRotulo} data-for="cota">Cota</label>
+    <select name="cota" data-campo="cota" required class={classesCampo}>
+      {
+        cotas.map((c) => (
+          <option value={c.cota} data-largura={c.largura_logo} data-altura={c.altura_logo}>
+            {c.nome}
+          </option>
+        ))
+      }
+    </select>
+    <div data-so-cota="grupo">
+      <label class={classesRotulo} data-for="grupo">Grupo de categorias</label>
+      <select name="grupo" data-campo="grupo" class={classesCampo}>
+        <option value="">Escolha</option>
+        {grupos.map((g) => <option value={g}>{g}</option>)}
+      </select>
+    </div>
+    <div data-so-cota="categoria">
+      <label class={classesRotulo} data-for="categoria">Categoria</label>
+      <select name="categoria" data-campo="categoria_id" class={classesCampo}>
+        <option value="">Escolha</option>
+        {categorias.map((c) => <option value={c.id}>{c.nome} ({c.grupo})</option>)}
+      </select>
+    </div>
+    <label class={classesRotulo} data-for="nome">Nome da empresa</label>
+    <input name="nome" data-campo="nome" required maxlength="80" class={classesCampo} />
+    <label class={classesRotulo} data-for="ramo">Ramo</label>
+    <input name="ramo" data-campo="ramo" required maxlength="60" class={classesCampo} placeholder="ex.: Material de construção" />
+    <p class="mt-1 text-xs text-slate-500">Só entra uma empresa de cada ramo por cota, menos no Apoio.</p>
+    <label class={classesRotulo} data-for="frase">Frase (página dos patrocinadores)</label>
+    <input name="frase" data-campo="frase" maxlength="140" class={classesCampo} />
+    <label class={classesRotulo} data-for="whatsapp">WhatsApp da empresa</label>
+    <input name="whatsapp" data-campo="whatsapp" inputmode="tel" class={classesCampo} placeholder="(22) 99999-0000" />
+    <label class={classesRotulo} data-for="logo">Logo</label>
+    <input type="file" accept="image/png,image/jpeg,image/webp" data-escolher-logo class={classesCampo} />
+    <input type="file" name="logo" data-logo-pronto hidden />
+    <p class="mt-1 text-xs text-slate-500" data-tamanho-logo></p>
+    <img data-previa-logo alt="Prévia do logo" hidden class="mt-2 w-full rounded-lg bg-[repeating-conic-gradient(#f1f5f9_0_25%,#fff_0_50%)] bg-[length:16px_16px] ring-1 ring-slate-200" />
+    <p class="mt-1 text-xs font-bold text-vermelho-700" data-erro-logo hidden></p>
+    <button type="submit" class={classesBotao("azul", "m", "mt-4 w-full")}>Salvar</button>
+  </template>
+</PaginaAdmin>
+
+<script>
+  import { ligarFormularioPatrocinio, ligarConfirmacoes } from "@/lib/formularioPatrocinio";
+
+  for (const form of document.querySelectorAll<HTMLFormElement>("[data-form-patrocinio]")) ligarFormularioPatrocinio(form);
+  ligarConfirmacoes();
+</script>

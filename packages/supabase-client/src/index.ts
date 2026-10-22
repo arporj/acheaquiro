@@ -5,3 +5,4 @@ export { criarClienteServidor, type CookieParaGravar, type CookiesDaRequisicao }
 export { criarClienteServico } from "./servico";
 export { lerCatalogoPublico } from "./catalogo";
 export { entrar, limitarRecuperacaoSenha, registrarAcesso, type ResultadoEntrada } from "./acesso";
+export { lerPatrocinioPublico, registrarCliquePatrocinio } from "./patrocinio";

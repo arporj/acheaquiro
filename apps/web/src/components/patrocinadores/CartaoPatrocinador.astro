@@ -1,7 +1,6 @@
 ---
 // Logo do patrocinador com o nome embaixo. O formato do logo segue a cota
-// (FORMATOS_LOGO_PATROCINIO): Master quadrado, Ouro comprido, os outros 2:1.
-import { FORMATOS_LOGO_PATROCINIO } from "@acheaqui/domain";
+// (formatoLogo, que vem da cota): Master quadrado, Ouro comprido, os outros 2:1.
 import type { Patrocinador } from "@acheaqui/types";
 
 interface Props {
@@ -10,7 +9,7 @@ interface Props {
 }
 
 const { patrocinador, class: classe = "" } = Astro.props;
-const { largura, altura } = FORMATOS_LOGO_PATROCINIO[patrocinador.cota];
+const { largura, altura } = patrocinador.formatoLogo;
 const tamanhoNome = patrocinador.cota === "master" ? "text-base" : "text-xs";
 ---
 

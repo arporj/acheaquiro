@@ -253,8 +253,10 @@ export interface Patrocinador {
   ramo: string;
   frase: string;
   whatsapp: string;
-  /** Endereço do logo, no formato da cota (FORMATOS_LOGO_PATROCINIO, em @acheaqui/domain). */
+  /** Endereço do logo, no formato da cota. */
   logo: string;
+  /** Tamanho do logo da cota, em pixels (vem da cota). */
+  formatoLogo: { largura: number; altura: number };
   cota: CotaPatrocinio;
   /** Cota "grupo": nome do grupo de categorias. */
   grupo?: string;
@@ -340,4 +342,6 @@ export interface CotaPatrocinioVenda {
   valorFundadorCentavos: number;
   /** Vagas fixas; nas cotas de grupo e de categoria, uma por grupo ou por categoria (vem do catálogo). */
   vagas?: number;
+  /** Tamanho em que o logo deve ser enviado, em pixels. */
+  formatoLogo: { largura: number; altura: number };
 }

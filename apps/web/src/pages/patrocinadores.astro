@@ -1,7 +1,6 @@
 ---
 // Página dos patrocinadores (proposta Patrocinadores v3, ainda em discussão).
 // Só aparece com pelo menos um patrocinador; sem nenhum, a página não existe.
-import { FORMATOS_LOGO_PATROCINIO } from "@acheaqui/domain";
 import { Icone, classesBotao } from "@acheaqui/ui";
 import type { CotaPatrocinio, Patrocinador } from "@acheaqui/types";
 import Topo from "@/components/anuncios/Topo.astro";
@@ -53,7 +52,7 @@ const grupos = await Promise.all(
             <h2 class="mb-3 font-display text-xl font-bold text-azul-900">{g.titulo}</h2>
             <ul class={`grid gap-4 ${g.grade}`}>
               {g.itens.map(({ p, onde }) => {
-                const { largura, altura } = FORMATOS_LOGO_PATROCINIO[p.cota];
+                const { largura, altura } = p.formatoLogo;
                 return (
                   <li id={p.slug} class="flex scroll-mt-4 flex-col gap-2 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
                     <img
@@ -68,6 +67,7 @@ const grupos = await Promise.all(
                     <p class="font-bold text-azul-900">{p.nome}</p>
                     {onde && <p class="text-xs font-bold text-slate-500">Patrocina: {onde}</p>}
                     <p class="text-sm text-slate-600">{p.frase}</p>
+                    {p.whatsapp && (
                     <a
                       href={`/p/${p.slug}`}
                       target="_blank"
@@ -77,6 +77,7 @@ const grupos = await Promise.all(
                       <Icone nome="mensagem" class="size-4" />
                       Falar com a empresa
                     </a>
+                    )}
                   </li>
                 );
               })}

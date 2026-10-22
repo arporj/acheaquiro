@@ -1,6 +1,7 @@
 // DADOS FICTÍCIOS para o layout dos patrocinadores (proposta Patrocinadores
 // v3). Empresas inventadas; os logos ficam em public/mock/patrocinadores. No
 // sistema real, cotas, vagas e valores ficam no banco.
+import { FORMATOS_LOGO_PATROCINIO } from "@acheaqui/domain";
 import type { CotaPatrocinio, CotaPatrocinioVenda, Patrocinador } from "@acheaqui/types";
 
 // Número inválido de propósito, como nos anunciantes fictícios.
@@ -16,7 +17,7 @@ function p(
   onde: { grupo?: string; categoriaId?: string } = {},
 ): Patrocinador {
   // Contratos fictícios de 12 meses a partir da abertura (27/11/2026).
-  return { id, slug, nome, ramo, frase, whatsapp: WHATS, logo: `/mock/patrocinadores/${slug}.svg`, cota, fim: "2027-11-26", ...onde };
+  return { id, slug, nome, ramo, frase, whatsapp: WHATS, logo: `/mock/patrocinadores/${slug}.svg`, cota, formatoLogo: FORMATOS_LOGO_PATROCINIO[cota], fim: "2027-11-26", ...onde };
 }
 
 export const patrocinadores: Patrocinador[] = [
@@ -38,7 +39,7 @@ export const patrocinadores: Patrocinador[] = [
 ];
 
 /** Cotas à venda (proposta Patrocinadores v3). No sistema real, ficam no banco. */
-export const cotasPatrocinio: CotaPatrocinioVenda[] = [
+const cotasSemFormato: Omit<CotaPatrocinioVenda, "formatoLogo">[] = [
   {
     cota: "master", nome: "Master", vagas: 1, valorCentavos: 690000, valorFundadorCentavos: 570000,
     beneficios: ["Logo maior no rodapé de todas as páginas", "2 posts por mês no Instagram do Ache Aqui RO", "Logo nos cartazes e panfletos, quando houver", "Carro de som, quando houver"],
@@ -64,3 +65,5 @@ export const cotasPatrocinio: CotaPatrocinioVenda[] = [
     beneficios: ["Nome ao lado do título da Agenda de shows e eventos", "1 post por mês no Instagram"],
   },
 ];
+
+export const cotasPatrocinio: CotaPatrocinioVenda[] = cotasSemFormato.map((c) => ({ ...c, formatoLogo: FORMATOS_LOGO_PATROCINIO[c.cota] }));

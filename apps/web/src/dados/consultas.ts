@@ -5,7 +5,8 @@
 // página "em breve" não acessa o banco: usa as regras de src/mocks/planos.ts.
 import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, CotaPatrocinioVenda, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
 import { dadosPublicosDoArtista, novaVagaAPartirDe, somarDias } from "@acheaqui/domain";
-import { criarClientePublico, lerCatalogoPublico } from "@acheaqui/supabase-client";
+import { criarClientePublico, lerCatalogoPublico, lerPatrocinioPublico, registrarCliquePatrocinio } from "@acheaqui/supabase-client";
+import { ENDERECO_ARQUIVOS } from "@/lib/arquivos";
 import { ambiente } from "@/lib/ambiente";
 import { normalizar } from "@/lib/texto";
 import { anunciantes as anunciantesFicticios } from "@/mocks/anunciantes";
@@ -289,19 +290,49 @@ export async function superDestaques(): Promise<ItemResultado[]> {
 }
 
 /**
- * Patrocinadores (proposta Patrocinadores v3, ainda em discussão). Por
- * enquanto só existem no site de apresentação; a produção não tem nenhum.
+ * Patrocinadores no ar e cotas à venda. Na produção vêm do banco (só os no ar
+ * e dentro do prazo, pelo RLS), guardados 1 minuto no Worker como o catálogo;
+ * no site de apresentação, dos dados fictícios; a página "em breve" não tem.
  */
-const patrocinadores: Patrocinador[] = ficticio ? patrocinadoresFicticios : [];
+interface DadosPatrocinio {
+  patrocinadores: Patrocinador[];
+  cotas: CotaPatrocinioVenda[];
+}
+let patrocinioEmMemoria: { dados: DadosPatrocinio; validoAte: number } | undefined;
+let patrocinioCarregando: Promise<DadosPatrocinio> | undefined;
+
+async function carregarPatrocinio(): Promise<DadosPatrocinio> {
+  const cliente = criarClientePublico({
+    url: import.meta.env.PUBLIC_SUPABASE_URL ?? "",
+    chavePublica: import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? "",
+  });
+  const resultado = await lerPatrocinioPublico(cliente, CIDADE, ENDERECO_ARQUIVOS);
+  // Sem os patrocinadores, a página sai sem eles (não é motivo para erro):
+  // a falha já foi registrada, e a próxima consulta tenta de novo.
+  const dados = resultado.ok ? resultado.dados : { patrocinadores: [], cotas: [] };
+  if (resultado.ok) patrocinioEmMemoria = { dados, validoAte: Date.now() + SEGUNDOS_CATALOGO_EM_MEMORIA * 1000 };
+  return dados;
+}
+
+async function patrocinio(): Promise<DadosPatrocinio> {
+  if (ficticio) return { patrocinadores: patrocinadoresFicticios, cotas: cotasPatrocinio };
+  if (!catalogoDoBanco) return { patrocinadores: [], cotas: [] };
+  if (patrocinioEmMemoria && patrocinioEmMemoria.validoAte > Date.now()) return patrocinioEmMemoria.dados;
+  patrocinioCarregando ??= carregarPatrocinio().finally(() => {
+    patrocinioCarregando = undefined;
+  });
+  return patrocinioCarregando;
+}
 
 export async function listarPatrocinadores(): Promise<Patrocinador[]> {
-  return patrocinadores;
+  return (await patrocinio()).patrocinadores;
 }
 
 /** Patrocinador do grupo e da categoria, para o topo da página da categoria. */
 export async function patrocinadoresDaCategoria(
   categoria: Categoria,
 ): Promise<{ grupo?: Patrocinador; categoria?: Patrocinador }> {
+  const { patrocinadores } = await patrocinio();
   return {
     grupo: patrocinadores.find((p) => p.cota === "grupo" && p.grupo === categoria.grupo),
     categoria: patrocinadores.find((p) => p.cota === "categoria" && p.categoriaId === categoria.id),
@@ -309,12 +340,22 @@ export async function patrocinadoresDaCategoria(
 }
 
 export async function patrocinadorPorSlug(slug: string): Promise<Patrocinador | undefined> {
-  return patrocinadores.find((p) => p.slug === slug);
+  return (await patrocinio()).patrocinadores.find((p) => p.slug === slug);
 }
 
 /** Patrocinador da Agenda (cota "agenda"). */
 export async function patrocinadorDaAgenda(): Promise<Patrocinador | undefined> {
-  return patrocinadores.find((p) => p.cota === "agenda");
+  return (await patrocinio()).patrocinadores.find((p) => p.cota === "agenda");
+}
+
+/** Conta o clique no contato do patrocinador (só na produção; repetidos contam uma vez). */
+export async function contarCliquePatrocinador(slug: string, visitante: string): Promise<void> {
+  if (!catalogoDoBanco) return;
+  const cliente = criarClientePublico({
+    url: import.meta.env.PUBLIC_SUPABASE_URL ?? "",
+    chavePublica: import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? "",
+  });
+  await registrarCliquePatrocinio(cliente, CIDADE, slug, visitante);
 }
 
 // Agenda (módulo de eventos). Por enquanto só no site de apresentação.
@@ -454,12 +495,11 @@ export interface CotaComVagas extends CotaPatrocinioVenda {
  * categoria, há uma vaga por grupo e por categoria do catálogo.
  */
 export async function listarCotasPatrocinio(): Promise<CotaComVagas[]> {
-  if (!ficticio) return [];
-  const [grupos, categorias] = await Promise.all([categoriasPorGrupo(), listarCategorias()]);
+  const [{ patrocinadores, cotas }, grupos, categorias] = await Promise.all([patrocinio(), categoriasPorGrupo(), listarCategorias()]);
   // No site de apresentação, os patrocinadores fictícios só mostram o layout
   // (rodapé, página, categoria): não ocupam vaga, e a página mostra as vagas reais.
   const contratos: Patrocinador[] = ficticio ? [] : patrocinadores;
-  return cotasPatrocinio.map((cota) => {
+  return cotas.map((cota) => {
     const vagasTotais = cota.vagas ?? (cota.cota === "grupo" ? grupos.length : categorias.length);
     const daCota = contratos.filter((p) => p.cota === cota.cota);
     const vagasLivres = Math.max(0, vagasTotais - daCota.length);
