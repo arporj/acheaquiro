@@ -14,6 +14,14 @@ Calendário: pré-cadastro dos Fundadores de 09/11 a 26/11/2026, feito pela equi
 - Destaque Exclusivo: vendido por dia, escolhido num calendário com os dias livres e ocupados. Diária e bloco de 30 dias seguidos ficam em extras.regras; a partir de 21 dias seguidos, o anunciante paga o bloco e os dias que faltam vão para os próximos dias livres (pode cancelá-los, sem devolução). Reserva com pelo menos 2 dias de antecedência, valendo a partir do dia seguinte à confirmação do Pix. Uma tarefa à meia-noite limpa o cache das páginas.
 - Link destacado: pacote de 3 bairros ou cidade toda (no máximo 3 por categoria). Sem bairro escolhido pelo visitante, só os da cidade toda disputam o topo. Na aba Comércios, o bairro escolhido reordena em vez de esconder: os do bairro primeiro, depois os outros pela distância (com a localização do celular) ou pelos planos. O destacado continua também na posição do seu plano. Super Destaque: ordem sorteada a cada visita.
 
+## Comércios importados da Receita
+
+- Decisão de 22/10/2026, para abrir com a base cheia: os comércios de Rio das Ostras vêm dos dados abertos do CNPJ da Receita Federal (scripts/importar-cnpj). Não usar a API do Google Places: os termos de uso proíbem guardar o conteúdo e montar diretório com ele. O link "Como chegar" para o Google Maps continua.
+- Entram só CNPJs ativos. Ficam de fora MEI, empresário individual (natureza 213-5), órgão público e os CNAEs sem atendimento ao público (tabela cnae_categoria com categoria vazia, editável na administração).
+- O importado entra publicado, no plano Gratuito, com origem "receita", sem aceite dos Termos (exceção à regra do cadastro assistido) e com uma categoria só (limite do Gratuito). Nome, endereço, bairro, mapa e categoria aparecem; telefone, e-mail e razão social da Receita não são publicados e ficam em dados_receita, só para a administração e os representantes.
+- A página do importado tem "É seu? Assuma este perfil", "Remover meu comércio" e "Informar que fechou" (pedidos_perfil). Assumir segue o fluxo do cadastro assistido.
+- Atualização mensal pela Receita: em aberto.
+
 ## Patrocinadores e Agenda
 
 - Nomes (decisão de 22/10/2026): "Patrocinador" é só a empresa que apoia o site como marca. O extra que põe o anunciante nas 3 primeiras posições da lista é o "Link destacado" (e o "Destacado Plus"), com o selo "Destaque" no card. Não usar "patrocinado" para o extra.
