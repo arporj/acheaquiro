@@ -7,6 +7,11 @@ import {
   Sandwich, Scale, School, Scissors, ScissorsLineDashed, SearchX, Shirt, ShoppingBag, ShoppingCart, ShowerHead,
   FaceSlightlySmiling, Sofa, Soup, Sparkles, SprayCan, Sprout, Stethoscope, Tag, Truck, UtensilsCrossed,
   WashingMachine, WavesLadder, Wheat, Wrench, Zap,
+  Activity, Anchor, Apple, Bike, Blocks, Book, Brain, Briefcase, Building, Calculator, Calendar, CarFront,
+  Cctv, Church, Cigarette, Coffee, Compass, Container, DraftingCompass, Ear, Flame, FlaskConical, Flower, Fish, Fuel,
+  Gem, Gift, Guitar, Hotel, HousePlus, IceCreamCone, Leaf, Megaphone, Monitor, Plane, Plug, Refrigerator, Sailboat,
+  ShieldCheck, Ship, Smartphone, Spool, SquareParking, Stamp, Store, Sun, Tent, Ticket, TreePine, Trophy, Utensils,
+  Wine,
 } from "@lucide/astro";
 
 // Importação explícita: só estes ícones entram no pacote final do site.
@@ -27,6 +32,15 @@ export const iconesCategoria = {
   soup: Soup, sparkles: Sparkles, "spray-can": SprayCan, sprout: Sprout, stethoscope: Stethoscope, tag: Tag,
   truck: Truck, "utensils-crossed": UtensilsCrossed, "washing-machine": WashingMachine, "waves-ladder": WavesLadder,
   wheat: Wheat, wrench: Wrench, zap: Zap,
+  activity: Activity, anchor: Anchor, apple: Apple, bike: Bike, blocks: Blocks, book: Book, brain: Brain,
+  briefcase: Briefcase, building: Building, calculator: Calculator, calendar: Calendar, "car-front": CarFront,
+  cctv: Cctv, church: Church, cigarette: Cigarette, coffee: Coffee, compass: Compass, container: Container,
+  "drafting-compass": DraftingCompass, ear: Ear, flame: Flame, "flask-conical": FlaskConical, flower: Flower,
+  fish: Fish, fuel: Fuel, gem: Gem, gift: Gift, guitar: Guitar, hotel: Hotel, "house-plus": HousePlus,
+  "ice-cream-cone": IceCreamCone, leaf: Leaf, megaphone: Megaphone, monitor: Monitor, plane: Plane, plug: Plug,
+  refrigerator: Refrigerator, sailboat: Sailboat, "shield-check": ShieldCheck, ship: Ship, smartphone: Smartphone,
+  spool: Spool, "square-parking": SquareParking, stamp: Stamp, store: Store, sun: Sun, tent: Tent, ticket: Ticket,
+  "tree-pine": TreePine, trophy: Trophy, utensils: Utensils, wine: Wine,
 };
 
 export type NomeIconeCategoria = keyof typeof iconesCategoria;
