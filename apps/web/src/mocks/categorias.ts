@@ -137,6 +137,7 @@ export const categorias: Categoria[] = [
   c("confeiteira", "Confeiteira", "Confeiteiras", EVENTOS, "cake-slice", cor.rosa),
   c("decoracao-de-festas", "Decoração de festas", "Decoração de festas", EVENTOS, "party-popper", cor.magenta),
   c("dj-e-som", "DJ e som", "DJs e som", EVENTOS, "headphones", cor.roxo),
+  c("musico", "Músico e banda", "Músicos e bandas", EVENTOS, "music", cor.azul, { sinonimos: ["musico", "banda", "cantor", "cantora", "show"] }),
   c("comida-caseira", "Comida caseira e marmitas", "Comida caseira e marmitas", EVENTOS, "soup", cor.laranja, {
     sinonimos: ["marmita", "quentinha", "almoço"],
     atalho: true,

@@ -14,7 +14,10 @@ const links =
         { href: "/fundadores", rotulo: "Fundadores" },
         { href: "/representante", rotulo: "Seja um representante" },
         // Patrocinadores: por enquanto só no site de apresentação (proposta v3).
-        ...(ambiente === "apresentacao" ? [{ href: "/patrocinadores", rotulo: "Patrocinadores" }] : []),
+        ...(ambiente === "apresentacao" ? [
+              { href: "/patrocinadores", rotulo: "Patrocinadores" },
+              { href: "/patrocine", rotulo: "Patrocine" },
+            ] : []),
         { href: "/termos", rotulo: "Termos de Uso" },
         { href: "/privacidade", rotulo: "Política de Privacidade" },
       ];

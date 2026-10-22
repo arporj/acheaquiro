@@ -325,3 +325,17 @@ export interface Apresentacao {
   anuncianteId?: string;
   eventoId?: string;
 }
+
+/** Cota de patrocínio à venda: valores e vagas, editáveis pela administração. */
+export interface CotaPatrocinioVenda {
+  cota: CotaPatrocinio;
+  nome: string;
+  /** O que o patrocinador ganha, item por item. */
+  beneficios: string[];
+  /** Valor por 12 meses, em centavos. */
+  valorCentavos: number;
+  /** Valor para quem fecha até o prazo de Fundador, em centavos. */
+  valorFundadorCentavos: number;
+  /** Vagas fixas; nas cotas de grupo e de categoria, uma por grupo ou por categoria (vem do catálogo). */
+  vagas?: number;
+}

@@ -9,3 +9,4 @@ export * from "./comissao";
 export * from "./destaque";
 export * from "./horario";
 export * from "./patrocinio";
+export * from "./artista";

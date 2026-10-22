@@ -1,7 +1,7 @@
 // DADOS FICTÍCIOS para o layout dos patrocinadores (proposta Patrocinadores
 // v3). Empresas inventadas; os logos ficam em public/mock/patrocinadores. No
 // sistema real, cotas, vagas e valores ficam no banco.
-import type { CotaPatrocinio, Patrocinador } from "@acheaqui/types";
+import type { CotaPatrocinio, CotaPatrocinioVenda, Patrocinador } from "@acheaqui/types";
 
 // Número inválido de propósito, como nos anunciantes fictícios.
 const WHATS = "5522900000099";
@@ -34,4 +34,32 @@ export const patrocinadores: Patrocinador[] = [
   p("p13", "serra-azul", "Laticínios Serra Azul", "Distribuidora de laticínios", "Queijos e frios para pizzarias e restaurantes.", "categoria", { categoriaId: "pizzaria" }),
   p("p14", "faisca", "Elétrica Faísca", "Loja de material elétrico", "Fios, disjuntores e lâmpadas com preço de atacado.", "categoria", { categoriaId: "eletricista" }),
   p("p15", "gelada-distribuidora", "Gelada Distribuidora de Bebidas", "Distribuidora de bebidas", "Bebidas para bares, quiosques e festas, com entrega.", "agenda"),
+];
+
+/** Cotas à venda (proposta Patrocinadores v3). No sistema real, ficam no banco. */
+export const cotasPatrocinio: CotaPatrocinioVenda[] = [
+  {
+    cota: "master", nome: "Master", vagas: 1, valorCentavos: 690000, valorFundadorCentavos: 570000,
+    beneficios: ["Logo maior no rodapé de todas as páginas", "2 posts por mês no Instagram do Ache Aqui RO", "Logo nos cartazes e panfletos", "Carro de som, quando houver"],
+  },
+  {
+    cota: "ouro", nome: "Ouro", vagas: 3, valorCentavos: 490000, valorFundadorCentavos: 400000,
+    beneficios: ["Logo médio no rodapé de todas as páginas", "1 post por mês no Instagram", "Logo nos cartazes e panfletos"],
+  },
+  {
+    cota: "apoio", nome: "Apoio", vagas: 6, valorCentavos: 220000, valorFundadorCentavos: 180000,
+    beneficios: ["Logo pequeno no rodapé de todas as páginas", "1 post de boas-vindas no Instagram"],
+  },
+  {
+    cota: "grupo", nome: "Grupo de categorias", valorCentavos: 259000, valorFundadorCentavos: 215000,
+    beneficios: ["Nome ao lado do grupo, em todas as categorias dele (exemplo: Comércios)", "1 post por mês no Instagram"],
+  },
+  {
+    cota: "categoria", nome: "Categoria", valorCentavos: 129000, valorFundadorCentavos: 107000,
+    beneficios: ["Nome ao lado do título da categoria (exemplo: Pizzarias)", "1 post de boas-vindas no Instagram"],
+  },
+  {
+    cota: "agenda", nome: "Agenda", vagas: 1, valorCentavos: 290000, valorFundadorCentavos: 240000,
+    beneficios: ["Nome ao lado do título da Agenda de shows e eventos", "1 post por mês no Instagram"],
+  },
 ];

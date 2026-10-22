@@ -3,7 +3,8 @@
 // bairros, categorias, planos, extras e regras) e, até as tabelas de
 // anunciantes existirem (etapa 2), mostra a lista de anunciantes vazia. A
 // página "em breve" não acessa o banco: usa as regras de src/mocks/planos.ts.
-import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
+import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, CotaPatrocinioVenda, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
+import { dadosPublicosDoArtista } from "@acheaqui/domain";
 import { criarClientePublico, lerCatalogoPublico } from "@acheaqui/supabase-client";
 import { ambiente } from "@/lib/ambiente";
 import { normalizar } from "@/lib/texto";
@@ -12,7 +13,7 @@ import { categorias, ordemAtalhos } from "@/mocks/categorias";
 import { destaqueExclusivoId, linksDestacados, simulacaoComercios, superDestaqueIds } from "@/mocks/extras";
 import { bairros, cidadeAtual } from "@/mocks/localidades";
 import { apresentacoes as apresentacoesFicticias, artistas as artistasFicticios, eventos as eventosFicticios } from "@/mocks/agenda";
-import { patrocinadores as patrocinadoresFicticios } from "@/mocks/patrocinadores";
+import { cotasPatrocinio, patrocinadores as patrocinadoresFicticios } from "@/mocks/patrocinadores";
 import { extrasDisponiveis, planos, regrasCobranca } from "@/mocks/planos";
 
 /** Anunciantes, destaques e destacados fictícios. */
@@ -352,7 +353,10 @@ function apresentacoesAgenda(): Apresentacao[] {
   return apresentacoesFicticias.map(({ diasDepoisDeHoje, ...a }) => ({ ...a, data: somarDias(hoje, diasDepoisDeHoje) }));
 }
 
-const artistas: Artista[] = ficticio ? artistasFicticios : [];
+// Só o artista com anúncio ativo mostra foto, contato e o resto do perfil (packages/domain).
+const artistas: Artista[] = (ficticio ? artistasFicticios : []).map((a) =>
+  dadosPublicosDoArtista(a, Boolean(a.anuncianteId && anunciantes.some((an) => an.id === a.anuncianteId))),
+);
 
 async function paraItemAgenda(a: Apresentacao, eventos: EventoAgenda[]): Promise<ItemAgenda | undefined> {
   const artista = artistas.find((ar) => ar.id === a.artistaId);
@@ -440,4 +444,24 @@ export async function eventoPorSlug(slug: string): Promise<{ evento: EventoAgend
 
 export async function anuncianteSlugPorId(id: string): Promise<string | undefined> {
   return anunciantes.find((a) => a.id === id)?.slug;
+}
+
+/** Uma cota com as vagas já contadas, para a página de valores. */
+export interface CotaComVagas extends CotaPatrocinioVenda {
+  vagasTotais: number;
+  vagasLivres: number;
+}
+
+/**
+ * Cotas de patrocínio à venda, com as vagas livres. Nas cotas de grupo e de
+ * categoria, há uma vaga por grupo e por categoria do catálogo.
+ */
+export async function listarCotasPatrocinio(): Promise<CotaComVagas[]> {
+  if (!ficticio) return [];
+  const [grupos, categorias] = await Promise.all([categoriasPorGrupo(), listarCategorias()]);
+  return cotasPatrocinio.map((cota) => {
+    const vagasTotais = cota.vagas ?? (cota.cota === "grupo" ? grupos.length : categorias.length);
+    const ocupadas = patrocinadores.filter((p) => p.cota === cota.cota).length;
+    return { ...cota, vagasTotais, vagasLivres: Math.max(0, vagasTotais - ocupadas) };
+  });
 }

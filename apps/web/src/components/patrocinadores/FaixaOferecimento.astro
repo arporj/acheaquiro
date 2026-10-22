@@ -24,9 +24,10 @@ const colunas = [
           <h2 id="oferecimento" class="text-xs font-extrabold tracking-[0.2em] text-slate-500 uppercase">
             Oferecimento
           </h2>
-          <a href="/patrocinadores" class="text-sm font-bold text-azul-600 hover:underline">
-            Conheça os patrocinadores
-          </a>
+          <span class="flex gap-4 text-sm font-bold">
+            <a href="/patrocinadores" class="text-azul-600 hover:underline">Conheça os patrocinadores</a>
+            <a href="/patrocine" class="text-azul-600 hover:underline">Patrocine</a>
+          </span>
         </div>
         <div class="grid gap-6 md:grid-cols-3">
           {colunas.map((coluna) => (

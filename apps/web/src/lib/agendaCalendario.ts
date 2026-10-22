@@ -1,12 +1,15 @@
 // Agenda no navegador (src/components/agenda/AgendaCalendario.astro), em dois
-// formatos: "calendario" (o mês inteiro; setas trocam de mês) e "faixa" (14 dias
-// numa linha; setas andam 14 dias), este no perfil do comércio, que tem menos
-// espaço. Datas sempre como texto AAAA-MM-DD, no fuso de Rio das Ostras. A
+// formatos: "calendario" (o mês inteiro; setas trocam de mês) e "faixa" (os dias
+// que cabem na largura da tela, de 5 a 14, numa linha sem rolagem; as setas andam
+// essa quantidade), este no perfil do comércio, que tem menos espaço. Datas sempre como texto AAAA-MM-DD, no fuso de Rio das Ostras. A
 // página traz prontos os meses de data-meses; os outros são buscados em
 // /agenda/mes, um mês por vez, quando o visitante navega até eles.
 
 const FUSO = "America/Sao_Paulo";
-const DIAS_NA_FAIXA = 14;
+const MINIMO_NA_FAIXA = 5;
+const MAXIMO_NA_FAIXA = 14;
+/** Largura mínima de um dia na faixa, com o espaço entre eles, em pixels. */
+const LARGURA_DIA_NA_FAIXA = 56;
 const SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
 function hojeNaCidade(): string {
@@ -57,6 +60,12 @@ export function ligarAgendaCalendario(agenda: HTMLElement): void {
   const parametro = new URLSearchParams(location.search).get("artista");
   let artista = agenda.dataset.filtroArtista && parametro ? parametro : "";
 
+  function diasQueCabem(): number {
+    const cabem = Math.floor(grade.clientWidth / LARGURA_DIA_NA_FAIXA);
+    return Math.min(MAXIMO_NA_FAIXA, Math.max(MINIMO_NA_FAIXA, cabem));
+  }
+  let diasNaFaixa = faixa ? diasQueCabem() : 0;
+
   const visivel = (item: HTMLElement) =>
     (artista === "" || item.dataset.artista === artista) && (!bairro?.value || item.dataset.itemBairro === bairro.value);
 
@@ -67,14 +76,14 @@ export function ligarAgendaCalendario(agenda: HTMLElement): void {
     return dias.find((d) => d >= hoje) ?? hoje;
   }
 
-  /** Primeiro dia do período mostrado para um dia: o mês dele, ou a faixa que começa em hoje e anda de 14 em 14 dias. */
+  /** Primeiro dia do período mostrado para um dia: o mês dele, ou a faixa que começa em hoje e anda de diasNaFaixa em diasNaFaixa. */
   function inicioDoPeriodo(dia: string): string {
     if (!faixa) return inicioDoMes(dia);
     const distancia = Math.round((dataUTC(dia).getTime() - dataUTC(hoje).getTime()) / 86_400_000);
-    return somarDias(hoje, Math.floor(distancia / DIAS_NA_FAIXA) * DIAS_NA_FAIXA);
+    return somarDias(hoje, Math.floor(distancia / diasNaFaixa) * diasNaFaixa);
   }
-  const fimDoPeriodo = (inicio: string) => (faixa ? somarDias(inicio, DIAS_NA_FAIXA - 1) : fimDoMes(inicio));
-  const andar = (inicio: string, passos: number) => (faixa ? somarDias(inicio, passos * DIAS_NA_FAIXA) : inicioDoMes(inicio, passos));
+  const fimDoPeriodo = (inicio: string) => (faixa ? somarDias(inicio, diasNaFaixa - 1) : fimDoMes(inicio));
+  const andar = (inicio: string, passos: number) => (faixa ? somarDias(inicio, passos * diasNaFaixa) : inicioDoMes(inicio, passos));
 
   let selecionado = diaInicial();
   let inicio = inicioDoPeriodo(selecionado);
@@ -125,7 +134,7 @@ export function ligarAgendaCalendario(agenda: HTMLElement): void {
     botao.setAttribute("aria-label", `${curta(iso)}${shows > 0 ? `, ${shows} ${shows === 1 ? "show" : "shows"}` : ""}`);
     botao.className = [
       "flex flex-col items-center justify-center rounded-xl text-sm font-bold transition",
-      faixa ? "w-14 shrink-0 snap-start py-2" : "aspect-square sm:aspect-auto sm:h-14",
+      faixa ? "min-w-0 flex-1 py-2" : "aspect-square sm:aspect-auto sm:h-14",
       iso === selecionado ? "bg-azul-600 text-white" : shows > 0 ? "bg-azul-50 text-azul-900 hover:bg-azul-100" : "text-slate-400 hover:bg-slate-50",
       iso === hoje && iso !== selecionado ? "ring-2 ring-amarelo-400" : "",
     ].join(" ");
@@ -199,6 +208,17 @@ export function ligarAgendaCalendario(agenda: HTMLElement): void {
     history.replaceState(null, "", url);
     desenhar();
   });
+
+  if (faixa) {
+    // Ao mudar a largura (girar o celular, redimensionar a janela), refaz a faixa
+    // com os dias que cabem, mantendo o dia escolhido à vista.
+    new ResizeObserver(() => {
+      const novo = diasQueCabem();
+      if (novo === diasNaFaixa) return;
+      diasNaFaixa = novo;
+      irPara(inicioDoPeriodo(selecionado));
+    }).observe(grade);
+  }
 
   irPara(inicio);
 }

@@ -74,6 +74,8 @@ const linkAgenda = `/agenda?artista=${artista.slug}`;
           </div>
         </section>
 
+        {/* Artista sem anúncio: só nome, estilo e shows (dadosPublicosDoArtista, em packages/domain). */}
+        {artista.descricao && (
         <Secao titulo="Sobre">
           <p class="leading-relaxed text-slate-700">{artista.descricao}</p>
           {
@@ -89,6 +91,7 @@ const linkAgenda = `/agenda?artista=${artista.slug}`;
             )
           }
         </Secao>
+        )}
 
         <Secao titulo="Shows">
           <a slot="extra" href={linkAgenda} class="text-sm font-bold text-azul-600 hover:underline">
@@ -166,6 +169,20 @@ const linkAgenda = `/agenda?artista=${artista.slug}`;
       </div>
 
       <aside class="space-y-4 lg:sticky lg:top-4">
+        {
+          !perfil && (
+            <section class="rounded-3xl bg-amarelo-50 p-5 ring-1 ring-amarelo-200">
+              <h2 class="font-display text-lg font-bold text-azul-900">É você?</h2>
+              <p class="mt-1 text-sm text-slate-600">
+                Anuncie no Ache Aqui RO para mostrar fotos, vídeos e o seu contato, e ser chamado para mais shows.
+              </p>
+              <a href="/anuncie" class={classesBotao("amarelo", "m", "mt-3 w-full")}>
+                Quero anunciar
+              </a>
+            </section>
+          )
+        }
+        {perfil && (
         <section class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5">
           <h2 class="font-display text-xl font-bold text-azul-900">Contratar</h2>
           <p class="mb-4 text-sm text-slate-500">Peça um orçamento para o seu evento pelo contato informado por {artista.nome}.</p>
@@ -200,6 +217,7 @@ const linkAgenda = `/agenda?artista=${artista.slug}`;
             }
           </div>
         </section>
+        )}
         <a href={linkAgenda} class="flex items-center justify-between rounded-3xl bg-azul-600 p-5 font-bold text-white hover:bg-azul-700">
           Ver a agenda de {artista.nome}
           <Icone nome="direita" class="size-5" />

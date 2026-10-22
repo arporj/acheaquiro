@@ -261,6 +261,27 @@ const profissionais: AnuncianteProfissional[] = [
     horario: todosOsDias("10:00", "22:00"), instagram: "djleobatida", formasPagamento: ["pix", "dinheiro"],
     atendeTodaCidade: true, bairrosAtendidos: [],
   },
+  // Artistas anunciantes: o perfil completo fica na página do artista (mocks/agenda.ts).
+  {
+    id: "a19", slug: "julia-voz-e-violao-musica", cidadeId, tipo: "profissional",
+    nome: "Júlia Voz e Violão", categoriaId: "musico", categoriasAdicionais: [],
+    planoId: "prof-premium", fundador: true,
+    descricao: "MPB e bossa nova em formato acústico, para jantares, cerimônias e fins de tarde. Veja os próximos shows na Agenda.",
+    whatsapp: zap(19), fotoPerfil: { id: "ar3-perfil", url: "/mock/fotos/ar3-perfil.webp" },
+    galeria: [foto("ar3-g-1", "Pôr do sol no quiosque"), foto("ar3-g-2", "Cerimônia de casamento"), foto("ar3-g-3", "Show acústico")],
+    horario: todosOsDias("09:00", "22:00"), instagram: "juliavozeviolao", formasPagamento: ["pix"],
+    atendeTodaCidade: true, bairrosAtendidos: [],
+  },
+  {
+    id: "a20", slug: "banda-mare-alta-musica", cidadeId, tipo: "profissional",
+    nome: "Banda Maré Alta", categoriaId: "musico", categoriasAdicionais: [],
+    planoId: "prof-profissional", fundador: false,
+    descricao: "Pop rock nacional e internacional para bares, casamentos e festas de empresa, com som próprio.",
+    whatsapp: zap(20), fotoPerfil: { id: "ar1-perfil", url: "/mock/fotos/ar1-perfil.webp" },
+    galeria: [foto("ar1-capa", "Show ao pôr do sol")],
+    horario: todosOsDias("10:00", "23:00"), instagram: "bandamarealta", formasPagamento: ["pix", "dinheiro"],
+    atendeTodaCidade: true, bairrosAtendidos: [],
+  },
 ];
 
 const comercios: AnuncianteComercio[] = [

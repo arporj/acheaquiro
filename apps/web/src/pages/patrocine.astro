@@ -1,0 +1,151 @@
+---
+// Patrocine o Ache Aqui RO: cotas, valores, vagas livres e regras, abertos a
+// todos (decisão de 22/10/2026), para vender a qualquer empresa, inclusive pela
+// internet. Sem nenhuma cota cadastrada, a página não existe.
+import { FORMATOS_LOGO_PATROCINIO } from "@acheaqui/domain";
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Topo from "@/components/anuncios/Topo.astro";
+import Abertura from "@/components/institucional/Abertura.astro";
+import BotaoContato from "@/components/institucional/BotaoContato.astro";
+import { hojeNaCidade, listarCotasPatrocinio, obterRegrasCobranca } from "@/dados/consultas";
+import Layout from "@/layouts/Layout.astro";
+import { guardarNoCache } from "@/lib/cache";
+import { formatarCentavos } from "@/lib/precos";
+import { formatarData } from "@/lib/texto";
+
+const cotas = await listarCotasPatrocinio();
+if (cotas.length === 0) return Astro.rewrite("/404");
+guardarNoCache(Astro);
+
+const regras = await obterRegrasCobranca();
+const prazo = formatarData(regras.prazoFundador);
+const precoFundadorValendo = hojeNaCidade() <= regras.prazoFundador;
+const menorValor = Math.min(...cotas.map((c) => (precoFundadorValendo ? c.valorFundadorCentavos : c.valorCentavos)));
+
+const ondeAparece = [
+  { icone: "megafone" as const, titulo: "No fim de todas as páginas", texto: "Na faixa \"Oferecimento\", com o logo do tamanho da sua cota." },
+  { icone: "estrela" as const, titulo: "Na página dos patrocinadores", texto: "Com o logo, uma frase e um botão para falar com a sua empresa." },
+  { icone: "etiqueta" as const, titulo: "Ao lado de um grupo ou de uma categoria", texto: "Exemplo: \"Pizzarias — patrocinado por\" a sua empresa." },
+  { icone: "relogio" as const, titulo: "Na Agenda de shows e eventos", texto: "Ao lado do título da Agenda." },
+  { icone: "instagram" as const, titulo: "Fora do site", texto: "Posts no Instagram do Ache Aqui RO só sobre a sua empresa, cartazes, panfletos e o carro de som, conforme a cota." },
+];
+
+const regrasCombinadas = [
+  "Pagamento à vista, por Pix, sem parcelamento.",
+  "Os 12 meses começam a contar no dia em que o logo entra no site.",
+  "Não renova sozinho. No fim do prazo, quem patrocina tem preferência para continuar, pelo preço da época.",
+  "Nas cotas Master, Ouro, Grupo, Categoria e Agenda, entra só uma empresa de cada ramo.",
+  "Quem patrocina uma categoria não pode ser concorrente dos anunciantes dela: uma pizzaria não patrocina a categoria Pizzarias (para aparecer no topo, ela contrata o link destacado).",
+  "Não aceitamos patrocínio político nem de apostas.",
+  "Se o site ficar fora do ar por mais de 3 dias seguidos, esse tempo é somado ao prazo. Se o projeto acabar, devolvemos o valor dos meses que faltarem.",
+  "O patrocínio não muda a ordem dos anunciantes na lista nem ocupa o topo das páginas.",
+];
+---
+
+<Layout titulo="Patrocine" descricao="Cotas de patrocínio do Ache Aqui RO: valores, vagas livres e onde a sua marca aparece.">
+  <Topo pagina="interna" />
+  <main>
+    <Abertura
+      chamada="Patrocine o Ache Aqui RO"
+      subtitulo={`A partir de ${formatarCentavos(menorValor)} por 12 meses, à vista.${precoFundadorValendo ? ` Preço de Patrocinador Fundador para quem fechar até ${prazo}.` : ""}`}
+    >
+      Sua marca vista por quem procura <span class="text-amarelo-400">serviço e comércio</span> em Rio das Ostras
+      <Fragment slot="acoes">
+        <BotaoContato rotulo="Quero patrocinar" />
+        <a href="#cotas" class={classesBotao("contornoClaro", "g")}>Ver as cotas</a>
+      </Fragment>
+    </Abertura>
+
+    <section class="mx-auto max-w-6xl px-4 py-10">
+      <h2 class="font-display text-2xl font-bold text-azul-900">Onde a sua marca aparece</h2>
+      <ul class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {
+          ondeAparece.map((o) => (
+            <li class="flex gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+              <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-azul-50 text-azul-600">
+                <Icone nome={o.icone} class="size-5" />
+              </span>
+              <span>
+                <span class="block font-bold text-azul-900">{o.titulo}</span>
+                <span class="text-sm text-slate-600">{o.texto}</span>
+              </span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section id="cotas" class="bg-azul-50/60 py-10">
+      <div class="mx-auto max-w-6xl px-4">
+        <h2 class="font-display text-2xl font-bold text-azul-900">Cotas e valores</h2>
+        <p class="mt-1 text-slate-600">Valores por 12 meses. Quanto maior a cota, maior o logo e mais lugares onde a marca aparece.</p>
+        <ul class="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {
+            cotas.map((c) => {
+              const esgotada = c.vagasLivres === 0;
+              const formato = FORMATOS_LOGO_PATROCINIO[c.cota];
+              return (
+                <li class={`flex flex-col rounded-3xl bg-white p-5 shadow-sm ring-1 ${esgotada ? "opacity-70 ring-slate-200" : "ring-black/5"}`}>
+                  <div class="flex items-start justify-between gap-2">
+                    <h3 class="font-display text-xl font-extrabold text-azul-900">{c.nome}</h3>
+                    <span
+                      class={`rounded-full px-2.5 py-0.5 text-xs font-extrabold ${
+                        esgotada ? "bg-slate-100 text-slate-500" : "bg-zap-50 text-zap-700"
+                      }`}
+                    >
+                      {esgotada
+                        ? "Esgotada"
+                        : `${c.vagasLivres} de ${c.vagasTotais} ${c.vagasTotais === 1 ? "vaga livre" : "vagas livres"}`}
+                    </span>
+                  </div>
+                  <p class="mt-3">
+                    {precoFundadorValendo ? (
+                      <>
+                        <span class="font-display text-3xl font-extrabold text-vermelho-600">{formatarCentavos(c.valorFundadorCentavos)}</span>
+                        <span class="ml-1 text-sm text-slate-500 line-through">{formatarCentavos(c.valorCentavos)}</span>
+                        <span class="block text-xs font-bold text-vermelho-600">Preço de Fundador até {prazo}</span>
+                      </>
+                    ) : (
+                      <span class="font-display text-3xl font-extrabold text-azul-900">{formatarCentavos(c.valorCentavos)}</span>
+                    )}
+                  </p>
+                  <ul class="mt-4 space-y-1.5 text-sm text-slate-700">
+                    {c.beneficios.map((b) => (
+                      <li class="flex gap-2">
+                        <Icone nome="certo" class="mt-0.5 size-4 shrink-0 text-zap-600" />
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                  <p class="mt-4 text-xs text-slate-500">
+                    Logo: {formato.largura} × {formato.altura} pixels
+                    {(c.cota === "grupo" || c.cota === "categoria") && ` · uma empresa por ${c.cota === "grupo" ? "grupo" : "categoria"}`}
+                  </p>
+                  {!esgotada && <BotaoContato rotulo="Quero esta cota" variante="azul" class="mt-4 w-full" />}
+                </li>
+              );
+            })
+          }
+        </ul>
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-4 py-10">
+      <h2 class="font-display text-2xl font-bold text-azul-900">Regras</h2>
+      <ul class="mt-4 grid gap-2 md:grid-cols-2">
+        {
+          regrasCombinadas.map((r) => (
+            <li class="flex gap-2 rounded-2xl bg-white p-4 text-sm text-slate-700 shadow-sm ring-1 ring-black/5">
+              <Icone nome="info" class="mt-0.5 size-4 shrink-0 text-azul-600" />
+              {r}
+            </li>
+          ))
+        }
+      </ul>
+      <div class="mt-8 flex flex-wrap items-center gap-3">
+        <BotaoContato rotulo="Quero patrocinar" />
+        <a href="/patrocinadores" class={classesBotao("contorno", "g")}>Ver quem já patrocina</a>
+      </div>
+    </section>
+  </main>
+</Layout>

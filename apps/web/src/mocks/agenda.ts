@@ -1,4 +1,6 @@
-// DADOS FICTÍCIOS para o layout da Agenda. Artistas e eventos inventados. As
+// DADOS FICTÍCIOS para o layout da Agenda. Artistas anunciantes (com perfil
+// completo): Júlia Voz e Violão, Banda Maré Alta e DJ Léo Batida. Os outros só
+// aparecem porque um bar os cadastrou, e então só com nome e estilo. Artistas e eventos inventados. As
 // datas são contadas a partir de hoje (diasDepoisDeHoje), para a demonstração
 // nunca ficar com a Agenda vazia; src/dados/consultas.ts transforma em datas.
 import type { Apresentacao, Artista, EventoAgenda } from "@acheaqui/types";
@@ -17,7 +19,7 @@ export const artistas: Artista[] = [
     id: "ar1", slug: "banda-mare-alta", nome: "Banda Maré Alta", estilo: "Pop rock", cor: "#2563EB",
     descricao: "Clássicos do pop rock nacional e internacional, de Legião Urbana a Coldplay. Tocamos em bares, casamentos e festas de empresa, com som próprio.",
     formacao: "Voz, guitarra, baixo e bateria", atende: ["Bares e quiosques", "Casamentos", "Festas de empresa", "Aniversários"],
-    instagram: "bandamarealta", whatsapp: zap(1),
+    anuncianteId: "a20", instagram: "bandamarealta", whatsapp: zap(1),
     foto: foto("ar1-perfil", "Banda Maré Alta"), capa: foto("ar1-capa", "Show ao pôr do sol"),
     galeria: fotos("ar1-g", ["Show no Quiosque Maré Cheia", "Festival de Inverno", "Casamento na praia", "Ensaio"]),
     videos: [video("Ao vivo no Festival de Inverno"), video("Medley pop rock anos 80")],
@@ -32,7 +34,7 @@ export const artistas: Artista[] = [
     id: "ar3", slug: "julia-voz-e-violao", nome: "Júlia Voz e Violão", estilo: "MPB", cor: "#D81B7A",
     descricao: "MPB e bossa nova em formato acústico, para jantares, cerimônias e fins de tarde.",
     formacao: "Voz e violão", atende: ["Bares e quiosques", "Casamentos", "Jantares"],
-    instagram: "juliavozeviolao", whatsapp: zap(3),
+    anuncianteId: "a19", instagram: "juliavozeviolao", whatsapp: zap(3),
     foto: foto("ar3-perfil", "Júlia"), capa: foto("ar3-capa", "Show acústico no quiosque"), galeria: [foto("ar3-g-1", "Pôr do sol no quiosque"), foto("ar3-g-2", "Cerimônia de casamento"), foto("ar3-g-3", "Show acústico")], videos: [video("Garota de Ipanema (acústico)")],
   },
   {
