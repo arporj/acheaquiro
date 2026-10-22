@@ -9,13 +9,13 @@ import { ambiente } from "@/lib/ambiente";
 import { normalizar } from "@/lib/texto";
 import { anunciantes as anunciantesFicticios } from "@/mocks/anunciantes";
 import { categorias, ordemAtalhos } from "@/mocks/categorias";
-import { destaqueExclusivoId, linksPatrocinados, simulacaoComercios, superDestaqueIds } from "@/mocks/extras";
+import { destaqueExclusivoId, linksDestacados, simulacaoComercios, superDestaqueIds } from "@/mocks/extras";
 import { bairros, cidadeAtual } from "@/mocks/localidades";
 import { apresentacoes as apresentacoesFicticias, artistas as artistasFicticios, eventos as eventosFicticios } from "@/mocks/agenda";
 import { patrocinadores as patrocinadoresFicticios } from "@/mocks/patrocinadores";
 import { extrasDisponiveis, planos, regrasCobranca } from "@/mocks/planos";
 
-/** Anunciantes, destaques e patrocinados fictícios. */
+/** Anunciantes, destaques e destacados fictícios. */
 const ficticio = ambiente === "apresentacao";
 const catalogoDoBanco = ambiente === "producao";
 
@@ -79,7 +79,7 @@ export interface ItemResultado {
   cor: string;
   selo: Selo;
   fundador: boolean;
-  patrocinado: boolean;
+  destacado: boolean;
   /** Bairros atendidos (profissional) ou endereço (comércio). */
   local: string;
   bairroIds: string[];
@@ -161,7 +161,7 @@ export async function situacaoComercio(id: string): Promise<{ abertoAgora: boole
   return ficticio ? simulacaoComercios[id] : undefined;
 }
 
-function paraItem(c: CatalogoPublico, anunciante: Anunciante, patrocinado = false): ItemResultado {
+function paraItem(c: CatalogoPublico, anunciante: Anunciante, destacado = false): ItemResultado {
   const categoria = c.categorias.find((x) => x.id === anunciante.categoriaId);
   const base = {
     id: anunciante.id,
@@ -174,7 +174,7 @@ function paraItem(c: CatalogoPublico, anunciante: Anunciante, patrocinado = fals
     cor: categoria?.cor ?? "#2563EB",
     selo: planoEm(c, anunciante.planoId)?.selo ?? "nenhum",
     fundador: anunciante.fundador,
-    patrocinado,
+    destacado,
     whatsapp: anunciante.whatsapp,
     telefone: anunciante.telefone,
   };
@@ -206,10 +206,10 @@ function paraItem(c: CatalogoPublico, anunciante: Anunciante, patrocinado = fals
 
 /**
  * SIMULAÇÃO da ordem da lista, só para o layout: por nível do plano e nome. A
- * regra real (sorteio dos patrocinados, alternância dentro de cada grupo, vaga
+ * regra real (sorteio dos destacados, alternância dentro de cada grupo, vaga
  * rotativa) é `ordenarResultados`, de packages/domain, aplicada na etapa 3.
  */
-function ordenarSimulado(c: CatalogoPublico, itens: { anunciante: Anunciante; patrocinado: boolean }[]) {
+function ordenarSimulado(c: CatalogoPublico, itens: { anunciante: Anunciante; destacado: boolean }[]) {
   return [...itens].sort((a, b) => {
     const nivelA = planoEm(c, a.anunciante.planoId)?.nivel ?? 0;
     const nivelB = planoEm(c, b.anunciante.planoId)?.nivel ?? 0;
@@ -218,22 +218,22 @@ function ordenarSimulado(c: CatalogoPublico, itens: { anunciante: Anunciante; pa
 }
 
 /**
- * Os patrocinados aparecem no topo, marcados, e também na posição do seu
+ * Os destacados aparecem no topo, marcados, e também na posição do seu
  * plano: o patrocínio é um lugar a mais (decisão de 20/10/2026).
  */
 export async function buscarPorCategoria(categoriaId: string): Promise<ItemResultado[]> {
   const c = await catalogo();
-  const patrocinados = ficticio ? linksPatrocinados : [];
+  const destacados = ficticio ? linksDestacados : [];
   const encontrados = ordenarSimulado(
     c,
     anunciantes
       .filter((a) => a.categoriaId === categoriaId || a.categoriasAdicionais.includes(categoriaId))
       .map((anunciante) => ({
         anunciante,
-        patrocinado: patrocinados.some((l) => l.anuncianteId === anunciante.id && l.categoriaId === categoriaId),
+        destacado: destacados.some((l) => l.anuncianteId === anunciante.id && l.categoriaId === categoriaId),
       })),
   );
-  const topo = encontrados.filter((r) => r.patrocinado).map((r) => paraItem(c, r.anunciante, true));
+  const topo = encontrados.filter((r) => r.destacado).map((r) => paraItem(c, r.anunciante, true));
   return [...topo, ...encontrados.map((r) => paraItem(c, r.anunciante))];
 }
 
@@ -241,7 +241,7 @@ export async function buscarPorTexto(termo: string): Promise<{ categorias: Categ
   const c = await catalogo();
   const busca = normalizar(termo);
   if (!busca) {
-    const todos = anunciantes.map((anunciante) => ({ anunciante, patrocinado: false }));
+    const todos = anunciantes.map((anunciante) => ({ anunciante, destacado: false }));
     return { categorias: [], resultados: ordenarSimulado(c, todos).map((r) => paraItem(c, r.anunciante)) };
   }
 
@@ -258,7 +258,7 @@ export async function buscarPorTexto(termo: string): Promise<{ categorias: Categ
         normalizar(a.nome).includes(busca) ||
         normalizar(a.descricao).includes(busca),
     )
-    .map((anunciante) => ({ anunciante, patrocinado: false }));
+    .map((anunciante) => ({ anunciante, destacado: false }));
 
   return { categorias: categoriasEncontradas, resultados: ordenarSimulado(c, encontrados).map((r) => paraItem(c, r.anunciante)) };
 }

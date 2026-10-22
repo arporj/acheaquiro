@@ -1,0 +1,66 @@
+---
+// Lista de artistas e bandas da Agenda, com busca por nome ou estilo e o
+// próximo show de cada um. Sem nenhum artista, a página não existe.
+import { Icone } from "@acheaqui/ui";
+import Topo from "@/components/anuncios/Topo.astro";
+import AvatarArtista from "@/components/agenda/AvatarArtista.astro";
+import { agendaProximosDias, hojeNaCidade, listarArtistas } from "@/dados/consultas";
+import Layout from "@/layouts/Layout.astro";
+import { guardarNoCache } from "@/lib/cache";
+import { dataCurtaComSemana, normalizar } from "@/lib/texto";
+
+const artistas = await listarArtistas();
+if (artistas.length === 0) return Astro.rewrite("/404");
+guardarNoCache(Astro);
+
+const hoje = hojeNaCidade();
+const agenda = await agendaProximosDias();
+const cartoes = artistas.map((artista) => ({ artista, proximo: agenda.find((i) => i.artista.id === artista.id) }));
+---
+
+<Layout titulo="Artistas e bandas de Rio das Ostras" descricao="Músicos, bandas e DJs que tocam em Rio das Ostras: próximos shows e contato para contratar.">
+  <Topo pagina="interna" />
+  <main class="mx-auto w-full max-w-6xl px-4 pt-4 pb-12">
+    <nav aria-label="Você está em" class="flex items-center gap-1 text-sm font-semibold text-slate-500">
+      <a href="/" class="hover:text-azul-600">Início</a>
+      <Icone nome="direita" class="size-3.5" />
+      <a href="/agenda" class="hover:text-azul-600">Agenda</a>
+      <Icone nome="direita" class="size-3.5" />
+    </nav>
+    <div class="mt-2 mb-4 flex flex-wrap items-end justify-between gap-3">
+      <h1 class="font-display text-2xl leading-tight font-extrabold text-azul-900 sm:text-3xl">Artistas e bandas</h1>
+      <label class="flex w-full items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-black/5 sm:w-80">
+        <Icone nome="busca" class="size-4 text-slate-400" />
+        <input data-busca-artista type="search" placeholder="Nome ou estilo (samba, MPB...)" class="w-full bg-transparent text-sm outline-none" />
+      </label>
+    </div>
+
+    <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {
+        cartoes.map(({ artista, proximo }) => (
+          <li data-artista={normalizar(`${artista.nome} ${artista.estilo}`)}>
+            <a href={`/artista/${artista.slug}`} class="flex h-full items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 hover:ring-azul-300">
+              <AvatarArtista artista={artista} class="size-14" />
+              <span class="min-w-0">
+                <span class="block font-bold text-azul-900">{artista.nome}</span>
+                <span class="block text-sm text-slate-500">{artista.estilo}</span>
+                <span class="mt-1 block text-xs font-bold text-vermelho-600 first-letter:uppercase">
+                  {proximo
+                    ? `Próximo show: ${proximo.data === hoje ? "hoje" : dataCurtaComSemana(proximo.data)}, ${proximo.inicio} · ${proximo.lugar.nome}`
+                    : "Sem show marcado"}
+                </span>
+              </span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <p data-sem-artista hidden class="mt-4 text-center text-sm text-slate-500">Nenhum artista com esse nome ou estilo.</p>
+  </main>
+</Layout>
+
+<script>
+  import { ligarBuscaArtista } from "@/lib/buscaArtista";
+
+  ligarBuscaArtista();
+</script>

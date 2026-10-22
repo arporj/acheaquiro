@@ -1,6 +1,7 @@
 ---
-// Página do artista: próximos shows e os anteriores, em todos os lugares.
-import { Icone, classesBotao } from "@acheaqui/ui";
+// Perfil do artista ou da banda: fotos, vídeos, formação, contato para
+// contratar e os shows (próximos e anteriores) em todos os lugares.
+import { FotoMarcador, Icone, classesBotao } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
 import AvatarArtista from "@/components/agenda/AvatarArtista.astro";
 import BotaoCompartilhar from "@/components/BotaoCompartilhar.astro";
@@ -8,11 +9,14 @@ import Secao from "@/components/perfil/Secao.astro";
 import { agendaDoArtista, anuncianteSlugPorId, artistaPorSlug, hojeNaCidade } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
+import { linkWhatsApp } from "@/lib/contato";
 import { dataCurtaComSemana } from "@/lib/texto";
 
 const artista = await artistaPorSlug(Astro.params.slug ?? "");
 if (!artista) return Astro.rewrite("/404");
 guardarNoCache(Astro);
+
+const MENSAGEM = "Olá! Encontrei vocês na Agenda do Ache Aqui RO e gostaria de um orçamento para um show.";
 
 const hoje = hojeNaCidade();
 const todos = await agendaDoArtista(artista.id);
@@ -23,67 +27,175 @@ const secoes = [
 ].filter((s) => s.itens.length > 0 || s.vazio);
 ---
 
-<Layout titulo={`${artista.nome} · Agenda`} descricao={`Próximos shows de ${artista.nome} em Rio das Ostras.`}>
+<Layout
+  titulo={`${artista.nome} · ${artista.estilo}`}
+  descricao={artista.descricao.slice(0, 155)}
+  previa={{ titulo: artista.nome, descricao: `${artista.estilo} em Rio das Ostras: próximos shows e contato` }}
+>
   <Topo pagina="interna" />
-  <main class="mx-auto w-full max-w-4xl px-4 pt-4 pb-12">
+  <main class="mx-auto w-full max-w-6xl px-4 pt-4 pb-12">
     <nav aria-label="Você está em" class="flex items-center gap-1 text-sm font-semibold text-slate-500">
       <a href="/" class="hover:text-azul-600">Início</a>
       <Icone nome="direita" class="size-3.5" />
-      <a href="/agenda" class="hover:text-azul-600">Agenda</a>
+      <a href="/artistas" class="hover:text-azul-600">Artistas</a>
       <Icone nome="direita" class="size-3.5" />
+      <span class="text-tinta">{artista.nome}</span>
     </nav>
 
-    <section class="mt-2 flex flex-wrap items-center gap-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-6">
-      <AvatarArtista artista={artista} class="size-20" />
-      <div class="min-w-0 flex-1">
-        <p class="text-sm font-bold text-slate-500">{artista.estilo}</p>
-        <h1 class="font-display text-3xl leading-tight font-extrabold text-azul-900">{artista.nome}</h1>
-        <p class="mt-1 text-slate-700">{artista.descricao}</p>
-        <div class="mt-3 flex flex-wrap gap-2">
-          {
-            perfil && (
-              <a href={`/perfil/${perfil}`} class={classesBotao("azul", "p")}>
-                Ver perfil para contratar
-              </a>
-            )
-          }
-          {
-            artista.instagram && (
-              <a href={`https://instagram.com/${artista.instagram}`} target="_blank" rel="noopener noreferrer" class={classesBotao("contorno", "p")}>
-                <Icone nome="instagram" class="size-4" />@{artista.instagram}
-              </a>
-            )
-          }
-        </div>
-      </div>
-      <BotaoCompartilhar caminho={`/artista/${artista.slug}`} titulo={artista.nome} variante="botao" />
-    </section>
+    <div class="mt-3 grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div class="space-y-4">
+        <section class="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5">
+          <FotoMarcador foto={artista.galeria[0]} prioritaria icone="music" cor={artista.cor} class="h-32 w-full sm:h-48" tamanhoIcone="text-6xl sm:text-7xl" />
+          <div class="px-5 pb-5 sm:px-6">
+            <div class="flex items-end justify-between gap-3">
+              <AvatarArtista artista={artista} class="relative -mt-12 size-24 ring-4 ring-white sm:size-28" />
+              <div class="pt-2">
+                <BotaoCompartilhar caminho={`/artista/${artista.slug}`} titulo={artista.nome} variante="botao" />
+              </div>
+            </div>
+            <p class="mt-3 text-sm font-bold text-slate-500">{artista.estilo}</p>
+            <h1 class="font-display text-3xl leading-tight font-extrabold text-azul-900 sm:text-4xl">{artista.nome}</h1>
+            {
+              artista.formacao && (
+                <p class="mt-2 flex items-start gap-1.5 text-slate-600">
+                  <Icone nome="usuarios" class="mt-1 size-4 shrink-0 text-azul-600" />
+                  {artista.formacao}
+                </p>
+              )
+            }
+            {
+              perfil && (
+                <a href={`/perfil/${perfil}`} class="mt-2 inline-flex items-center gap-1 text-sm font-bold text-azul-600 hover:underline">
+                  Também anuncia no Ache Aqui RO: ver o perfil
+                  <Icone nome="direita" class="size-3.5" />
+                </a>
+              )
+            }
+          </div>
+        </section>
 
-    <div class="mt-4 space-y-4">
-      {
-        secoes.map((s) => (
-          <Secao titulo={s.titulo}>
-            {s.itens.length === 0 ? (
-              <p class="text-sm text-slate-500">{s.vazio}</p>
-            ) : (
-              <ul class="divide-y divide-slate-100">
-                {s.itens.map((it) => (
-                  <li class="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                    <span class="font-bold text-azul-900 first-letter:uppercase">
-                      {it.data === hoje ? "Hoje" : dataCurtaComSemana(it.data)} · {it.inicio}
-                    </span>
-                    <a href={it.lugar.href} class="inline-flex items-center gap-1 text-sm font-bold text-azul-600 hover:underline">
-                      <Icone nome="pin" class="size-3.5 text-vermelho-500" />
-                      {it.lugar.nome}
-                      <span class="font-semibold text-slate-500">· {it.lugar.bairro}</span>
+        <Secao titulo="Sobre">
+          <p class="leading-relaxed text-slate-700">{artista.descricao}</p>
+          {
+            artista.atende.length > 0 && (
+              <>
+                <h3 class="mt-4 mb-2 text-sm font-bold text-slate-500">Faz show em</h3>
+                <ul class="flex flex-wrap gap-1.5">
+                  {artista.atende.map((tipo) => (
+                    <li class="rounded-full bg-azul-50 px-3 py-1 text-sm font-bold text-azul-700">{tipo}</li>
+                  ))}
+                </ul>
+              </>
+            )
+          }
+        </Secao>
+
+        {
+          secoes.map((s) => (
+            <Secao titulo={s.titulo}>
+              {s.itens.length === 0 ? (
+                <p class="text-sm text-slate-500">{s.vazio}</p>
+              ) : (
+                <ul class="divide-y divide-slate-100">
+                  {s.itens.map((it) => (
+                    <li class="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                      <span class="font-bold text-azul-900 first-letter:uppercase">
+                        {it.data === hoje ? "Hoje" : dataCurtaComSemana(it.data)} · {it.inicio}
+                      </span>
+                      <a href={it.lugar.href} class="inline-flex items-center gap-1 text-sm font-bold text-azul-600 hover:underline">
+                        <Icone nome="pin" class="size-3.5 text-vermelho-500" />
+                        {it.lugar.nome}
+                        <span class="font-semibold text-slate-500">· {it.lugar.bairro}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Secao>
+          ))
+        }
+
+        {
+          artista.galeria.length > 0 && (
+            <Secao titulo="Fotos">
+              <span slot="extra" class="text-sm font-bold text-slate-400">
+                {artista.galeria.length} fotos
+              </span>
+              <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {artista.galeria.map((foto) => (
+                  <li>
+                    <FotoMarcador foto={foto} icone="music" cor={artista.cor} class="aspect-square w-full rounded-2xl" tamanhoIcone="text-4xl" />
+                    {foto.legenda && <p class="mt-1 text-xs font-semibold text-slate-500">{foto.legenda}</p>}
+                  </li>
+                ))}
+              </ul>
+            </Secao>
+          )
+        }
+
+        {
+          artista.videos.length > 0 && (
+            <Secao titulo="Vídeos">
+              <ul class="space-y-2">
+                {artista.videos.map((v) => (
+                  <li>
+                    <a
+                      href={v.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="flex items-center gap-3 rounded-2xl bg-fundo p-3 font-bold text-azul-900 hover:bg-azul-50"
+                    >
+                      <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-vermelho-600 text-white" aria-hidden="true">▶</span>
+                      {v.titulo}
                     </a>
                   </li>
                 ))}
               </ul>
-            )}
-          </Secao>
-        ))
-      }
+            </Secao>
+          )
+        }
+      </div>
+
+      <aside class="space-y-4 lg:sticky lg:top-4">
+        <section class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+          <h2 class="font-display text-xl font-bold text-azul-900">Contratar</h2>
+          <p class="mb-4 text-sm text-slate-500">Fale direto com {artista.nome}, sem intermediários.</p>
+          <div class="space-y-2">
+            {
+              artista.whatsapp && (
+                <a href={linkWhatsApp(artista.whatsapp, MENSAGEM)} target="_blank" rel="noopener noreferrer" class={classesBotao("zap", "g", "w-full")}>
+                  <Icone nome="mensagem" class="size-5" />
+                  Pedir orçamento
+                </a>
+              )
+            }
+            {
+              perfil && !artista.whatsapp && (
+                <a href={`/perfil/${perfil}`} class={classesBotao("zap", "g", "w-full")}>
+                  <Icone nome="mensagem" class="size-5" />
+                  Contato pelo perfil
+                </a>
+              )
+            }
+            {
+              artista.instagram && (
+                <a
+                  href={`https://instagram.com/${artista.instagram}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class={classesBotao("contorno", "m", "w-full")}
+                >
+                  <Icone nome="instagram" class="size-5" />@{artista.instagram}
+                </a>
+              )
+            }
+          </div>
+        </section>
+        <a href="/agenda" class="flex items-center justify-between rounded-3xl bg-azul-600 p-5 font-bold text-white hover:bg-azul-700">
+          Ver toda a Agenda
+          <Icone nome="direita" class="size-5" />
+        </a>
+      </aside>
     </div>
   </main>
 </Layout>

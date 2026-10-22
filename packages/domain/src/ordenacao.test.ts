@@ -31,41 +31,41 @@ function listaCompleta(entrada: CandidatoLista[], lista: CandidatoLista[]) {
   expect([...ids(lista)].sort()).toEqual([...ids(entrada)].sort());
 }
 
-describe("patrocinados no topo", () => {
-  it("sem patrocinados, o topo fica vazio e a lista começa pelo maior plano", () => {
+describe("destacados no topo", () => {
+  it("sem destacados, o topo fica vazio e a lista começa pelo maior plano", () => {
     const entrada = [...anunciantes(2, 1), ...anunciantes(2, 4)];
-    const { patrocinados, lista } = ordenarResultados(entrada, padrao);
-    expect(patrocinados).toEqual([]);
+    const { destacados, lista } = ordenarResultados(entrada, padrao);
+    expect(destacados).toEqual([]);
     expect(lista.slice(0, 2).every((c) => c.nivelPlano === 4)).toBe(true);
     listaCompleta(entrada, lista);
   });
 
-  it("com 2 patrocinados da cidade toda, os 2 vão para o topo", () => {
-    const patrocinados = anunciantes(2, 1, { patrocinios: cidade });
-    const entrada = [...anunciantes(4, 4), ...patrocinados];
+  it("com 2 destacados da cidade toda, os 2 vão para o topo", () => {
+    const destacados = anunciantes(2, 1, { patrocinios: cidade });
+    const entrada = [...anunciantes(4, 4), ...destacados];
     const resultado = ordenarResultados(entrada, padrao);
-    expect(ids(resultado.patrocinados).sort()).toEqual(ids(patrocinados).sort());
+    expect(ids(resultado.destacados).sort()).toEqual(ids(destacados).sort());
   });
 
-  it("o patrocinado continua também na posição do seu plano", () => {
-    const [patrocinado] = anunciantes(1, 1, { patrocinios: cidade });
-    const entrada = [...anunciantes(4, 4), patrocinado!];
-    const { patrocinados, lista } = ordenarResultados(entrada, padrao);
-    expect(ids(patrocinados)).toEqual([patrocinado!.id]);
-    expect(lista.at(-1)!.id).toBe(patrocinado!.id);
+  it("o destacado continua também na posição do seu plano", () => {
+    const [destacado] = anunciantes(1, 1, { patrocinios: cidade });
+    const entrada = [...anunciantes(4, 4), destacado!];
+    const { destacados, lista } = ordenarResultados(entrada, padrao);
+    expect(ids(destacados)).toEqual([destacado!.id]);
+    expect(lista.at(-1)!.id).toBe(destacado!.id);
     listaCompleta(entrada, lista);
   });
 
-  it("com 5 patrocinados, sorteia 3 para o topo; todos seguem no grupo do plano", () => {
-    const patrocinados = anunciantes(5, 3, { patrocinios: cidade });
-    const entrada = [...anunciantes(2, 4), ...patrocinados, ...anunciantes(2, 1)];
+  it("com 5 destacados, sorteia 3 para o topo; todos seguem no grupo do plano", () => {
+    const destacados = anunciantes(5, 3, { patrocinios: cidade });
+    const entrada = [...anunciantes(2, 4), ...destacados, ...anunciantes(2, 1)];
     const resultado = ordenarResultados(entrada, padrao);
-    expect(resultado.patrocinados).toHaveLength(3);
+    expect(resultado.destacados).toHaveLength(3);
     expect(resultado.lista.map((c) => c.nivelPlano)).toEqual([4, 4, 3, 3, 3, 3, 3, 1, 1]);
     listaCompleta(entrada, resultado.lista);
   });
 
-  it("dá o dobro de chance ao Patrocinado Plus (10.000 buscas, tolerância de 3 pontos)", () => {
+  it("dá o dobro de chance ao Destacado Plus (10.000 buscas, tolerância de 3 pontos)", () => {
     // 1 Plus + 3 simples disputando 3 vagas: o Plus entra em 90% das buscas e
     // cada simples em 70% (fica de fora só quando saem os 3 simples).
     const [plus] = anunciantes(1, 2, { patrocinios: cidadePlus });
@@ -74,7 +74,7 @@ describe("patrocinados no topo", () => {
     let plusNoTopo = 0;
     let simplesNoTopo = 0;
     for (let semente = 0; semente < 10_000; semente++) {
-      const topo = ids(ordenarResultados(entrada, { ...padrao, semente }).patrocinados);
+      const topo = ids(ordenarResultados(entrada, { ...padrao, semente }).destacados);
       if (topo.includes(plus!.id)) plusNoTopo++;
       if (topo.includes(simples[0]!.id)) simplesNoTopo++;
     }
@@ -90,16 +90,16 @@ describe("patrocínio na cidade toda ou em bairros", () => {
   const entrada = [joao, pedro, ...anunciantes(3, 4)];
 
   it("sem bairro escolhido, só a cidade toda disputa o topo", () => {
-    expect(ids(ordenarResultados(entrada, padrao).patrocinados)).toEqual(["pedro"]);
+    expect(ids(ordenarResultados(entrada, padrao).destacados)).toEqual(["pedro"]);
   });
 
   it("num bairro do pacote, entram o pacote e a cidade toda", () => {
-    const topo = ordenarResultados(entrada, { ...padrao, bairro: "costazul" }).patrocinados;
+    const topo = ordenarResultados(entrada, { ...padrao, bairro: "costazul" }).destacados;
     expect(ids(topo).sort()).toEqual(["joao", "pedro"]);
   });
 
   it("num bairro fora do pacote, só a cidade toda", () => {
-    expect(ids(ordenarResultados(entrada, { ...padrao, bairro: "centro" }).patrocinados)).toEqual(["pedro"]);
+    expect(ids(ordenarResultados(entrada, { ...padrao, bairro: "centro" }).destacados)).toEqual(["pedro"]);
   });
 
   it("o pacote de bairros fora do topo continua na lista do plano", () => {
@@ -157,11 +157,11 @@ describe("vaga rotativa", () => {
     listaCompleta(entrada, lista);
   });
 
-  it("conta as posições da página, com os patrocinados do topo", () => {
+  it("conta as posições da página, com os destacados do topo", () => {
     // 2 no topo + lista: a 10ª posição da página é a 8ª da lista.
     const entrada = [...anunciantes(2, 3, { patrocinios: cidade }), ...anunciantes(10, 4), ...anunciantes(1, 1)];
-    const { patrocinados, lista } = ordenarResultados(entrada, padrao);
-    expect(patrocinados).toHaveLength(2);
+    const { destacados, lista } = ordenarResultados(entrada, padrao);
+    expect(destacados).toHaveLength(2);
     expect(lista[7]!.nivelPlano).toBe(1);
     listaCompleta(entrada, lista);
   });
@@ -238,11 +238,11 @@ describe("comércios com bairro escolhido", () => {
     expect(ids(lista.slice(2))).toEqual(["centro-gratuito-perto", "centro-vitrine-meio", "centro-premium-longe"]);
   });
 
-  it("o patrocinado da cidade toda de outro bairro vai para o topo e continua no seu grupo", () => {
-    const patrocinado = { ...fora("centro-patrocinado", 2, 7), patrocinios: cidade };
-    const { patrocinados, lista } = ordenarResultados([...entrada, patrocinado], opcoes);
-    expect(ids(patrocinados)).toEqual(["centro-patrocinado"]);
-    expect(ids(lista.slice(2))).toContain("centro-patrocinado");
+  it("o destacado da cidade toda de outro bairro vai para o topo e continua no seu grupo", () => {
+    const destacado = { ...fora("centro-destacado", 2, 7), patrocinios: cidade };
+    const { destacados, lista } = ordenarResultados([...entrada, destacado], opcoes);
+    expect(ids(destacados)).toEqual(["centro-destacado"]);
+    expect(ids(lista.slice(2))).toContain("centro-destacado");
   });
 
   it("aplica a vaga rotativa dentro do bairro", () => {
@@ -291,15 +291,15 @@ describe("Mais perto de mim", () => {
     expect(ids(ordenarResultados(entrada, distancia).lista)).toEqual(["perto", "meio", "longe", "sem"]);
   });
 
-  it("mantém os patrocinados no topo, mesmo mais longe, e também na posição da distância", () => {
+  it("mantém os destacados no topo, mesmo mais longe, e também na posição da distância", () => {
     const entrada = [
       { id: "perto", nivelPlano: 4, distanciaKm: 0.1 },
-      { id: "patrocinado-longe", nivelPlano: 1, distanciaKm: 9, patrocinios: cidade },
+      { id: "destacado-longe", nivelPlano: 1, distanciaKm: 9, patrocinios: cidade },
       { id: "meio", nivelPlano: 2, distanciaKm: 3 },
     ];
-    const { patrocinados, lista } = ordenarResultados(entrada, distancia);
-    expect(ids(patrocinados)).toEqual(["patrocinado-longe"]);
-    expect(ids(lista)).toEqual(["perto", "meio", "patrocinado-longe"]);
+    const { destacados, lista } = ordenarResultados(entrada, distancia);
+    expect(ids(destacados)).toEqual(["destacado-longe"]);
+    expect(ids(lista)).toEqual(["perto", "meio", "destacado-longe"]);
   });
 
   it("não aplica a vaga rotativa", () => {

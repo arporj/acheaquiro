@@ -26,6 +26,13 @@ const { comBusca = false } = Astro.props;
           </a>
         )
       }
+      {
+        ambiente === "apresentacao" && (
+          <a href="/artistas" class="hidden rounded-full px-4 py-2 text-sm font-bold text-white/90 hover:bg-white/10 lg:inline-flex">
+            Artistas
+          </a>
+        )
+      }
       <a href="/sobre" class="hidden rounded-full px-4 py-2 text-sm font-bold text-white/90 hover:bg-white/10 md:inline-flex">
         Como funciona
       </a>

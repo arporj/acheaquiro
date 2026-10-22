@@ -56,8 +56,8 @@ export const extrasDisponiveis: Extra[] = [
     ...destaque,
   },
   {
-    id: "link-patrocinado-cidade",
-    nome: "Link patrocinado na cidade toda",
+    id: "link-destacado-cidade",
+    nome: "Link destacado na cidade toda",
     descricao:
       "Uma das 3 primeiras posições da lista da sua categoria em todas as buscas, com ou sem bairro escolhido. No máximo 3 por categoria. Você continua também na sua posição normal da lista.",
     valorMensalCentavos: 7990,
@@ -66,19 +66,19 @@ export const extrasDisponiveis: Extra[] = [
     ...destaque,
   },
   {
-    id: "link-patrocinado",
-    nome: "Link patrocinado nos bairros",
+    id: "link-destacado",
+    nome: "Link destacado nos bairros",
     descricao:
-      "Uma das 3 primeiras posições da lista da sua categoria, quando o visitante escolhe um dos 3 bairros do pacote. Com mais de 3 patrocinados, há sorteio a cada busca. Você continua também na sua posição normal da lista.",
+      "Uma das 3 primeiras posições da lista da sua categoria, quando o visitante escolhe um dos 3 bairros do pacote. Com mais de 3 destacados, há sorteio a cada busca. Você continua também na sua posição normal da lista.",
     valorMensalCentavos: 3990,
     unidade: "por categoria, em 3 bairros",
     ...mensal,
     ...destaque,
   },
   {
-    id: "patrocinado-plus",
-    nome: "Patrocinado Plus nos bairros",
-    descricao: "Igual ao link patrocinado nos bairros, com o dobro de chance no sorteio.",
+    id: "destacado-plus",
+    nome: "Destacado Plus nos bairros",
+    descricao: "Igual ao link destacado nos bairros, com o dobro de chance no sorteio.",
     valorMensalCentavos: 5990,
     unidade: "por categoria, em 3 bairros",
     ...mensal,

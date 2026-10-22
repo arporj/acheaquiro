@@ -1,6 +1,6 @@
 // DADOS FICTÍCIOS para o layout: extras contratados (item 6.4) e valores que,
 // no sistema real, são calculados na hora (aberto agora e distância).
-import type { LinkPatrocinado } from "@acheaqui/types";
+import type { LinkDestacado } from "@acheaqui/types";
 
 /** Destaque Exclusivo: um único anunciante por dia. */
 export const destaqueExclusivoId = "c03";
@@ -8,7 +8,7 @@ export const destaqueExclusivoId = "c03";
 /** Carrossel Super Destaque: no máximo 8 vagas. */
 export const superDestaqueIds = ["a01", "c06", "a06", "c01", "a05", "c07", "a09", "c04"];
 
-export const linksPatrocinados: LinkPatrocinado[] = [
+export const linksDestacados: LinkDestacado[] = [
   { anuncianteId: "a01", categoriaId: "eletricista", plus: true },
   { anuncianteId: "a06", categoriaId: "bombeiro-hidraulico", plus: false },
   { anuncianteId: "c01", categoriaId: "pet-shop", plus: false },

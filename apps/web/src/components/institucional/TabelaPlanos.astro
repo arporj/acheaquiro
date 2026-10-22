@@ -35,7 +35,7 @@ const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um :
 /** Lista em ordem de nível: a posição de cada plano é a do plano acima dele. */
 function posicao(plano: Plano, lista: Plano[]): string {
   const acima = lista.find((p) => p.nivel === plano.nivel + 1);
-  if (!acima) return "Logo após os patrocinados na lista";
+  if (!acima) return "Logo após os destacados na lista";
   if (plano.nivel === 1) return "No fim da lista";
   return `Na lista, logo depois do ${acima.nome}`;
 }

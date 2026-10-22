@@ -62,7 +62,10 @@ const eventosComBairro = await Promise.all(eventos.map(async (e) => ({ ...e, bai
         }
 
         <section>
-          <h2 class="mb-2 font-display text-lg font-bold text-azul-900">Artistas</h2>
+          <div class="mb-2 flex items-baseline justify-between">
+            <h2 class="font-display text-lg font-bold text-azul-900">Artistas</h2>
+            <a href="/artistas" class="text-sm font-bold text-azul-600 hover:underline">Ver todos</a>
+          </div>
           <label class="mb-2 flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-black/5">
             <Icone nome="busca" class="size-4 text-slate-400" />
             <input data-busca-artista type="search" placeholder="Buscar artista ou banda" class="w-full bg-transparent text-sm outline-none" />
@@ -90,18 +93,7 @@ const eventosComBairro = await Promise.all(eventos.map(async (e) => ({ ...e, bai
 </Layout>
 
 <script>
-  import { normalizar } from "@/lib/texto";
+  import { ligarBuscaArtista } from "@/lib/buscaArtista";
 
-  const campo = document.querySelector<HTMLInputElement>("[data-busca-artista]");
-  const itens = [...document.querySelectorAll<HTMLElement>("[data-artista]")];
-  const vazio = document.querySelector<HTMLElement>("[data-sem-artista]");
-  campo?.addEventListener("input", () => {
-    const termo = normalizar(campo.value);
-    let visiveis = 0;
-    for (const item of itens) {
-      item.hidden = termo !== "" && !(item.dataset.artista ?? "").includes(termo);
-      if (!item.hidden) visiveis++;
-    }
-    if (vazio) vazio.hidden = visiveis > 0;
-  });
+  ligarBuscaArtista();
 </script>

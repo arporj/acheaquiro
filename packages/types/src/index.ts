@@ -189,7 +189,7 @@ export interface AnuncianteComercio extends AnuncianteBase {
 
 export type Anunciante = AnuncianteProfissional | AnuncianteComercio;
 
-export interface LinkPatrocinado {
+export interface LinkDestacado {
   anuncianteId: string;
   categoriaId: string;
   /** Vazio = vale para qualquer bairro. */
@@ -275,6 +275,15 @@ export interface Artista {
   /** Cor do avatar provisório. */
   cor: string;
   instagram?: string;
+  /** Para contratar o artista ou a banda. */
+  whatsapp?: string;
+  /** Integrantes e formação (exemplo: "voz, guitarra, baixo e bateria"). */
+  formacao?: string;
+  /** Tipos de evento que o artista aceita fazer. */
+  atende: string[];
+  galeria: Foto[];
+  /** Vídeos em sites externos (YouTube, Instagram); abrem fora do site, sem script de terceiros. */
+  videos: { titulo: string; url: string }[];
   /** Quando o artista também é anunciante, o nome leva ao perfil. */
   anuncianteId?: string;
 }

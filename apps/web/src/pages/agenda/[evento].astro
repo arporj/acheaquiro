@@ -61,7 +61,9 @@ const barracas = await Promise.all(
                   <span class="block font-display text-lg leading-tight font-extrabold text-azul-900">{it.inicio}</span>
                   {it.fim && <span class="block text-[0.7rem] font-bold text-slate-400">até {it.fim}</span>}
                 </span>
-                <AvatarArtista artista={it.artista} class="size-10" />
+                <a href={`/artista/${it.artista.slug}`} aria-hidden="true" tabindex="-1">
+                  <AvatarArtista artista={it.artista} class="size-10" />
+                </a>
                 <span>
                   <a href={`/artista/${it.artista.slug}`} class="block font-bold text-azul-900 hover:underline">
                     {it.artista.nome}

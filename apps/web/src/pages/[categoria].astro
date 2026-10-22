@@ -17,7 +17,7 @@ guardarNoCache(Astro);
 const itens = await buscarPorCategoria(categoria.id);
 const bairros = await listarBairros();
 const cidade = await obterCidade();
-const totalAnunciantes = itens.filter((i) => !i.patrocinado).length;
+const totalAnunciantes = itens.filter((i) => !i.destacado).length;
 const relacionadas = (await listarCategorias()).filter((c) => c.grupo === categoria.grupo && c.id !== categoria.id);
 const titulo = `${categoria.nomePlural} em ${cidade.nome}`;
 const patrocinio = await patrocinadoresDaCategoria(categoria);

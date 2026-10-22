@@ -5,13 +5,50 @@ import type { Apresentacao, Artista, EventoAgenda } from "@acheaqui/types";
 
 type Relativa<T extends { data: string }> = Omit<T, "data"> & { diasDepoisDeHoje: number };
 
+// Números inválidos de propósito, como nos anunciantes fictícios.
+const zap = (n: number) => `55229000001${String(n).padStart(2, "0")}`;
+const fotos = (prefixo: string, legendas: string[]) => legendas.map((legenda, i) => ({ id: `${prefixo}-${i + 1}`, legenda }));
+const video = (titulo: string) => ({ titulo, url: "https://exemplo.invalid/video" });
+
 export const artistas: Artista[] = [
-  { id: "ar1", slug: "banda-mare-alta", nome: "Banda Maré Alta", estilo: "Pop rock", cor: "#2563EB", descricao: "Clássicos do pop rock nacional e internacional, de Legião a Coldplay.", instagram: "bandamarealta" },
-  { id: "ar2", slug: "samba-da-praca", nome: "Samba da Praça", estilo: "Samba e pagode", cor: "#E8660C", descricao: "Roda de samba com repertório de raiz e pagode dos anos 90." },
-  { id: "ar3", slug: "julia-voz-e-violao", nome: "Júlia Voz e Violão", estilo: "MPB", cor: "#D81B7A", descricao: "MPB e bossa nova em formato acústico." },
-  { id: "ar4", slug: "trio-forro-do-litoral", nome: "Trio Forró do Litoral", estilo: "Forró", cor: "#15803D", descricao: "Sanfona, zabumba e triângulo: forró pé de serra para dançar." },
-  { id: "ar5", slug: "dj-leo-batida", nome: "DJ Léo Batida", estilo: "DJ", cor: "#7E3FC4", descricao: "Flashback, sertanejo e eletrônico.", anuncianteId: "a18", instagram: "djleobatida" },
-  { id: "ar6", slug: "rafa-sertanejo", nome: "Rafa Sertanejo", estilo: "Sertanejo", cor: "#9A5B2E", descricao: "Sertanejo universitário e modão." },
+  {
+    id: "ar1", slug: "banda-mare-alta", nome: "Banda Maré Alta", estilo: "Pop rock", cor: "#2563EB",
+    descricao: "Clássicos do pop rock nacional e internacional, de Legião Urbana a Coldplay. Tocamos em bares, casamentos e festas de empresa, com som próprio.",
+    formacao: "Voz, guitarra, baixo e bateria", atende: ["Bares e quiosques", "Casamentos", "Festas de empresa", "Aniversários"],
+    instagram: "bandamarealta", whatsapp: zap(1),
+    galeria: fotos("ar1-g", ["Show no Quiosque Maré Cheia", "Festival de Inverno", "Casamento na praia", "Ensaio"]),
+    videos: [video("Ao vivo no Festival de Inverno"), video("Medley pop rock anos 80")],
+  },
+  {
+    id: "ar2", slug: "samba-da-praca", nome: "Samba da Praça", estilo: "Samba e pagode", cor: "#E8660C",
+    descricao: "Roda de samba com repertório de raiz e pagode dos anos 90, toda sexta e sábado no Boteco da Praça.",
+    formacao: "Voz, cavaquinho, pandeiro, surdo e tantã", atende: ["Bares e quiosques", "Aniversários", "Feijoadas"],
+    whatsapp: zap(2), galeria: fotos("ar2-g", ["Roda no Boteco da Praça", "Feijoada de aniversário"]), videos: [video("Roda de samba ao vivo")],
+  },
+  {
+    id: "ar3", slug: "julia-voz-e-violao", nome: "Júlia Voz e Violão", estilo: "MPB", cor: "#D81B7A",
+    descricao: "MPB e bossa nova em formato acústico, para jantares, cerimônias e fins de tarde.",
+    formacao: "Voz e violão", atende: ["Bares e quiosques", "Casamentos", "Jantares"],
+    instagram: "juliavozeviolao", whatsapp: zap(3), galeria: fotos("ar3-g", ["Pôr do sol no quiosque", "Cerimônia de casamento", "Show acústico"]), videos: [video("Garota de Ipanema (acústico)")],
+  },
+  {
+    id: "ar4", slug: "trio-forro-do-litoral", nome: "Trio Forró do Litoral", estilo: "Forró", cor: "#15803D",
+    descricao: "Sanfona, zabumba e triângulo: forró pé de serra para dançar a noite toda.",
+    formacao: "Sanfona, zabumba e triângulo", atende: ["Bares e quiosques", "Festas juninas", "Aniversários"],
+    whatsapp: zap(4), galeria: fotos("ar4-g", ["Arraiá da praça", "Festival de Inverno"]), videos: [],
+  },
+  {
+    id: "ar5", slug: "dj-leo-batida", nome: "DJ Léo Batida", estilo: "DJ", cor: "#7E3FC4",
+    descricao: "Flashback, sertanejo e eletrônico, com som e iluminação próprios.",
+    atende: ["Bares e quiosques", "Casamentos", "Aniversários", "Formaturas"],
+    anuncianteId: "a18", instagram: "djleobatida", galeria: fotos("ar5-g", ["Pista lotada", "Equipamento", "Formatura"]), videos: [video("Set flashback")],
+  },
+  {
+    id: "ar6", slug: "rafa-sertanejo", nome: "Rafa Sertanejo", estilo: "Sertanejo", cor: "#9A5B2E",
+    descricao: "Sertanejo universitário e modão, em voz e violão ou com banda completa.",
+    formacao: "Voz e violão, ou banda com 4 músicos", atende: ["Bares e quiosques", "Aniversários", "Rodeios"],
+    whatsapp: zap(6), galeria: [], videos: [],
+  },
 ];
 
 export const eventos: Relativa<EventoAgenda>[] = [

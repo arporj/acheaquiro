@@ -13,11 +13,11 @@ export interface EstadoLista {
 }
 
 /** O que o navegador precisa saber de cada cartão para filtrar e ordenar. */
-export type DadosFiltro = Pick<ItemResultado, "tipo" | "bairroIds" | "todaCidade" | "abertoAgora" | "patrocinado" | "distanciaKm">;
+export type DadosFiltro = Pick<ItemResultado, "tipo" | "bairroIds" | "todaCidade" | "abertoAgora" | "destacado" | "distanciaKm">;
 
 export function paraDadosFiltro(item: ItemResultado): DadosFiltro {
-  const { tipo, bairroIds, todaCidade, abertoAgora, patrocinado, distanciaKm } = item;
-  return { tipo, bairroIds, todaCidade, abertoAgora, patrocinado, distanciaKm };
+  const { tipo, bairroIds, todaCidade, abertoAgora, destacado, distanciaKm } = item;
+  return { tipo, bairroIds, todaCidade, abertoAgora, destacado, distanciaKm };
 }
 
 export function abaInicial(itens: readonly DadosFiltro[]): Aba {
@@ -41,7 +41,7 @@ export function passaNoFiltro(item: DadosFiltro, estado: EstadoLista): boolean {
 /**
  * Ordem de exibição, em posições da lista original, e onde começam os
  * comércios de outros bairros (-1 quando não há essa divisão).
- * SIMULAÇÃO: patrocinados no topo; em "Mais perto de mim", o resto pela
+ * SIMULAÇÃO: destacados no topo; em "Mais perto de mim", o resto pela
  * distância; com bairro escolhido, os comércios do bairro na ordem do servidor
  * e depois os outros pela distância, como se o visitante tivesse permitido a
  * localização. A regra real está em packages/domain (ordenarResultados).
@@ -52,18 +52,18 @@ export function ordemDeExibicao(
 ): { ordem: number[]; inicioOutrosBairros: number } {
   const posicoes = itens.map((_, i) => i);
   const porDistancia = (a: number, b: number) => (itens[a].distanciaKm ?? 99) - (itens[b].distanciaKm ?? 99);
-  const patrocinados = posicoes.filter((i) => itens[i].patrocinado);
-  const demais = posicoes.filter((i) => !itens[i].patrocinado);
+  const destacados = posicoes.filter((i) => itens[i].destacado);
+  const demais = posicoes.filter((i) => !itens[i].destacado);
 
   if (estado.aba === "comercio" && estado.maisPerto) {
-    return { ordem: [...patrocinados, ...demais.sort(porDistancia)], inicioOutrosBairros: -1 };
+    return { ordem: [...destacados, ...demais.sort(porDistancia)], inicioOutrosBairros: -1 };
   }
   if (bairroReordena(estado)) {
     const doBairro = demais.filter((i) => itens[i].bairroIds.includes(estado.bairro));
     const outros = demais.filter((i) => !itens[i].bairroIds.includes(estado.bairro)).sort(porDistancia);
     return {
-      ordem: [...patrocinados, ...doBairro, ...outros],
-      inicioOutrosBairros: outros.length > 0 ? patrocinados.length + doBairro.length : -1,
+      ordem: [...destacados, ...doBairro, ...outros],
+      inicioOutrosBairros: outros.length > 0 ? destacados.length + doBairro.length : -1,
     };
   }
   return { ordem: posicoes, inicioOutrosBairros: -1 };

@@ -2,14 +2,14 @@
 // Técnica, seção 8.1). Ordena uma aba por vez (Profissionais ou Comércios).
 import { criarAleatorio, embaralhar, sortearComPeso, type Aleatorio } from "./sorteio";
 
-/** Quantas posições do topo são dos links patrocinados. */
-export const MAXIMO_PATROCINADOS = 3;
+/** Quantas posições do topo são dos links destacados. */
+export const MAXIMO_DESTACADOS = 3;
 /** A cada quantas posições existe uma vaga rotativa (10ª, 20ª, 30ª...). */
 export const INTERVALO_VAGA_ROTATIVA = 10;
 
-/** Um link patrocinado contratado na categoria da lista. */
+/** Um link destacado contratado na categoria da lista. */
 export interface Patrocinio {
-  /** Patrocinado Plus: o dobro de chance no sorteio. */
+  /** Destacado Plus: o dobro de chance no sorteio. */
   plus: boolean;
   /** Bairros do pacote (até 3). Vazio = cidade toda. */
   bairroIds?: readonly string[];
@@ -19,7 +19,7 @@ export interface CandidatoLista {
   id: string;
   /** Nível do plano: quanto maior, mais acima na lista. */
   nivelPlano: number;
-  /** Links patrocinados ativos do anunciante na categoria buscada. */
+  /** Links destacados ativos do anunciante na categoria buscada. */
   patrocinios?: readonly Patrocinio[];
   /** Distância até o visitante, quando ele permite a localização. */
   distanciaKm?: number;
@@ -31,7 +31,7 @@ export interface OpcoesOrdenacao {
   modo: "padrao" | "distancia";
   /** Uma semente nova a cada busca; fixa nos testes. */
   semente: number;
-  /** Bairro escolhido pelo visitante; sem bairro, só os patrocinados da cidade toda disputam o topo. */
+  /** Bairro escolhido pelo visitante; sem bairro, só os destacados da cidade toda disputam o topo. */
   bairro?: string;
   /**
    * Comércios com bairro escolhido (decisão de 20/10/2026): ninguém sai da
@@ -49,10 +49,10 @@ export interface OpcoesOrdenacao {
 }
 
 export interface ListaOrdenada<T> {
-  /** As até 3 primeiras posições, marcadas como "Patrocinado". */
-  patrocinados: T[];
+  /** As até 3 primeiras posições, marcadas como "Destacado". */
+  destacados: T[];
   /**
-   * Todos os candidatos, na ordem dos planos. Os patrocinados também estão
+   * Todos os candidatos, na ordem dos planos. Os destacados também estão
    * aqui, na posição do seu plano: o patrocínio é um lugar a mais no topo.
    */
   lista: T[];
@@ -65,18 +65,18 @@ export function ordenarResultados<T extends CandidatoLista>(
   opcoes: OpcoesOrdenacao,
 ): ListaOrdenada<T> {
   const aleatorio = criarAleatorio(opcoes.semente);
-  const patrocinados = sortearPatrocinados(candidatos, opcoes.bairro, aleatorio);
+  const destacados = sortearDestacados(candidatos, opcoes.bairro, aleatorio);
 
   if (opcoes.modo === "distancia") {
-    return { patrocinados, lista: ordenarPorDistancia(candidatos) };
+    return { destacados, lista: ordenarPorDistancia(candidatos) };
   }
 
-  const inicio = patrocinados.length;
+  const inicio = destacados.length;
   const bairro = opcoes.priorizarBairro ? opcoes.bairro : undefined;
   if (bairro === undefined) {
-    const exibicao = [...patrocinados, ...agruparPorPlano(candidatos, aleatorio)];
+    const exibicao = [...destacados, ...agruparPorPlano(candidatos, aleatorio)];
     aplicarVagas(exibicao, candidatos.length, [{ inicio, fim: exibicao.length }], opcoes, aleatorio);
-    return { patrocinados, lista: exibicao.slice(inicio) };
+    return { destacados, lista: exibicao.slice(inicio) };
   }
 
   const doBairro = agruparPorPlano(
@@ -85,7 +85,7 @@ export function ordenarResultados<T extends CandidatoLista>(
   );
   const outros = candidatos.filter((c) => !c.bairroIds?.includes(bairro));
   const exibicao = [
-    ...patrocinados,
+    ...destacados,
     ...doBairro,
     ...(opcoes.outrosBairrosPorDistancia ? ordenarPorDistancia(outros) : agruparPorPlano(outros, aleatorio)),
   ];
@@ -93,7 +93,7 @@ export function ordenarResultados<T extends CandidatoLista>(
   const trechos = [{ inicio, fim: inicio + doBairro.length }];
   if (!opcoes.outrosBairrosPorDistancia) trechos.push({ inicio: inicio + doBairro.length, fim: exibicao.length });
   aplicarVagas(exibicao, candidatos.length, trechos, opcoes, aleatorio);
-  return { patrocinados, lista: exibicao.slice(inicio), noBairro: doBairro.length };
+  return { destacados, lista: exibicao.slice(inicio), noBairro: doBairro.length };
 }
 
 /** A vaga rotativa existe só em categorias com mais de 10 anunciantes. */
@@ -122,8 +122,8 @@ export function pesoPatrocinio(patrocinios: readonly Patrocinio[] | undefined, b
   return validos.some((p) => p.plus) ? 2 : 1;
 }
 
-/** Até 3 patrocinados, sorteados com peso 2 para o Patrocinado Plus. */
-function sortearPatrocinados<T extends CandidatoLista>(
+/** Até 3 destacados, sorteados com peso 2 para o Destacado Plus. */
+function sortearDestacados<T extends CandidatoLista>(
   candidatos: readonly T[],
   bairro: string | undefined,
   aleatorio: Aleatorio,
@@ -131,7 +131,7 @@ function sortearPatrocinados<T extends CandidatoLista>(
   const comPatrocinio = candidatos
     .map((c) => ({ item: c, peso: pesoPatrocinio(c.patrocinios, bairro) }))
     .filter((c) => c.peso > 0);
-  return sortearComPeso(comPatrocinio, MAXIMO_PATROCINADOS, aleatorio);
+  return sortearComPeso(comPatrocinio, MAXIMO_DESTACADOS, aleatorio);
 }
 
 /** Grupos do maior para o menor nível; dentro de cada grupo, a ordem alterna a cada busca. */

@@ -2,7 +2,7 @@
 import {
   EtiquetaAberto,
   EtiquetaFundador,
-  EtiquetaPatrocinado,
+  EtiquetaDestacado,
   FotoMarcador,
   Icone,
   Selo,
@@ -23,16 +23,16 @@ const perfil = `/perfil/${item.slug}`;
 
 <article
   class={`rounded-2xl bg-white p-3 shadow-sm transition hover:shadow-md sm:p-4 ${
-    item.patrocinado ? "ring-2 ring-amarelo-400" : "ring-1 ring-black/5"
+    item.destacado ? "ring-2 ring-amarelo-400" : "ring-1 ring-black/5"
   }`}
 >
   <a href={perfil} class="flex gap-3 sm:gap-4">
     <FotoMarcador foto={item.foto} icone={item.icone} cor={item.cor} class="size-20 shrink-0 rounded-xl sm:size-24" />
     <div class="min-w-0 flex-1">
       {
-        (item.patrocinado || item.fundador) && (
+        (item.destacado || item.fundador) && (
           <div class="mb-1 flex flex-wrap gap-1">
-            {item.patrocinado && <EtiquetaPatrocinado />}
+            {item.destacado && <EtiquetaDestacado />}
             {item.fundador && <EtiquetaFundador />}
           </div>
         )
