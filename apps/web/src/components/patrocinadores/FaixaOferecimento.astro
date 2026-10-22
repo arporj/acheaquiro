@@ -1,51 +1,46 @@
 ---
 // Faixa "Oferecimento" no fim de todas as páginas (proposta Patrocinadores v3).
-// Os 6 de Apoio revezam: o script embaralha a ordem a cada visita, porque a
-// página fica no cache e uma ordem sorteada no servidor ficaria congelada.
-import LogoPatrocinador from "./LogoPatrocinador.astro";
+// No computador, três colunas da mesma largura: o Master, os Ouro um embaixo
+// do outro e os de Apoio dois por linha, todos visíveis, sem revezamento. No
+// celular, as três partes ficam uma embaixo da outra, na mesma ordem, com o
+// Master mais estreito para não ocupar a tela inteira.
+// Só aparece com pelo menos um patrocinador dessas três cotas.
+import CartaoPatrocinador from "./CartaoPatrocinador.astro";
 import { listarPatrocinadores } from "@/dados/consultas";
 
 const todos = await listarPatrocinadores();
-const master = todos.filter((p) => p.cota === "master");
-const ouro = todos.filter((p) => p.cota === "ouro");
-const apoio = todos.filter((p) => p.cota === "apoio");
-const temAlgum = master.length + ouro.length + apoio.length > 0;
+const colunas = [
+  { titulo: "Master", itens: todos.filter((p) => p.cota === "master"), grade: "grid-cols-1 max-md:mx-auto max-md:w-3/5" },
+  { titulo: "Ouro", itens: todos.filter((p) => p.cota === "ouro"), grade: "grid-cols-1" },
+  { titulo: "Apoio", itens: todos.filter((p) => p.cota === "apoio"), grade: "grid-cols-2" },
+].filter((c) => c.itens.length > 0);
 ---
 
 {
-  temAlgum && (
-    <section aria-label="Oferecimento" class="border-b border-white/10">
-      <div class="mx-auto max-w-6xl space-y-4 px-4 py-8 text-center">
-        <h2 class="text-xs font-bold tracking-widest text-white/60 uppercase">
-          Oferecimento · <a href="/patrocinadores" class="hover:text-white hover:underline">conheça os patrocinadores</a>
-        </h2>
-        {master.length > 0 && (
-          <div class="flex flex-wrap justify-center gap-4">
-            {master.map((p) => <LogoPatrocinador patrocinador={p} tamanho="g" />)}
-          </div>
-        )}
-        {ouro.length > 0 && (
-          <div class="flex flex-wrap justify-center gap-3">
-            {ouro.map((p) => <LogoPatrocinador patrocinador={p} tamanho="m" />)}
-          </div>
-        )}
-        {apoio.length > 0 && (
-          <div class="flex flex-wrap justify-center gap-2" data-revezar>
-            {apoio.map((p) => <LogoPatrocinador patrocinador={p} tamanho="p" />)}
-          </div>
-        )}
+  colunas.length > 0 && (
+    <section aria-labelledby="oferecimento" class="border-t border-slate-200 bg-white">
+      <div class="mx-auto max-w-6xl px-4 py-8">
+        <div class="mb-5 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="oferecimento" class="text-xs font-extrabold tracking-[0.2em] text-slate-500 uppercase">
+            Oferecimento
+          </h2>
+          <a href="/patrocinadores" class="text-sm font-bold text-azul-600 hover:underline">
+            Conheça os patrocinadores
+          </a>
+        </div>
+        <div class="grid gap-6 md:grid-cols-3">
+          {colunas.map((coluna) => (
+            <div>
+              <h3 class="mb-2 text-[0.7rem] font-bold tracking-widest text-slate-400 uppercase">{coluna.titulo}</h3>
+              <div class={`grid gap-3 ${coluna.grade}`}>
+                {coluna.itens.map((p) => (
+                  <CartaoPatrocinador patrocinador={p} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   )
 }
-
-<script>
-  for (const lista of document.querySelectorAll<HTMLElement>("[data-revezar]")) {
-    const itens = [...lista.children];
-    for (let i = itens.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [itens[i], itens[j]] = [itens[j], itens[i]];
-    }
-    lista.replaceChildren(...itens);
-  }
-</script>

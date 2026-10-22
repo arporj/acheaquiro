@@ -3,7 +3,7 @@
 // bairros, categorias, planos, extras e regras) e, até as tabelas de
 // anunciantes existirem (etapa 2), mostra a lista de anunciantes vazia. A
 // página "em breve" não acessa o banco: usa as regras de src/mocks/planos.ts.
-import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, Plano, RegrasCobranca, Selo, TipoAnunciante } from "@acheaqui/types";
+import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
 import { criarClientePublico, lerCatalogoPublico } from "@acheaqui/supabase-client";
 import { ambiente } from "@/lib/ambiente";
 import { normalizar } from "@/lib/texto";
@@ -11,6 +11,7 @@ import { anunciantes as anunciantesFicticios } from "@/mocks/anunciantes";
 import { categorias, ordemAtalhos } from "@/mocks/categorias";
 import { destaqueExclusivoId, linksPatrocinados, simulacaoComercios, superDestaqueIds } from "@/mocks/extras";
 import { bairros, cidadeAtual } from "@/mocks/localidades";
+import { apresentacoes as apresentacoesFicticias, artistas as artistasFicticios, eventos as eventosFicticios } from "@/mocks/agenda";
 import { patrocinadores as patrocinadoresFicticios } from "@/mocks/patrocinadores";
 import { extrasDisponiveis, planos, regrasCobranca } from "@/mocks/planos";
 
@@ -304,4 +305,113 @@ export async function patrocinadoresDaCategoria(
     grupo: patrocinadores.find((p) => p.cota === "grupo" && p.grupo === categoria.grupo),
     categoria: patrocinadores.find((p) => p.cota === "categoria" && p.categoriaId === categoria.id),
   };
+}
+
+export async function patrocinadorPorSlug(slug: string): Promise<Patrocinador | undefined> {
+  return patrocinadores.find((p) => p.slug === slug);
+}
+
+/** Patrocinador da Agenda (cota "agenda"). */
+export async function patrocinadorDaAgenda(): Promise<Patrocinador | undefined> {
+  return patrocinadores.find((p) => p.cota === "agenda");
+}
+
+// Agenda (módulo de eventos). Por enquanto só no site de apresentação.
+
+/** Hoje em Rio das Ostras, AAAA-MM-DD. */
+export function hojeNaCidade(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+}
+
+export function somarDias(iso: string, dias: number): string {
+  const [ano, mes, dia] = iso.split("-").map(Number);
+  return new Date(Date.UTC(ano, mes - 1, dia + dias)).toISOString().slice(0, 10);
+}
+
+/** Uma apresentação com o artista e o lugar já resolvidos, pronta para a tela. */
+export interface ItemAgenda {
+  id: string;
+  data: string;
+  inicio: string;
+  fim?: string;
+  artista: Artista;
+  lugar: { nome: string; href: string; bairroId: string; bairro: string; evento: boolean };
+}
+
+// As datas dos dados fictícios são relativas a hoje; por isso são calculadas
+// a cada consulta (no Worker, o relógio só anda dentro da requisição).
+function eventosAgenda(): EventoAgenda[] {
+  if (!ficticio) return [];
+  const hoje = hojeNaCidade();
+  return eventosFicticios.map(({ diasDepoisDeHoje, ...e }) => ({ ...e, data: somarDias(hoje, diasDepoisDeHoje) }));
+}
+
+function apresentacoesAgenda(): Apresentacao[] {
+  if (!ficticio) return [];
+  const hoje = hojeNaCidade();
+  return apresentacoesFicticias.map(({ diasDepoisDeHoje, ...a }) => ({ ...a, data: somarDias(hoje, diasDepoisDeHoje) }));
+}
+
+const artistas: Artista[] = ficticio ? artistasFicticios : [];
+
+async function paraItemAgenda(a: Apresentacao, eventos: EventoAgenda[]): Promise<ItemAgenda | undefined> {
+  const artista = artistas.find((ar) => ar.id === a.artistaId);
+  if (!artista) return undefined;
+  if (a.eventoId) {
+    const evento = eventos.find((e) => e.id === a.eventoId);
+    if (!evento) return undefined;
+    const lugar = { nome: evento.nome, href: `/agenda/${evento.slug}`, bairroId: evento.bairroId, bairro: await nomeBairro(evento.bairroId), evento: true };
+    return { id: a.id, data: a.data, inicio: a.inicio, fim: a.fim, artista, lugar };
+  }
+  const comercio = anunciantes.find((an) => an.id === a.anuncianteId);
+  if (!comercio || comercio.tipo !== "comercio") return undefined;
+  const bairroId = comercio.enderecos[0].bairroId;
+  const lugar = { nome: comercio.nome, href: `/perfil/${comercio.slug}`, bairroId, bairro: await nomeBairro(bairroId), evento: false };
+  return { id: a.id, data: a.data, inicio: a.inicio, fim: a.fim, artista, lugar };
+}
+
+async function itensAgenda(filtro: (a: Apresentacao) => boolean): Promise<ItemAgenda[]> {
+  const eventos = eventosAgenda();
+  const itens = await Promise.all(apresentacoesAgenda().filter(filtro).map((a) => paraItemAgenda(a, eventos)));
+  return itens
+    .filter((i): i is ItemAgenda => Boolean(i))
+    .sort((x, y) => (x.data + x.inicio).localeCompare(y.data + y.inicio));
+}
+
+/** Apresentações de hoje em diante, em ordem de data e horário. */
+export async function agendaProximosDias(): Promise<ItemAgenda[]> {
+  const hoje = hojeNaCidade();
+  return itensAgenda((a) => a.data >= hoje);
+}
+
+export async function agendaDoComercio(anuncianteId: string): Promise<ItemAgenda[]> {
+  const hoje = hojeNaCidade();
+  return itensAgenda((a) => a.anuncianteId === anuncianteId && a.data >= hoje);
+}
+
+export async function agendaDoArtista(artistaId: string): Promise<ItemAgenda[]> {
+  return itensAgenda((a) => a.artistaId === artistaId);
+}
+
+export async function listarArtistas(): Promise<Artista[]> {
+  return [...artistas].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+}
+
+export async function artistaPorSlug(slug: string): Promise<Artista | undefined> {
+  return artistas.find((a) => a.slug === slug);
+}
+
+export async function listarEventos(): Promise<EventoAgenda[]> {
+  const hoje = hojeNaCidade();
+  return eventosAgenda().filter((e) => e.data >= hoje);
+}
+
+export async function eventoPorSlug(slug: string): Promise<{ evento: EventoAgenda; programacao: ItemAgenda[] } | undefined> {
+  const evento = eventosAgenda().find((e) => e.slug === slug);
+  if (!evento) return undefined;
+  return { evento, programacao: await itensAgenda((a) => a.eventoId === evento.id) };
+}
+
+export async function anuncianteSlugPorId(id: string): Promise<string | undefined> {
+  return anunciantes.find((a) => a.id === id)?.slug;
 }

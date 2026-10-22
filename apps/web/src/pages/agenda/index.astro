@@ -1,0 +1,107 @@
+---
+// Agenda de shows e eventos (módulo de eventos). Por enquanto só existe no
+// site de apresentação; sem nenhum artista, a página não existe.
+import { Icone } from "@acheaqui/ui";
+import Topo from "@/components/anuncios/Topo.astro";
+import AgendaPorDia from "@/components/agenda/AgendaPorDia.astro";
+import AvatarArtista from "@/components/agenda/AvatarArtista.astro";
+import LinhaPatrocinio from "@/components/patrocinadores/LinhaPatrocinio.astro";
+import { agendaProximosDias, listarArtistas, listarEventos, nomeBairro, patrocinadorDaAgenda } from "@/dados/consultas";
+import Layout from "@/layouts/Layout.astro";
+import { guardarNoCache } from "@/lib/cache";
+import { dataLonga, normalizar } from "@/lib/texto";
+
+const artistas = await listarArtistas();
+if (artistas.length === 0) return Astro.rewrite("/404");
+guardarNoCache(Astro);
+
+const [itens, eventos, patrocinador] = await Promise.all([agendaProximosDias(), listarEventos(), patrocinadorDaAgenda()]);
+const eventosComBairro = await Promise.all(eventos.map(async (e) => ({ ...e, bairro: await nomeBairro(e.bairroId) })));
+---
+
+<Layout
+  titulo="Agenda de shows e eventos em Rio das Ostras"
+  descricao="Quem toca hoje em Rio das Ostras: shows nos bares e quiosques, festivais e eventos, com dia, horário e lugar."
+>
+  <Topo pagina="interna" />
+  <main class="mx-auto w-full max-w-6xl px-4 pt-4 pb-12">
+    <nav aria-label="Você está em" class="flex items-center gap-1 text-sm font-semibold text-slate-500">
+      <a href="/" class="hover:text-azul-600">Início</a>
+      <Icone nome="direita" class="size-3.5" />
+    </nav>
+    <div class="mt-2 mb-5 flex flex-wrap items-baseline gap-x-2">
+      <h1 class="font-display text-2xl leading-tight font-extrabold text-azul-900 sm:text-3xl">Agenda</h1>
+      {patrocinador && <LinhaPatrocinio patrocinador={patrocinador} />}
+    </div>
+
+    <div class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <section aria-label="Shows por dia">
+        <AgendaPorDia itens={itens} filtroBairro />
+      </section>
+
+      <aside class="space-y-6">
+        {
+          eventosComBairro.length > 0 && (
+            <section>
+              <h2 class="mb-2 font-display text-lg font-bold text-azul-900">Eventos</h2>
+              <ul class="space-y-2">
+                {eventosComBairro.map((e) => (
+                  <li>
+                    <a href={`/agenda/${e.slug}`} class="block rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 hover:ring-azul-300">
+                      <span class="block text-xs font-bold text-vermelho-600 first-letter:uppercase">{dataLonga(e.data)}</span>
+                      <span class="block font-bold text-azul-900">{e.nome}</span>
+                      <span class="text-sm text-slate-500">
+                        {e.local} · {e.bairro}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+
+        <section>
+          <h2 class="mb-2 font-display text-lg font-bold text-azul-900">Artistas</h2>
+          <label class="mb-2 flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-black/5">
+            <Icone nome="busca" class="size-4 text-slate-400" />
+            <input data-busca-artista type="search" placeholder="Buscar artista ou banda" class="w-full bg-transparent text-sm outline-none" />
+          </label>
+          <ul class="space-y-1">
+            {
+              artistas.map((a) => (
+                <li data-artista={normalizar(`${a.nome} ${a.estilo}`)}>
+                  <a href={`/artista/${a.slug}`} class="flex items-center gap-3 rounded-xl p-2 hover:bg-white">
+                    <AvatarArtista artista={a} class="size-9" />
+                    <span>
+                      <span class="block text-sm font-bold text-azul-900">{a.nome}</span>
+                      <span class="block text-xs text-slate-500">{a.estilo}</span>
+                    </span>
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+          <p data-sem-artista hidden class="px-2 text-sm text-slate-500">Nenhum artista com esse nome.</p>
+        </section>
+      </aside>
+    </div>
+  </main>
+</Layout>
+
+<script>
+  import { normalizar } from "@/lib/texto";
+
+  const campo = document.querySelector<HTMLInputElement>("[data-busca-artista]");
+  const itens = [...document.querySelectorAll<HTMLElement>("[data-artista]")];
+  const vazio = document.querySelector<HTMLElement>("[data-sem-artista]");
+  campo?.addEventListener("input", () => {
+    const termo = normalizar(campo.value);
+    let visiveis = 0;
+    for (const item of itens) {
+      item.hidden = termo !== "" && !(item.dataset.artista ?? "").includes(termo);
+      if (!item.hidden) visiveis++;
+    }
+    if (vazio) vazio.hidden = visiveis > 0;
+  });
+</script>

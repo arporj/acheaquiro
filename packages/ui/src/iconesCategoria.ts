@@ -1,5 +1,5 @@
 import {
-  AirVent, Anvil, Armchair, Baby, Bath, BatteryCharging, BedDouble, Beef, BookOpen, Bone, BrickWall, Brush,
+  AirVent, Anvil, Armchair, Baby, Bath, BatteryCharging, BedDouble, Beef, Beer, Music, BookOpen, Bone, BrickWall, Brush,
   BrushCleaning, Bug, CakeSlice, Camera, Car, Carrot, Cat, ChefHat, Cog, Construction, Croissant, CupSoda, Dog,
   Drill, Droplets, Dumbbell, Flower2, Footprints, Frame, Glasses, GraduationCap, Hammer, Hand, HandHeart, HardHat,
   Headphones, Heart, HeartHandshake, House, KeyRound, Languages, Laptop, Layers, LifeBuoy, MapPin, MoonStar,
@@ -12,7 +12,7 @@ import {
 // Importação explícita: só estes ícones entram no pacote final do site.
 export const iconesCategoria = {
   "air-vent": AirVent, anvil: Anvil, armchair: Armchair, baby: Baby, bath: Bath, "battery-charging": BatteryCharging,
-  "bed-double": BedDouble, beef: Beef, "book-open": BookOpen, bone: Bone, "brick-wall": BrickWall, brush: Brush,
+  "bed-double": BedDouble, beef: Beef, beer: Beer, music: Music, "book-open": BookOpen, bone: Bone, "brick-wall": BrickWall, brush: Brush,
   "brush-cleaning": BrushCleaning, bug: Bug, "cake-slice": CakeSlice, camera: Camera, car: Car, carrot: Carrot, cat: Cat,
   "chef-hat": ChefHat, cog: Cog, construction: Construction, croissant: Croissant, "cup-soda": CupSoda, dog: Dog,
   drill: Drill, droplets: Droplets, dumbbell: Dumbbell, "flower-2": Flower2, footprints: Footprints, frame: Frame,

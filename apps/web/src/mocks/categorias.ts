@@ -162,6 +162,7 @@ export const categorias: Categoria[] = [
   c("farmacia", "Farmácia", "Farmácias", COMERCIOS, "pill", cor.vermelho, { sinonimos: ["drogaria", "remédio"] }),
   c("restaurante", "Restaurante", "Restaurantes", COMERCIOS, "utensils-crossed", cor.verde, { atalho: true }),
   c("lanchonete", "Lanchonete", "Lanchonetes", COMERCIOS, "sandwich", cor.amarelo),
+  c("bar", "Bar e quiosque", "Bares e quiosques", COMERCIOS, "beer", cor.laranja, { sinonimos: ["bar", "quiosque", "musica ao vivo", "show"] }),
   c("pizzaria", "Pizzaria", "Pizzarias", COMERCIOS, "pizza", cor.vermelho, { sinonimos: ["pizza"] }),
   c("pet-shop", "Pet shop", "Pet shops", COMERCIOS, "cat", cor.amarelo, { sinonimos: ["ração"], atalho: true }),
   c("agropecuaria", "Agropecuária", "Agropecuárias", COMERCIOS, "wheat", cor.marrom),

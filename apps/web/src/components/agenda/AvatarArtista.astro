@@ -1,0 +1,16 @@
+---
+// Avatar provisório do artista (cor e ícone) enquanto não houver foto.
+import { IconeCategoria } from "@acheaqui/ui";
+import type { Artista } from "@acheaqui/types";
+
+interface Props {
+  artista: Artista;
+  class?: string;
+}
+
+const { artista, class: classe = "size-12" } = Astro.props;
+---
+
+<span class={`grid shrink-0 place-items-center rounded-full text-white ${classe}`} style={`background-color: ${artista.cor}`} aria-hidden="true">
+  <IconeCategoria nome="music" class="size-1/2" strokeWidth={2} />
+</span>

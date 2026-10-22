@@ -29,9 +29,11 @@ const patrocinio = await patrocinadoresDaCategoria(categoria);
     <nav aria-label="Você está em" class="flex items-center gap-1 text-sm font-semibold text-slate-500">
       <a href="/" class="hover:text-azul-600">Início</a>
       <Icone nome="direita" class="size-3.5" />
-      <span class="text-tinta">{categoria.nomePlural}</span>
+      <span>{categoria.grupo}</span>
+      {patrocinio.grupo && <span class="ml-1"><LinhaPatrocinio patrocinador={patrocinio.grupo} /></span>}
     </nav>
 
+    {/* O site é só da cidade: o título da tela é só a categoria; a aba e o Google continuam com o nome da cidade. */}
     <div class="mt-2 mb-4 flex items-start justify-between gap-3">
       <div class="flex items-center gap-3">
         <span
@@ -42,9 +44,10 @@ const patrocinio = await patrocinadoresDaCategoria(categoria);
           <IconeCategoria nome={categoria.icone} class="size-7" strokeWidth={2} />
         </span>
         <div>
-          {patrocinio.grupo && <LinhaPatrocinio patrocinador={patrocinio.grupo} rotulo={categoria.grupo} />}
-          <h1 class="font-display text-2xl leading-tight font-extrabold text-azul-900 sm:text-3xl">{titulo}</h1>
-          {patrocinio.categoria && <LinhaPatrocinio patrocinador={patrocinio.categoria} />}
+          <div class="flex flex-wrap items-baseline gap-x-2">
+            <h1 class="font-display text-2xl leading-tight font-extrabold text-azul-900 sm:text-3xl">{categoria.nomePlural}</h1>
+            {patrocinio.categoria && <LinhaPatrocinio patrocinador={patrocinio.categoria} />}
+          </div>
           <p class="text-sm font-semibold text-slate-500">
             {totalAnunciantes} {totalAnunciantes === 1 ? "anunciante" : "anunciantes"}
           </p>

@@ -1,22 +1,37 @@
 // DADOS FICTÍCIOS para o layout dos patrocinadores (proposta Patrocinadores
-// v3). Empresas inventadas; no sistema real, cotas e valores ficam no banco.
-import type { Patrocinador } from "@acheaqui/types";
+// v3). Empresas inventadas; os logos ficam em public/mock/patrocinadores. No
+// sistema real, cotas, vagas e valores ficam no banco.
+import type { CotaPatrocinio, Patrocinador } from "@acheaqui/types";
 
-const WHATS = "5522999990000";
+// Número inválido de propósito, como nos anunciantes fictícios.
+const WHATS = "5522900000099";
+
+function p(
+  id: string,
+  slug: string,
+  nome: string,
+  ramo: string,
+  frase: string,
+  cota: CotaPatrocinio,
+  onde: { grupo?: string; categoriaId?: string } = {},
+): Patrocinador {
+  return { id, slug, nome, ramo, frase, whatsapp: WHATS, logo: `/mock/patrocinadores/${slug}.svg`, cota, ...onde };
+}
 
 export const patrocinadores: Patrocinador[] = [
-  { id: "p01", nome: "Construmar Materiais", ramo: "Material de construção", frase: "Tudo para a sua obra, do alicerce ao acabamento.", whatsapp: WHATS, cor: "#F57C00", cota: "master" },
-  { id: "p02", nome: "Costa Net Fibra", ramo: "Provedor de internet", frase: "Internet de fibra em todos os bairros da cidade.", whatsapp: WHATS, cor: "#2563EB", cota: "ouro" },
-  { id: "p03", nome: "Cooperativa Litoral", ramo: "Cooperativa de crédito", frase: "Crédito justo para quem empreende na cidade.", whatsapp: WHATS, cor: "#1E9E4A", cota: "ouro" },
-  { id: "p04", nome: "Imobiliária Maré Alta", ramo: "Imobiliária", frase: "Compra, venda e aluguel em Rio das Ostras.", whatsapp: WHATS, cor: "#0E9F94", cota: "ouro" },
-  { id: "p05", nome: "Autoescola Rota Certa", ramo: "Autoescola", frase: "Sua habilitação sem complicação.", whatsapp: WHATS, cor: "#E53935", cota: "apoio" },
-  { id: "p06", nome: "Clínica Bem Viver", ramo: "Clínica", frase: "Consultas e exames perto de você.", whatsapp: WHATS, cor: "#7E3FC4", cota: "apoio" },
-  { id: "p07", nome: "Ótica Visão Clara", ramo: "Ótica", frase: "Óculos e lentes com exame de vista.", whatsapp: WHATS, cor: "#475569", cota: "apoio" },
-  { id: "p08", nome: "Gráfica Ponto Final", ramo: "Gráfica", frase: "Cartões, banners e adesivos em 24 horas.", whatsapp: WHATS, cor: "#D81B7A", cota: "apoio" },
-  { id: "p09", nome: "Academia Movimento", ramo: "Academia", frase: "Treine perto de casa, de segunda a sábado.", whatsapp: WHATS, cor: "#A2264A", cota: "apoio" },
-  { id: "p10", nome: "Contábil Âncora", ramo: "Contabilidade", frase: "Abra e mantenha sua empresa em dia.", whatsapp: WHATS, cor: "#9A5B2E", cota: "apoio" },
-  { id: "p11", nome: "Depósito Pedra Forte", ramo: "Material de construção", frase: "Areia, pedra e cimento com entrega no mesmo dia.", whatsapp: WHATS, cor: "#9A5B2E", cota: "grupo", grupo: "Comércios" },
-  { id: "p12", nome: "Ferragens Âncora", ramo: "Ferragens", frase: "Ferramentas e ferragens para o profissional.", whatsapp: WHATS, cor: "#475569", cota: "grupo", grupo: "Serviços para casa" },
-  { id: "p13", nome: "Laticínios Serra Azul", ramo: "Distribuidora de laticínios", frase: "Queijos e frios para pizzarias e restaurantes.", whatsapp: WHATS, cor: "#1E9BE0", cota: "categoria", categoriaId: "pizzaria" },
-  { id: "p14", nome: "Elétrica Faísca", ramo: "Loja de material elétrico", frase: "Fios, disjuntores e lâmpadas com preço de atacado.", whatsapp: WHATS, cor: "#F2A900", cota: "categoria", categoriaId: "eletricista" },
+  p("p01", "construmar", "Construmar Materiais", "Material de construção", "Tudo para a sua obra, do alicerce ao acabamento.", "master"),
+  p("p02", "costa-net", "Costa Net Fibra", "Provedor de internet", "Internet de fibra em todos os bairros da cidade.", "ouro"),
+  p("p03", "cooperativa-litoral", "Cooperativa Litoral", "Cooperativa de crédito", "Crédito justo para quem empreende na cidade.", "ouro"),
+  p("p04", "mare-alta", "Imobiliária Maré Alta", "Imobiliária", "Compra, venda e aluguel em Rio das Ostras.", "ouro"),
+  p("p05", "rota-certa", "Autoescola Rota Certa", "Autoescola", "Sua habilitação sem complicação.", "apoio"),
+  p("p06", "bem-viver", "Clínica Bem Viver", "Clínica", "Consultas e exames perto de você.", "apoio"),
+  p("p07", "visao-clara", "Ótica Visão Clara", "Ótica", "Óculos e lentes com exame de vista.", "apoio"),
+  p("p08", "ponto-final", "Gráfica Ponto Final", "Gráfica", "Cartões, banners e adesivos em 24 horas.", "apoio"),
+  p("p09", "movimento", "Academia Movimento", "Academia", "Treine perto de casa, de segunda a sábado.", "apoio"),
+  p("p10", "contabil-ancora", "Contábil Âncora", "Contabilidade", "Abra e mantenha sua empresa em dia.", "apoio"),
+  p("p11", "pedra-forte", "Depósito Pedra Forte", "Material de construção", "Areia, pedra e cimento com entrega no mesmo dia.", "grupo", { grupo: "Comércios" }),
+  p("p12", "ferragens-ancora", "Ferragens Âncora", "Ferragens", "Ferramentas e ferragens para o profissional.", "grupo", { grupo: "Serviços para casa" }),
+  p("p13", "serra-azul", "Laticínios Serra Azul", "Distribuidora de laticínios", "Queijos e frios para pizzarias e restaurantes.", "categoria", { categoriaId: "pizzaria" }),
+  p("p14", "faisca", "Elétrica Faísca", "Loja de material elétrico", "Fios, disjuntores e lâmpadas com preço de atacado.", "categoria", { categoriaId: "eletricista" }),
+  p("p15", "gelada-distribuidora", "Gelada Distribuidora de Bebidas", "Distribuidora de bebidas", "Bebidas para bares, quiosques e festas, com entrega.", "agenda"),
 ];

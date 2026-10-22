@@ -1,42 +1,36 @@
 ---
 // Página dos patrocinadores (proposta Patrocinadores v3, ainda em discussão).
-// Por enquanto só o site de apresentação tem patrocinadores; sem nenhum, a
-// página não existe.
+// Só aparece com pelo menos um patrocinador; sem nenhum, a página não existe.
+import { FORMATOS_LOGO_PATROCINIO } from "@acheaqui/domain";
 import { Icone, classesBotao } from "@acheaqui/ui";
 import type { CotaPatrocinio, Patrocinador } from "@acheaqui/types";
 import Topo from "@/components/anuncios/Topo.astro";
-import LogoPatrocinador from "@/components/patrocinadores/LogoPatrocinador.astro";
 import { categoriaPorId, listarPatrocinadores } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
-import { linkWhatsApp } from "@/lib/contato";
 
 const todos = await listarPatrocinadores();
 if (todos.length === 0) return Astro.rewrite("/404");
 guardarNoCache(Astro);
 
-const MENSAGEM = "Olá! Vi vocês como patrocinadores do Ache Aqui RO e gostaria de uma informação.";
-
-const secoes: { cota: CotaPatrocinio; titulo: string; tamanho: "g" | "m" | "p" }[] = [
-  { cota: "master", titulo: "Patrocinador Master", tamanho: "g" },
-  { cota: "ouro", titulo: "Patrocinadores Ouro", tamanho: "m" },
-  { cota: "apoio", titulo: "Apoio", tamanho: "p" },
-  { cota: "grupo", titulo: "Patrocinadores de grupos de categorias", tamanho: "m" },
-  { cota: "categoria", titulo: "Patrocinadores de categorias", tamanho: "m" },
+const secoes: { cota: CotaPatrocinio; titulo: string; grade: string }[] = [
+  { cota: "master", titulo: "Patrocinador Master", grade: "sm:grid-cols-1 lg:max-w-md" },
+  { cota: "ouro", titulo: "Patrocinadores Ouro", grade: "sm:grid-cols-2 lg:grid-cols-3" },
+  { cota: "apoio", titulo: "Apoio", grade: "grid-cols-2 lg:grid-cols-3" },
+  { cota: "grupo", titulo: "Patrocinadores de grupos de categorias", grade: "grid-cols-2 lg:grid-cols-3" },
+  { cota: "categoria", titulo: "Patrocinadores de categorias", grade: "grid-cols-2 lg:grid-cols-3" },
 ];
 
 async function ondeAparece(p: Patrocinador): Promise<string | undefined> {
-  if (p.cota === "grupo") return `Grupo ${p.grupo}`;
-  if (p.cota === "categoria" && p.categoriaId) return `Categoria ${(await categoriaPorId(p.categoriaId))?.nomePlural ?? ""}`;
+  if (p.cota === "grupo") return p.grupo;
+  if (p.cota === "categoria" && p.categoriaId) return (await categoriaPorId(p.categoriaId))?.nomePlural;
   return undefined;
 }
 
 const grupos = await Promise.all(
   secoes.map(async (s) => ({
     ...s,
-    itens: await Promise.all(
-      todos.filter((p) => p.cota === s.cota).map(async (p) => ({ p, onde: await ondeAparece(p) })),
-    ),
+    itens: await Promise.all(todos.filter((p) => p.cota === s.cota).map(async (p) => ({ p, onde: await ondeAparece(p) }))),
   })),
 );
 ---
@@ -56,23 +50,35 @@ const grupos = await Promise.all(
         .map((g) => (
           <section class="mt-8">
             <h2 class="mb-3 font-display text-xl font-bold text-azul-900">{g.titulo}</h2>
-            <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {g.itens.map(({ p, onde }) => (
-                <li id={p.id} class="flex flex-col gap-3 rounded-2xl border border-azul-100 bg-azul-50/40 p-4">
-                  <LogoPatrocinador patrocinador={p} tamanho={g.tamanho} />
-                  {onde && <p class="text-xs font-bold tracking-wide text-slate-500 uppercase">{onde}</p>}
-                  <p class="text-sm text-slate-700">{p.frase}</p>
-                  <a
-                    href={linkWhatsApp(p.whatsapp, MENSAGEM)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class={classesBotao("zap", "p", "mt-auto self-start")}
-                  >
-                    <Icone nome="mensagem" class="size-4" />
-                    Falar com a empresa
-                  </a>
-                </li>
-              ))}
+            <ul class={`grid gap-4 ${g.grade}`}>
+              {g.itens.map(({ p, onde }) => {
+                const { largura, altura } = FORMATOS_LOGO_PATROCINIO[p.cota];
+                return (
+                  <li id={p.slug} class="flex scroll-mt-4 flex-col gap-2 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+                    <img
+                      src={p.logo}
+                      alt={`Logo de ${p.nome}`}
+                      width={largura}
+                      height={altura}
+                      loading="lazy"
+                      class="w-full rounded-lg ring-1 ring-slate-100"
+                      style={`aspect-ratio: ${largura} / ${altura}`}
+                    />
+                    <p class="font-bold text-azul-900">{p.nome}</p>
+                    {onde && <p class="text-xs font-bold text-slate-500">Patrocina: {onde}</p>}
+                    <p class="text-sm text-slate-600">{p.frase}</p>
+                    <a
+                      href={`/p/${p.slug}`}
+                      target="_blank"
+                      rel="sponsored noopener"
+                      class={classesBotao("zap", "p", "mt-auto self-start")}
+                    >
+                      <Icone nome="mensagem" class="size-4" />
+                      Falar com a empresa
+                    </a>
+                  </li>
+                );
+              })}
             </ul>
           </section>
         ))

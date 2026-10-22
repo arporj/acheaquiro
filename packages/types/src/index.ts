@@ -242,20 +242,73 @@ export interface CatalogoPublico {
 }
 
 /** Cotas de patrocínio (proposta Patrocinadores v3, ainda em discussão). */
-export type CotaPatrocinio = "master" | "ouro" | "apoio" | "grupo" | "categoria";
+export type CotaPatrocinio = "master" | "ouro" | "apoio" | "grupo" | "categoria" | "agenda";
 
 export interface Patrocinador {
   id: string;
+  /** Endereço curto /p/[slug], que conta o clique e leva ao WhatsApp. */
+  slug: string;
   nome: string;
   /** Ramo da empresa: só entra uma de cada ramo por cota (menos Apoio). */
   ramo: string;
   frase: string;
   whatsapp: string;
-  /** Cor do logo provisório, enquanto não houver logo enviado. */
-  cor: string;
+  /** Endereço do logo, no formato da cota (FORMATOS_LOGO_PATROCINIO, em @acheaqui/domain). */
+  logo: string;
   cota: CotaPatrocinio;
   /** Cota "grupo": nome do grupo de categorias. */
   grupo?: string;
   /** Cota "categoria": id da categoria. */
   categoriaId?: string;
+}
+
+
+// Agenda de shows e eventos (módulo de eventos, decisão de 21 e 22/10/2026).
+
+export interface Artista {
+  id: string;
+  slug: string;
+  nome: string;
+  /** Estilo musical ou tipo de apresentação. */
+  estilo: string;
+  descricao: string;
+  /** Cor do avatar provisório. */
+  cor: string;
+  instagram?: string;
+  /** Quando o artista também é anunciante, o nome leva ao perfil. */
+  anuncianteId?: string;
+}
+
+export interface Barraca {
+  nome: string;
+  vende: string;
+  whatsapp?: string;
+  anuncianteId?: string;
+}
+
+/** Evento com produtor (festival, feira), com programação e barracas. */
+export interface EventoAgenda {
+  id: string;
+  slug: string;
+  nome: string;
+  descricao: string;
+  produtor: string;
+  local: string;
+  bairroId: string;
+  /** AAAA-MM-DD. */
+  data: string;
+  barracas: Barraca[];
+}
+
+/** Uma apresentação: num comércio com o extra de Agenda ou num evento. */
+export interface Apresentacao {
+  id: string;
+  artistaId: string;
+  /** AAAA-MM-DD. */
+  data: string;
+  /** HH:MM. */
+  inicio: string;
+  fim?: string;
+  anuncianteId?: string;
+  eventoId?: string;
 }

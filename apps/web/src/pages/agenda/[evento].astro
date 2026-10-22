@@ -1,0 +1,104 @@
+---
+// Página de um evento com produtor: programação por horário e barracas.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Topo from "@/components/anuncios/Topo.astro";
+import AvatarArtista from "@/components/agenda/AvatarArtista.astro";
+import BotaoCompartilhar from "@/components/BotaoCompartilhar.astro";
+import Secao from "@/components/perfil/Secao.astro";
+import { anuncianteSlugPorId, eventoPorSlug, nomeBairro } from "@/dados/consultas";
+import Layout from "@/layouts/Layout.astro";
+import { guardarNoCache } from "@/lib/cache";
+import { linkWhatsApp } from "@/lib/contato";
+import { dataLonga } from "@/lib/texto";
+
+const encontrado = await eventoPorSlug(Astro.params.evento ?? "");
+if (!encontrado) return Astro.rewrite("/404");
+guardarNoCache(Astro);
+
+const MENSAGEM_BARRACA = "Olá! Vi sua barraca no Ache Aqui RO e gostaria de uma informação.";
+
+const { evento, programacao } = encontrado;
+const bairro = await nomeBairro(evento.bairroId);
+const data = dataLonga(evento.data);
+const barracas = await Promise.all(
+  evento.barracas.map(async (b) => ({ ...b, perfil: b.anuncianteId ? await anuncianteSlugPorId(b.anuncianteId) : undefined })),
+);
+---
+
+<Layout titulo={`${evento.nome} · Agenda`} descricao={evento.descricao} previa={{ titulo: evento.nome, descricao: `${data} · ${evento.local}` }}>
+  <Topo pagina="interna" />
+  <main class="mx-auto w-full max-w-4xl px-4 pt-4 pb-12">
+    <nav aria-label="Você está em" class="flex items-center gap-1 text-sm font-semibold text-slate-500">
+      <a href="/" class="hover:text-azul-600">Início</a>
+      <Icone nome="direita" class="size-3.5" />
+      <a href="/agenda" class="hover:text-azul-600">Agenda</a>
+      <Icone nome="direita" class="size-3.5" />
+    </nav>
+
+    <section class="mt-2 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-6">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-sm font-extrabold text-vermelho-600 first-letter:uppercase">{data}</p>
+          <h1 class="font-display text-3xl leading-tight font-extrabold text-azul-900">{evento.nome}</h1>
+          <p class="mt-1 flex items-center gap-1.5 text-slate-600">
+            <Icone nome="pin" class="size-4 text-vermelho-500" />
+            {evento.local} · {bairro}
+          </p>
+        </div>
+        <BotaoCompartilhar caminho={`/agenda/${evento.slug}`} titulo={evento.nome} variante="botao" />
+      </div>
+      <p class="mt-3 leading-relaxed text-slate-700">{evento.descricao}</p>
+      <p class="mt-2 text-sm text-slate-500">Produção: {evento.produtor}</p>
+    </section>
+
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+      <Secao titulo="Programação">
+        <ol class="space-y-3">
+          {
+            programacao.map((it) => (
+              <li class="flex items-center gap-3">
+                <span class="w-14 shrink-0 text-center">
+                  <span class="block font-display text-lg leading-tight font-extrabold text-azul-900">{it.inicio}</span>
+                  {it.fim && <span class="block text-[0.7rem] font-bold text-slate-400">até {it.fim}</span>}
+                </span>
+                <AvatarArtista artista={it.artista} class="size-10" />
+                <span>
+                  <a href={`/artista/${it.artista.slug}`} class="block font-bold text-azul-900 hover:underline">
+                    {it.artista.nome}
+                  </a>
+                  <span class="text-xs text-slate-500">{it.artista.estilo}</span>
+                </span>
+              </li>
+            ))
+          }
+        </ol>
+      </Secao>
+
+      <Secao titulo="Barracas">
+        <ul class="divide-y divide-slate-100">
+          {
+            barracas.map((b) => (
+              <li class="flex items-center justify-between gap-3 py-2.5">
+                <span>
+                  {b.perfil ? (
+                    <a href={`/perfil/${b.perfil}`} class="font-bold text-azul-700 hover:underline">
+                      {b.nome}
+                    </a>
+                  ) : (
+                    <span class="font-bold text-azul-900">{b.nome}</span>
+                  )}
+                  <span class="block text-sm text-slate-500">{b.vende}</span>
+                </span>
+                {b.whatsapp && (
+                  <a href={linkWhatsApp(b.whatsapp, MENSAGEM_BARRACA)} target="_blank" rel="noopener noreferrer" class={classesBotao("contornoZap", "p")}>
+                    WhatsApp
+                  </a>
+                )}
+              </li>
+            ))
+          }
+        </ul>
+      </Secao>
+    </div>
+  </main>
+</Layout>

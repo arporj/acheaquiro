@@ -252,6 +252,15 @@ const profissionais: AnuncianteProfissional[] = [
     formasPagamento: ["pix", "cartao"],
     atendeTodaCidade: false, bairrosAtendidos: ["costazul", "centro", "jardim-marilea", "recreio"],
   },
+  {
+    id: "a18", slug: "dj-leo-batida", cidadeId, tipo: "profissional",
+    nome: "DJ Léo Batida", categoriaId: "dj-e-som", categoriasAdicionais: [],
+    planoId: "prof-profissional", fundador: false,
+    descricao: "DJ para festas, casamentos e aniversários, com som e iluminação. Toca também nos bares da cidade: veja a Agenda.",
+    whatsapp: zap(18), fotoPerfil: { id: "a18-perfil", url: "" }, galeria: [],
+    horario: todosOsDias("10:00", "22:00"), instagram: "djleobatida", formasPagamento: ["pix", "dinheiro"],
+    atendeTodaCidade: true, bairrosAtendidos: [],
+  },
 ];
 
 const comercios: AnuncianteComercio[] = [
@@ -428,6 +437,29 @@ const comercios: AnuncianteComercio[] = [
       { id: "c09-p2", nome: "Tinta acrílica 18 L", preco: 289.0, foto: foto("c09-p2") },
     ],
     entrega: { todaCidade: true, bairros: [] },
+  },
+  // Bares com o extra de Agenda: o perfil mostra a seção Agenda (site de apresentação).
+  {
+    id: "c20", slug: "quiosque-mare-cheia", cidadeId, tipo: "comercio",
+    nome: "Quiosque Maré Cheia", categoriaId: "bar", categoriasAdicionais: ["restaurante"],
+    planoId: "com-vitrine", fundador: true,
+    descricao: "Quiosque pé na areia com petiscos, frutos do mar e música ao vivo de quinta a domingo. Veja quem toca na Agenda.",
+    whatsapp: zap(40), fotoPerfil: { id: "c20-perfil", url: "" }, galeria: [],
+    horario: horario({ 0: h("10:00", "22:00"), 4: h("16:00", "00:00"), 5: h("16:00", "01:00"), 6: h("10:00", "01:00") }),
+    instagram: "mare.cheia", formasPagamento: ["pix", "cartao", "dinheiro"],
+    enderecos: [{ id: "c20-e1", logradouro: "Avenida Atlântica", numero: "2200", bairroId: "costazul", latitude: -22.5190, longitude: -41.9250 }],
+    encartes: [], produtos: [],
+  },
+  {
+    id: "c21", slug: "boteco-da-praca", cidadeId, tipo: "comercio",
+    nome: "Boteco da Praça", categoriaId: "bar", categoriasAdicionais: ["lanchonete"],
+    planoId: "com-basico", fundador: false,
+    descricao: "Chope gelado, porções e roda de samba às sextas e sábados, na praça do Centro. Programação na Agenda.",
+    whatsapp: zap(41), fotoPerfil: { id: "c21-perfil", url: "" }, galeria: [],
+    horario: horario({ 3: h("17:00", "00:00"), 4: h("17:00", "00:00"), 5: h("17:00", "02:00"), 6: h("12:00", "02:00") }),
+    formasPagamento: ["pix", "cartao", "dinheiro"],
+    enderecos: [{ id: "c21-e1", logradouro: "Praça José Pereira Câmara", numero: "15", bairroId: "centro", latitude: -22.5270, longitude: -41.9450 }],
+    encartes: [], produtos: [],
   },
 ];
 

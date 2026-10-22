@@ -18,3 +18,23 @@ export function formatarData(dataISO: string): string {
   const [ano, mes, dia] = dataISO.split("-");
   return `${dia}/${mes}/${ano}`;
 }
+
+function dataUTC(dataISO: string): Date {
+  const [ano, mes, dia] = dataISO.split("-").map(Number);
+  return new Date(Date.UTC(ano, mes - 1, dia));
+}
+
+/** "2026-10-24" → "sábado, 24 de outubro". */
+export function dataLonga(dataISO: string): string {
+  return dataUTC(dataISO).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+}
+
+/** "2026-10-24" → "sáb., 24/10". */
+export function dataCurtaComSemana(dataISO: string): string {
+  return dataUTC(dataISO).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "UTC" });
+}
+
+/** Dia da semana de 0 (domingo) a 6 (sábado). */
+export function diaDaSemana(dataISO: string): number {
+  return dataUTC(dataISO).getUTCDay();
+}

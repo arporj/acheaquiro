@@ -29,4 +29,6 @@ export const simulacaoComercios: Record<string, { abertoAgora: boolean; distanci
   c07: { abertoAgora: true, distanciaKm: 2.7 },
   c08: { abertoAgora: true, distanciaKm: 0.4 },
   c09: { abertoAgora: true, distanciaKm: 4.6 },
+  c20: { abertoAgora: true, distanciaKm: 1.6 },
+  c21: { abertoAgora: false, distanciaKm: 2.9 },
 };

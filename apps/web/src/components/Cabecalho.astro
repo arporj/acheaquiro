@@ -18,6 +18,14 @@ const { comBusca = false } = Astro.props;
       <a href="/#categorias" class="hidden rounded-full px-4 py-2 text-sm font-bold text-white/90 hover:bg-white/10 md:inline-flex">
         Categorias
       </a>
+      {
+        // Agenda: por enquanto só no site de apresentação (módulo de eventos).
+        ambiente === "apresentacao" && (
+          <a href="/agenda" class="hidden rounded-full px-4 py-2 text-sm font-bold text-white/90 hover:bg-white/10 md:inline-flex">
+            Agenda
+          </a>
+        )
+      }
       <a href="/sobre" class="hidden rounded-full px-4 py-2 text-sm font-bold text-white/90 hover:bg-white/10 md:inline-flex">
         Como funciona
       </a>

@@ -2,6 +2,7 @@
 import { EtiquetaAberto, EtiquetaFundador, FotoMarcador, Icone, IconeCategoria, Selo } from "@acheaqui/ui";
 import type { Categoria, FormaPagamento } from "@acheaqui/types";
 import Topo from "@/components/anuncios/Topo.astro";
+import AgendaPorDia from "@/components/agenda/AgendaPorDia.astro";
 import BotaoCompartilhar from "@/components/BotaoCompartilhar.astro";
 import BarraContato from "@/components/perfil/BarraContato.astro";
 import BotaoDenunciar from "@/components/perfil/BotaoDenunciar.astro";
@@ -9,7 +10,7 @@ import CartaoContato from "@/components/perfil/CartaoContato.astro";
 import Galeria from "@/components/perfil/Galeria.astro";
 import Horario from "@/components/perfil/Horario.astro";
 import Secao from "@/components/perfil/Secao.astro";
-import { anunciantePorSlug, listarBairros, listarCategorias, planoPorId, situacaoComercio } from "@/dados/consultas";
+import { agendaDoComercio, anunciantePorSlug, listarBairros, listarCategorias, planoPorId, situacaoComercio } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
 import { formatarPreco, linkComoChegar } from "@/lib/contato";
@@ -33,6 +34,8 @@ const categoria = categoriaPorId(anunciante.categoriaId)!;
 const adicionais = anunciante.categoriasAdicionais.map(categoriaPorId).filter((c): c is Categoria => Boolean(c));
 const selo = (await planoPorId(anunciante.planoId))?.selo ?? "nenhum";
 const situacao = anunciante.tipo === "comercio" ? await situacaoComercio(anunciante.id) : undefined;
+// Comércio com o extra de Agenda (bares e quiosques com música ao vivo).
+const agenda = anunciante.tipo === "comercio" ? await agendaDoComercio(anunciante.id) : [];
 const local =
   anunciante.tipo === "profissional"
     ? anunciante.atendeTodaCidade
@@ -126,6 +129,17 @@ const fundoMapa =
         <Secao titulo="Sobre">
           <p class="leading-relaxed text-slate-700">{anunciante.descricao}</p>
         </Secao>
+
+        {
+          agenda.length > 0 && (
+            <Secao titulo="Agenda">
+              <a slot="extra" href="/agenda" class="text-sm font-bold text-azul-600 hover:underline">
+                Ver toda a Agenda
+              </a>
+              <AgendaPorDia itens={agenda} mostrarLugar={false} />
+            </Secao>
+          )
+        }
 
         {
           anunciante.tipo === "profissional" && anunciante.galeria.length > 0 && (

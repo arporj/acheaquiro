@@ -1,0 +1,29 @@
+---
+// Logo do patrocinador com o nome embaixo. O formato do logo segue a cota
+// (FORMATOS_LOGO_PATROCINIO): Master quadrado, Ouro comprido, os outros 2:1.
+import { FORMATOS_LOGO_PATROCINIO } from "@acheaqui/domain";
+import type { Patrocinador } from "@acheaqui/types";
+
+interface Props {
+  patrocinador: Patrocinador;
+  class?: string;
+}
+
+const { patrocinador, class: classe = "" } = Astro.props;
+const { largura, altura } = FORMATOS_LOGO_PATROCINIO[patrocinador.cota];
+const tamanhoNome = patrocinador.cota === "master" ? "text-base" : "text-xs";
+---
+
+<a href={`/patrocinadores#${patrocinador.slug}`} class={`group flex flex-col gap-1.5 ${classe}`}>
+  <img
+    src={patrocinador.logo}
+    alt={`Logo de ${patrocinador.nome}`}
+    width={largura}
+    height={altura}
+    loading="lazy"
+    decoding="async"
+    class="w-full rounded-xl bg-white ring-1 ring-slate-200 transition group-hover:ring-azul-300"
+    style={`aspect-ratio: ${largura} / ${altura}`}
+  />
+  <span class={`text-center font-bold text-slate-600 group-hover:text-azul-700 ${tamanhoNome}`}>{patrocinador.nome}</span>
+</a>
