@@ -41,11 +41,11 @@ export const patrocinadores: Patrocinador[] = [
 export const cotasPatrocinio: CotaPatrocinioVenda[] = [
   {
     cota: "master", nome: "Master", vagas: 1, valorCentavos: 690000, valorFundadorCentavos: 570000,
-    beneficios: ["Logo maior no rodapé de todas as páginas", "2 posts por mês no Instagram do Ache Aqui RO", "Logo nos cartazes e panfletos", "Carro de som, quando houver"],
+    beneficios: ["Logo maior no rodapé de todas as páginas", "2 posts por mês no Instagram do Ache Aqui RO", "Logo nos cartazes e panfletos, quando houver", "Carro de som, quando houver"],
   },
   {
     cota: "ouro", nome: "Ouro", vagas: 3, valorCentavos: 490000, valorFundadorCentavos: 400000,
-    beneficios: ["Logo médio no rodapé de todas as páginas", "1 post por mês no Instagram", "Logo nos cartazes e panfletos"],
+    beneficios: ["Logo médio no rodapé de todas as páginas", "1 post por mês no Instagram", "Logo nos cartazes e panfletos, quando houver"],
   },
   {
     cota: "apoio", nome: "Apoio", vagas: 6, valorCentavos: 220000, valorFundadorCentavos: 180000,
