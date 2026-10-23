@@ -58,10 +58,10 @@ const grupos: { titulo: string; secoes: Secao[] }[] = [
 ---
 
 <Layout titulo={`${titulo} · Administração`}>
-  <CabecalhoConta logado />
+  <CabecalhoConta logado fixo />
   <div class="mx-auto grid w-full max-w-6xl flex-1 gap-6 px-4 py-6 lg:grid-cols-[14rem_1fr] lg:py-8">
     <nav aria-label="Administração" class="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:overflow-visible lg:px-0">
-      <ul class="flex gap-1.5 lg:sticky lg:top-6 lg:flex-col">
+      <ul class="flex gap-1.5 lg:sticky lg:top-24 lg:flex-col">
         {
           grupos.flatMap((grupo, i) => [
             <li

@@ -66,6 +66,7 @@ const PROFISSIONAIS = "Serviços profissionais";
 const RELIGIAO = "Religião e espiritualidade";
 const ONGS = "ONGs";
 const ORGAOS = "Órgãos públicos";
+const ATACADO = "Atacado e indústria";
 const OUTROS = "Outros serviços";
 
 export const categorias: Categoria[] = [
@@ -301,6 +302,10 @@ export const categorias: Categoria[] = [
   c("orgao-publico", "Prefeitura e órgão público", "Prefeitura e órgãos públicos", ORGAOS, "landmark", cor.azul, { sinonimos: ["prefeitura", "secretaria"] }),
   c("escola-publica", "Escola pública", "Escolas públicas", ORGAOS, "school", cor.amarelo, { sinonimos: ["escola municipal"] }),
   c("saude-publica", "Saúde pública", "Saúde pública", ORGAOS, "hospital", cor.vermelho, { sinonimos: ["posto de saúde", "UPA"] }),
+
+  // Atacado e indústria
+  c("atacado", "Atacado e distribuidora", "Atacados e distribuidoras", ATACADO, "warehouse", cor.grafite, { sinonimos: ["atacado", "distribuidora", "fornecedor"] }),
+  c("industria", "Indústria e fábrica", "Indústrias e fábricas", ATACADO, "factory", cor.marrom, { sinonimos: ["fábrica", "indústria"] }),
 
   // Outros serviços
   c("artesanato", "Artesanato", "Artesanato", OUTROS, "palette", cor.roxo, { sinonimos: ["artesã", "crochê"], atalho: true }),

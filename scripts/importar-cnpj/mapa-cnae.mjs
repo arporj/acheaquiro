@@ -1,4 +1,4 @@
-// Mapa inicial CNAE → categoria (slug_lista), aprovado em 22/10/2026. Vale o
+// Mapa inicial CNAE → categoria (slug_lista), aprovado em 22/10/2026 (atacado e indústria em 23/10). Vale o
 // prefixo mais longo: subclasse (7 dígitos), classe (5), grupo (3) ou divisão (2).
 // null = fora da importação (sem atendimento ao público, atacado, indústria,
 // organizações políticas e sindicais). Depois da primeira carga, a fonte é a
@@ -9,13 +9,19 @@ export const MAPA_CNAE = [
   // Fora por padrão: agropecuária, extração, indústria, energia, água, atacado,
   // transporte de carga, finanças, administração pública, organismos.
   ["01", null], ["02", null], ["03", null], ["05", null], ["06", null], ["07", null], ["08", null], ["09", null],
-  ["10", null], ["11", null], ["12", null], ["13", null], ["14", null], ["15", null], ["16", null], ["17", null],
-  ["18", null], ["19", null], ["20", null], ["21", null], ["22", null], ["23", null], ["24", null], ["25", null],
-  ["26", null], ["27", null], ["28", null], ["29", null], ["30", null], ["31", null], ["32", null], ["33", null],
-  ["35", null], ["36", null], ["37", null], ["38", null], ["39", null], ["46", null], ["49", null], ["50", null],
+  ["33", null], ["35", null], ["36", null], ["37", null], ["38", null], ["39", null], ["461", null], ["49", null], ["50", null],
   ["51", null], ["52", null], ["53", null], ["58", null], ["59", null], ["60", null], ["61", null], ["63", null],
   ["64", null], ["65", null], ["66", null], ["70", null], ["72", null], ["78", null], ["80", null], ["81", null],
   ["82", null], ["84", null], ["94", null], ["97", null], ["99", null],
+
+  // Atacado e indústria (decisão de 23/10/2026): atacado (46, menos representantes) e indústria (10 a 32).
+  ["46", "atacados-e-distribuidoras"],
+  ["10", "industrias-e-fabricas"], ["11", "industrias-e-fabricas"], ["12", "industrias-e-fabricas"], ["13", "industrias-e-fabricas"],
+  ["14", "industrias-e-fabricas"], ["15", "industrias-e-fabricas"], ["16", "industrias-e-fabricas"], ["17", "industrias-e-fabricas"],
+  ["18", "industrias-e-fabricas"], ["19", "industrias-e-fabricas"], ["20", "industrias-e-fabricas"], ["21", "industrias-e-fabricas"],
+  ["22", "industrias-e-fabricas"], ["23", "industrias-e-fabricas"], ["24", "industrias-e-fabricas"], ["25", "industrias-e-fabricas"],
+  ["26", "industrias-e-fabricas"], ["27", "industrias-e-fabricas"], ["28", "industrias-e-fabricas"], ["29", "industrias-e-fabricas"],
+  ["30", "industrias-e-fabricas"], ["31", "industrias-e-fabricas"], ["32", "industrias-e-fabricas"],
 
   // Comer e beber
   ["5611201", "restaurantes"], ["5611203", "lanchonetes"], ["5611204", "bares"], ["5611205", "bares"],
@@ -182,7 +188,7 @@ export const MAPA_CNAE = [
   // Outros serviços e ONGs
   ["9601701", "lavanderias"], ["9601702", "lavanderias"], ["9601703", "lavanderias"], ["9603301", "funerarias"],
   ["9603302", "funerarias"], ["9603303", "funerarias"], ["9603304", "funerarias"], ["9603305", "funerarias"],
-  ["9603399", "funerarias"], ["1412602", "costureiras"], ["1412603", null], ["1413402", "costureiras"],
+  ["9603399", "funerarias"], ["1412602", "costureiras"], ["1412603", "industrias-e-fabricas"], ["1413402", "costureiras"],
   ["9529106", "joias-e-bijuterias"], ["9430800", "ongs"], ["9499500", "ongs"], ["9493600", "ongs"], ["9609299", null],
   // Apostas e bingo ficam fora (regra do site: nada de apostas).
   ["9200", null], ["5310502", null],

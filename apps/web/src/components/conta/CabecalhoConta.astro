@@ -5,12 +5,14 @@ import Logo from "@/components/Logo.astro";
 
 interface Props {
   logado?: boolean;
+  /** Fica preso no alto da tela ao rolar (administração). */
+  fixo?: boolean;
 }
 
-const { logado = false } = Astro.props;
+const { logado = false, fixo = false } = Astro.props;
 ---
 
-<header class="fundo-raios text-white">
+<header class:list={["fundo-raios text-white", fixo && "sticky top-0 z-40 shadow-md"]}>
   <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 lg:py-4">
     <Logo />
     {
