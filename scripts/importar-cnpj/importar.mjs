@@ -199,6 +199,7 @@ async function etapaPreparar() {
   const contagem = { ativos: 0, bloqueados: 0, mei: 0, empresario_individual: 0, orgao_publico: 0, sem_empresa: 0, cnae_fora: 0, sem_bairro: 0, prontos: 0 };
   const comercios = [];
   const semBairro = [];
+  const espera = [];
   const slugsUsados = new Set();
 
   for (const e of lerLinhas("estabelecimentos")) {
@@ -223,29 +224,15 @@ async function etapaPreparar() {
     const categoriaFinal = categoriaPorSlug.get(slugCategoria);
 
     const bairroReceita = normalizarEspacos(e[17]);
-    const apelido = apelidos.get(normalizar(bairroReceita));
-    if (apelido?.ignorar) { contagem.sem_bairro++; continue; }
-    const bairroId = apelido?.bairro_id ?? bairroPorNome.get(normalizar(bairroReceita));
+    const nomeReceita = normalizar(bairroReceita).slice(0, 100) || "(vazio)";
+    const apelido = apelidos.get(nomeReceita);
+    const bairroId = apelido?.ignorar ? undefined : (apelido?.bairro_id ?? bairroPorNome.get(nomeReceita));
     const nomeBairro = nomeDoBairro.get(bairroId) ?? bairroReceita;
     const cnpj = `${basico}${e[1]}${e[2]}`;
-    if (!bairroId) {
-      contagem.sem_bairro++;
-      const numeroSemBairro = normalizarEspacos(e[15]);
-      semBairro.push({ bairro: bairroReceita, nome, endereco: nomeBonito(`${e[13]} ${e[14]}${numeroSemBairro ? `, ${numeroSemBairro}` : ""}`), cep: e[18] });
-      continue;
-    }
-
-    // Slug único na cidade: nome; se repetir, nome + bairro; depois um número.
-    let slug = paraSlug(nome);
-    if (slugsUsados.has(slug)) slug = paraSlug(`${nome} ${nomeBairro}`);
-    for (let n = 2; slugsUsados.has(slug); n++) slug = `${paraSlug(`${nome} ${nomeBairro}`).slice(0, 75)}-${n}`;
-    slugsUsados.add(slug);
-
     const numero = normalizarEspacos(e[15]).toUpperCase();
-    comercios.push({
+    const comercio = {
       cnpj,
       nome,
-      slug,
       categoria_id: categoriaFinal,
       endereco: {
         logradouro: nomeBonito(`${e[13]} ${e[14]}`).slice(0, 120),
@@ -265,11 +252,30 @@ async function etapaPreparar() {
         abertura: /^\d{8}$/.test(e[10]) ? `${e[10].slice(0, 4)}-${e[10].slice(4, 6)}-${e[10].slice(6)}` : null,
         bairro_receita: bairroReceita.slice(0, 100) || null,
       },
-    });
+    };
+
+    // Sem bairro (pendente ou deixado de fora): vai para a espera, publicada pelo
+    // banco quando a administração ligar o nome a um bairro.
+    if (!bairroId) {
+      contagem.sem_bairro++;
+      espera.push({ ...comercio, slug: paraSlug(nome), nome_receita: nomeReceita });
+      if (!apelido?.ignorar) {
+        semBairro.push({ bairro: bairroReceita, nome, endereco: `${comercio.endereco.logradouro}, ${comercio.endereco.numero}`, cep: e[18] });
+      }
+      continue;
+    }
+
+    // Slug único na cidade: nome; se repetir, nome + bairro; depois um número.
+    let slug = paraSlug(nome);
+    if (slugsUsados.has(slug)) slug = paraSlug(`${nome} ${nomeBairro}`);
+    for (let n = 2; slugsUsados.has(slug); n++) slug = `${paraSlug(`${nome} ${nomeBairro}`).slice(0, 75)}-${n}`;
+    slugsUsados.add(slug);
+    comercios.push({ ...comercio, slug });
   }
   contagem.prontos = comercios.length;
 
   gravarJson("comercios.json", comercios);
+  gravarJson("espera.json", espera);
   // Bairros sem correspondência vão para a fila da administração, com o número de
   // comércios e até 50 deles (nome, endereço e CEP), para a equipe decidir que bairro é.
   const porBairro = new Map();
@@ -411,6 +417,40 @@ async function etapaEnviar() {
     if (++gravados % 100 === 0) console.log(`${gravados} gravados`);
   }
   console.log(`Fim: ${gravados} gravados, ${falhas} com erro.`);
+
+  // Espera: comércios sem bairro, publicados pelo banco quando o nome da Receita
+  // for ligado a um bairro. Quem já está no site ou passou a ter bairro sai dela.
+  const espera = lerJson("espera.json", []);
+  const { data: bloqueados, error: eBloqueados } = await banco.from("cnpjs_bloqueados").select("cnpj").eq("cidade_id", cidadeId);
+  if (eBloqueados) throw eBloqueados;
+  const foraDaEspera = new Set([...cnpjsNoBanco, ...bloqueados.map((b) => b.cnpj), ...comercios.map((c) => c.cnpj)]);
+  const linhasEspera = espera
+    .filter((c) => !foraDaEspera.has(c.cnpj))
+    .map((c) => ({
+      cnpj: c.cnpj,
+      cidade_id: cidadeId,
+      nome_receita: c.nome_receita,
+      nome: c.nome,
+      slug: c.slug,
+      categoria_id: c.categoria_id,
+      logradouro: c.endereco.logradouro,
+      numero: c.endereco.numero,
+      complemento: c.endereco.complemento,
+      receita: c.receita,
+      referencia: mes,
+    }));
+  for (let i = 0; i < linhasEspera.length; i += 500) {
+    const { error } = await banco.from("comercios_em_espera").upsert(linhasEspera.slice(i, i + 500), { onConflict: "cnpj" });
+    if (error) throw error;
+  }
+  const { data: emEspera, error: eEspera } = await banco.from("comercios_em_espera").select("cnpj").eq("cidade_id", cidadeId);
+  if (eEspera) throw eEspera;
+  const saem = emEspera.map((r) => r.cnpj).filter((cnpj) => foraDaEspera.has(cnpj));
+  for (let i = 0; i < saem.length; i += 200) {
+    const { error } = await banco.from("comercios_em_espera").delete().in("cnpj", saem.slice(i, i + 200));
+    if (error) throw error;
+  }
+  console.log(`Espera: ${linhasEspera.length} comércios sem bairro guardados; ${saem.length} saíram da espera.`);
   if (falhas > 0) process.exitCode = 1;
 }
 

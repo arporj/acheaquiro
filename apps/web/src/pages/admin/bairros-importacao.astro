@@ -1,7 +1,8 @@
 ---
 // Bairros escritos na Receita que não batem com a tabela de bairros (D5). Na
 // aba Pendentes, a administração liga o nome a um bairro existente, cria um
-// bairro novo ou deixa de fora; os comércios entram na próxima importação. Na
+// bairro novo ou deixa de fora; ao ligar, o banco publica na hora os comércios
+// em espera daquele nome (migration 20261023170000). Na
 // aba Resolvidos, pode voltar um nome para pendente ou renomear o bairro.
 import { classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
@@ -15,10 +16,10 @@ const aba = Astro.url.searchParams.get("aba") === "resolvidos" ? "resolvidos" : 
 let erro = "";
 
 const AVISOS: Record<string, string> = {
-  ligado: "Nome ligado ao bairro. Os comércios dele entram na próxima importação.",
-  criado: "Bairro criado e ligado. Os comércios dele entram na próxima importação.",
-  ignorado: "Nome deixado de fora. Os comércios com esse bairro não serão importados.",
-  pendente: "Nome voltou para Pendentes. Os comércios dele só entram depois de resolvido de novo.",
+  ligado: "Nome ligado ao bairro. Os comércios dele já estão no site (sem o mapa até a próxima rodada da importação).",
+  criado: "Bairro criado e ligado. Os comércios dele já estão no site (sem o mapa até a próxima rodada da importação).",
+  ignorado: "Nome deixado de fora. Os comércios dele continuam guardados, fora do site, e entram se o nome for ligado a um bairro.",
+  pendente: "Nome voltou para Pendentes. Os comércios que já estão no site continuam lá; os próximos com esse nome esperam.",
   renomeado: "Bairro renomeado em todo o site. O endereço das páginas continua o mesmo.",
 };
 const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
