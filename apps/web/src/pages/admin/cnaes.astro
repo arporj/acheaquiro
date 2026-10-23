@@ -1,0 +1,132 @@
+---
+// CNAE → categoria da importação pela Receita (D5). Sem categoria, o CNAE fica
+// fora da importação. A mudança vale para a próxima importação; os comércios
+// já importados continuam na categoria em que estão.
+import { classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { listarCategoriasAdmin, listarCnaes, salvarCnae } from "@/lib/importacao";
+import { normalizar } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const parametros = Astro.url.searchParams;
+const busca = (parametros.get("q") ?? "").slice(0, 100);
+const filtro = parametros.get("filtro") === "fora" ? "fora" : parametros.get("filtro") === "dentro" ? "dentro" : "todos";
+let erro = "";
+const aviso = parametros.get("aviso") === "salvo" ? "CNAE salvo. Vale para a próxima importação." : "";
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const resultado = await salvarCnae(supabase, String(f.get("cnae") ?? "").slice(0, 7), String(f.get("categoria") ?? "").slice(0, 36));
+  if (resultado.ok) return Astro.redirect(`/admin/cnaes?aviso=salvo&q=${encodeURIComponent(busca)}&filtro=${filtro}`, 303);
+  erro = resultado.erro.mensagem;
+  Astro.response.status = resultado.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const [cnaesR, categoriasR] = await Promise.all([listarCnaes(supabase), listarCategoriasAdmin(supabase)]);
+if (!cnaesR.ok) erro ||= cnaesR.erro.mensagem;
+if (!categoriasR.ok) erro ||= categoriasR.erro.mensagem;
+const categorias = categoriasR.ok ? categoriasR.dados : [];
+const nomeCategoria = new Map(categorias.map((c) => [c.id, `${c.nome} (${c.grupo})`]));
+
+const termo = normalizar(busca);
+const digitos = busca.replace(/\D/g, "");
+const cnaes = (cnaesR.ok ? cnaesR.dados : []).filter(
+  (c) =>
+    (filtro === "todos" || (filtro === "fora") === !c.categoria_id) &&
+    (!termo ||
+      (digitos !== "" && c.cnae.includes(digitos)) ||
+      normalizar(c.descricao).includes(termo) ||
+      normalizar(nomeCategoria.get(c.categoria_id ?? "") ?? "").includes(termo)),
+);
+const editando = cnaes.find((c) => c.cnae === parametros.get("editar"));
+const grupos = [...new Set(categorias.map((c) => c.grupo))];
+const formatarCnae = (c: string) => c.replace(/^(\d{4})(\d)(\d{2})$/, "$1-$2/$3");
+const consulta = (extra: string) => `/admin/cnaes?q=${encodeURIComponent(busca)}&filtro=${filtro}${extra}`;
+---
+
+<PaginaAdmin titulo="CNAEs da importação" descricao="Em qual categoria entra cada atividade da Receita. Sem categoria, a atividade fica fora da importação.">
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <form method="get" class="mt-5 flex flex-wrap items-end gap-2">
+    <label class="min-w-56 flex-1">
+      <span class="text-sm font-bold text-azul-900">Buscar por código, atividade ou categoria</span>
+      <input name="q" value={busca} class={classesCampo} />
+    </label>
+    <label>
+      <span class="text-sm font-bold text-azul-900">Mostrar</span>
+      <select name="filtro" class={classesCampo}>
+        <option value="todos" selected={filtro === "todos"}>Todos</option>
+        <option value="dentro" selected={filtro === "dentro"}>Com categoria</option>
+        <option value="fora" selected={filtro === "fora"}>Fora da importação</option>
+      </select>
+    </label>
+    <button class={classesBotao("azul", "m", "h-12")}>Filtrar</button>
+  </form>
+
+  {
+    editando && (
+      <form method="post" class="mt-5 rounded-2xl bg-white p-4 shadow-sm ring-2 ring-azul-200">
+        <input type="hidden" name="cnae" value={editando.cnae} />
+        <p class="font-bold text-azul-900">
+          {formatarCnae(editando.cnae)} · {editando.descricao}
+        </p>
+        <label class={classesRotulo}>
+          Categoria
+          <select name="categoria" class={classesCampo}>
+            <option value="" selected={!editando.categoria_id}>Fora da importação</option>
+            {grupos.map((g) => (
+              <optgroup label={g}>
+                {categorias
+                  .filter((c) => c.grupo === g)
+                  .map((c) => (
+                    <option value={c.id} selected={c.id === editando.categoria_id}>
+                      {c.nome}
+                    </option>
+                  ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+        <div class="mt-4 flex gap-2">
+          <a href={consulta("")} class={classesBotao("contorno", "m")}>Cancelar</a>
+          <button class={classesBotao("azul", "m")}>Salvar</button>
+        </div>
+      </form>
+    )
+  }
+
+  <p class="mt-5 text-sm text-slate-500">{cnaes.length} atividades</p>
+  <div class="mt-2 overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-fundo text-xs font-extrabold text-slate-500 uppercase">
+        <tr>
+          <th class="px-3 py-2">CNAE</th>
+          <th class="px-3 py-2">Atividade</th>
+          <th class="px-3 py-2">Categoria</th>
+          <th class="px-3 py-2"><span class="sr-only">Editar</span></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {
+          cnaes.map((c) => (
+            <tr>
+              <td class="px-3 py-2 font-mono whitespace-nowrap">{formatarCnae(c.cnae)}</td>
+              <td class="px-3 py-2">{c.descricao}</td>
+              <td class="px-3 py-2">
+                {c.categoria_id ? nomeCategoria.get(c.categoria_id) : <span class="text-slate-400 italic">fora da importação</span>}
+              </td>
+              <td class="px-3 py-2">
+                <a href={consulta(`&editar=${c.cnae}`)} class="font-bold text-azul-600 hover:underline">
+                  Editar
+                </a>
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+</PaginaAdmin>

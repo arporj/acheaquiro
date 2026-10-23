@@ -1,0 +1,273 @@
+---
+// Pedidos sobre os perfis importados da Receita (D5, decisões de 23/10/2026).
+// A equipe confere quem pediu (telefone ou e-mail da empresa na Receita,
+// sócios pela BrasilAPI ou documento) antes de confirmar:
+// - assumir: manda o convite para o e-mail de quem pediu e liga a conta ao perfil;
+// - remover e fechou: apaga o perfil e bloqueia o CNPJ para a próxima importação.
+import { Icone, Modal, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesRotulo } from "@/components/conta/estilos";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { formatarTelefone } from "@/lib/contato";
+import {
+  confirmarAssumir,
+  confirmarRemocao,
+  consultarSocios,
+  listarPedidos,
+  recusarPedido,
+  type PedidoAdmin,
+  type SituacaoPedido,
+  type Socio,
+} from "@/lib/importacao";
+import type { Resultado } from "@acheaqui/types";
+
+const supabase = Astro.locals.supabase!;
+
+const AVISOS: Record<string, string> = {
+  assumir: "Convite enviado. A pessoa recebe o link por e-mail para criar a senha; o perfil já está ligado à conta dela.",
+  removido: "Perfil apagado e CNPJ bloqueado para as próximas importações.",
+  recusado: "Pedido recusado.",
+};
+const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
+let erro = "";
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const campo = (nome: string) => String(f.get(nome) ?? "").slice(0, 1000);
+  const id = campo("id");
+  let resultado: Resultado<null>;
+  let chaveAviso = "";
+  switch (campo("acao")) {
+    case "confirmar-assumir":
+      resultado = await confirmarAssumir(supabase, id, campo("observacao"));
+      chaveAviso = "assumir";
+      break;
+    case "confirmar-remocao":
+      resultado = await confirmarRemocao(supabase, id, campo("observacao"));
+      chaveAviso = "removido";
+      break;
+    case "recusar":
+      resultado = await recusarPedido(supabase, id, campo("observacao"));
+      chaveAviso = "recusado";
+      break;
+    default:
+      resultado = { ok: false, erro: { codigo: "DADOS_INVALIDOS", mensagem: "Ação desconhecida." } };
+  }
+  if (resultado.ok) return Astro.redirect(`/admin/pedidos?aviso=${chaveAviso}`, 303);
+  erro = resultado.erro.mensagem;
+  Astro.response.status = resultado.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const SITUACOES: { id: SituacaoPedido; rotulo: string }[] = [
+  { id: "aberto", rotulo: "Abertos" },
+  { id: "atendido", rotulo: "Atendidos" },
+  { id: "recusado", rotulo: "Recusados" },
+];
+const pedida = Astro.url.searchParams.get("situacao");
+const situacao: SituacaoPedido = SITUACOES.some((s) => s.id === pedida) ? (pedida as SituacaoPedido) : "aberto";
+
+const pedidosR = await listarPedidos(supabase, situacao);
+if (!pedidosR.ok) erro ||= pedidosR.erro.mensagem;
+const pedidos = pedidosR.ok ? pedidosR.dados : [];
+
+// "Ver sócios": consulta a BrasilAPI na hora, só para o pedido escolhido, sem gravar.
+const pedidoSocios = Astro.url.searchParams.get("socios");
+const cnpjSocios = pedidos.find((p) => p.id === pedidoSocios)?.anunciante?.dados_receita?.cnpj;
+const socios: Resultado<Socio[]> | undefined = cnpjSocios ? await consultarSocios(cnpjSocios) : undefined;
+
+const TIPOS: Record<PedidoAdmin["tipo"], { texto: string; classe: string }> = {
+  assumir: { texto: "Assumir", classe: "bg-azul-600 text-white" },
+  remover: { texto: "Remover", classe: "bg-vermelho-600 text-white" },
+  fechou: { texto: "Fechou", classe: "bg-amarelo-200 text-azul-900" },
+};
+const CONFIRMACAO: Record<PedidoAdmin["tipo"], { botao: string; texto: string; acao: string }> = {
+  assumir: {
+    botao: "Confirmar e enviar convite",
+    texto: "O convite vai para o e-mail de quem pediu. A pessoa cria a senha pelo link e o perfil fica ligado à conta dela.",
+    acao: "confirmar-assumir",
+  },
+  remover: {
+    botao: "Confirmar e apagar o perfil",
+    texto: "O perfil sai do site e do banco, com os dados da Receita, e o CNPJ fica bloqueado para as próximas importações. Não dá para desfazer.",
+    acao: "confirmar-remocao",
+  },
+  fechou: {
+    botao: "Confirmar e apagar o perfil",
+    texto: "Confira antes que o comércio fechou mesmo (ligando ou pela situação do CNPJ). O perfil sai do site e do banco e o CNPJ fica bloqueado.",
+    acao: "confirmar-remocao",
+  },
+};
+const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-extrabold";
+const formatarCnpj = (c: string) => c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+const dataHora = (iso: string) =>
+  new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(iso));
+const CONSULTA_RECEITA = "https://solucoes.receita.fazenda.gov.br/Servicos/cnpjreva/Cnpjreva_Solicitacao.asp";
+const campoTexto = "mt-1 w-full rounded-2xl border-2 border-azul-100 p-3 focus:border-azul-500 focus:outline-none";
+---
+
+<PaginaAdmin titulo="Pedidos de perfil" descricao="Pedidos de assumir, remover ou dar como fechado um comércio importado da Receita.">
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <nav class="mt-5 flex gap-1.5" aria-label="Situação dos pedidos">
+    {
+      SITUACOES.map((s) => (
+        <a
+          href={`/admin/pedidos?situacao=${s.id}`}
+          aria-current={s.id === situacao ? "page" : undefined}
+          class="rounded-full px-3 py-1.5 text-sm font-bold text-azul-700 ring-1 ring-azul-100 hover:bg-white aria-[current=page]:bg-azul-600 aria-[current=page]:text-white aria-[current=page]:ring-azul-600"
+        >
+          {s.rotulo}
+        </a>
+      ))
+    }
+  </nav>
+
+  {pedidos.length === 0 && <p class="mt-4 rounded-2xl bg-white p-6 text-center text-slate-500 ring-1 ring-black/5">Nenhum pedido aqui.</p>}
+
+  <ul class="mt-4 space-y-3">
+    {
+      pedidos.map((p) => {
+        const receita = p.anunciante?.dados_receita;
+        const confirmacao = CONFIRMACAO[p.tipo];
+        return (
+          <li class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class={`${etiqueta} ${TIPOS[p.tipo].classe}`}>{TIPOS[p.tipo].texto}</span>
+              {p.anunciante ? (
+                <a href={`/perfil/${p.anunciante.slug}`} target="_blank" class="font-bold text-azul-900 hover:underline">
+                  {p.anunciante.nome}
+                </a>
+              ) : (
+                <span class="font-bold text-slate-500">{p.nome_comercio ?? "Perfil apagado"}</span>
+              )}
+              <span class="text-xs text-slate-500">{dataHora(p.criado_em)}</span>
+            </div>
+
+            <div class="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+              <div class="rounded-xl bg-fundo p-3">
+                <p class="font-bold text-azul-900">Quem pediu</p>
+                {p.tipo === "fechou" ? (
+                  <p class="text-slate-600">Visitante (o aviso de fechado não pede identificação).</p>
+                ) : (
+                  <>
+                    <p>{p.nome}</p>
+                    <p>{p.email}</p>
+                    {p.telefone && <p>{formatarTelefone(p.telefone)}</p>}
+                    {p.declarou_responsavel && <p class="mt-1 text-xs font-bold text-zap-700">Declarou ser o responsável</p>}
+                  </>
+                )}
+                {p.mensagem && <p class="mt-2 text-slate-600 italic">"{p.mensagem}"</p>}
+              </div>
+
+              <div class="rounded-xl bg-fundo p-3">
+                <p class="font-bold text-azul-900">Na Receita</p>
+                {receita ? (
+                  <>
+                    <p>{receita.razao_social}</p>
+                    <p>CNPJ {formatarCnpj(receita.cnpj)}</p>
+                    {receita.telefones.map((t) => (
+                      <p>
+                        <a href={`tel:+55${t}`} class="text-azul-600 hover:underline">{formatarTelefone(t)}</a>
+                      </p>
+                    ))}
+                    {receita.email && <p>{receita.email}</p>}
+                    {receita.telefones.length === 0 && !receita.email && <p class="text-slate-500">Sem telefone nem e-mail na Receita.</p>}
+                    <p class="mt-2 flex flex-wrap gap-3 font-bold">
+                      <a href={`/admin/pedidos?situacao=${situacao}&socios=${p.id}#pedido-${p.id}`} class="text-azul-600 hover:underline">
+                        Ver sócios
+                      </a>
+                      <a href={CONSULTA_RECEITA} target="_blank" rel="noopener noreferrer" class="text-slate-500 hover:underline">
+                        Consulta da Receita
+                      </a>
+                    </p>
+                  </>
+                ) : (
+                  <p class="text-slate-500">{p.cnpj ? `CNPJ ${formatarCnpj(p.cnpj)} (perfil apagado)` : "Sem dados da Receita."}</p>
+                )}
+              </div>
+            </div>
+
+            {pedidoSocios === p.id && socios && (
+              <div id={`pedido-${p.id}`} class="mt-3 rounded-xl p-3 text-sm ring-1 ring-azul-100">
+                <p class="font-bold text-azul-900">Sócios (BrasilAPI, consulta de agora, nada gravado)</p>
+                {socios.ok ? (
+                  socios.dados.length > 0 ? (
+                    <ul class="mt-1 space-y-1">
+                      {socios.dados.map((s) => (
+                        <li>
+                          <strong>{s.nome}</strong> · {s.qualificacao}
+                          {s.desde && ` · desde ${s.desde.split("-").reverse().join("/")}`}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p class="text-slate-500">A Receita não lista sócios para este CNPJ.</p>
+                  )
+                ) : (
+                  <p class="text-vermelho-700">
+                    {socios.erro.mensagem} CNPJ para copiar: <strong>{cnpjSocios}</strong>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {p.observacao_admin && <p class="mt-3 text-sm text-slate-600">Observação da equipe: {p.observacao_admin}</p>}
+            {p.atendido_em && <p class="mt-1 text-xs text-slate-500">Resolvido em {dataHora(p.atendido_em)}</p>}
+
+            {p.situacao === "aberto" && p.anunciante && (
+              <div class="mt-3 flex flex-wrap gap-2">
+                <button type="button" data-abrir-modal={`modal-confirmar-${p.id}`} class={classesBotao("azul", "m")}>
+                  <Icone nome="certo" class="size-4" />
+                  {confirmacao.botao}
+                </button>
+                <button type="button" data-abrir-modal={`modal-recusar-${p.id}`} class={classesBotao("contorno", "m")}>
+                  Recusar
+                </button>
+              </div>
+            )}
+          </li>
+        );
+      })
+    }
+  </ul>
+
+  {
+    pedidos
+      .filter((p) => p.situacao === "aberto" && p.anunciante)
+      .map((p) => (
+        <>
+          <Modal id={`modal-confirmar-${p.id}`} titulo={CONFIRMACAO[p.tipo].botao}>
+            <form method="post">
+              <input type="hidden" name="acao" value={CONFIRMACAO[p.tipo].acao} />
+              <input type="hidden" name="id" value={p.id} />
+              <p class="text-sm text-slate-600">{CONFIRMACAO[p.tipo].texto}</p>
+              <label class={classesRotulo}>
+                Como a equipe conferiu (fica no histórico)
+                <textarea name="observacao" rows="3" maxlength="1000" class={campoTexto} placeholder="Ex.: liguei para o telefone da Receita e falei com o sócio."></textarea>
+              </label>
+              <div class="mt-5 flex gap-2">
+                <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>Cancelar</button>
+                <button type="submit" class={classesBotao(p.tipo === "assumir" ? "azul" : "perigo", "m", "flex-1")}>Confirmar</button>
+              </div>
+            </form>
+          </Modal>
+          <Modal id={`modal-recusar-${p.id}`} titulo="Recusar pedido">
+            <form method="post">
+              <input type="hidden" name="acao" value="recusar" />
+              <input type="hidden" name="id" value={p.id} />
+              <p class="text-sm text-slate-600">O perfil continua como está. O motivo fica no histórico.</p>
+              <label class={classesRotulo}>
+                Motivo
+                <textarea name="observacao" rows="3" maxlength="1000" required class={campoTexto}></textarea>
+              </label>
+              <div class="mt-5 flex gap-2">
+                <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>Cancelar</button>
+                <button type="submit" class={classesBotao("perigo", "m", "flex-1")}>Recusar</button>
+              </div>
+            </form>
+          </Modal>
+        </>
+      ))
+  }
+</PaginaAdmin>

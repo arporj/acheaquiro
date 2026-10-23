@@ -51,7 +51,7 @@ const comoChegar = anunciante.tipo === "comercio" && anunciante.enderecos[0] ? r
 // Comércio importado da Receita: nenhum contato publicado ainda.
 const semContato = !anunciante.whatsapp && !anunciante.telefone;
 // Importado e ainda sem dono: pode ser assumido, removido ou dado como fechado.
-const importado = anunciante.origem === "receita";
+const importado = anunciante.origem === "receita" && !anunciante.assumido;
 const semPagamentoNemRedes =
   anunciante.formasPagamento.length === 0 && !anunciante.instagram && !(anunciante.tipo === "comercio" && anunciante.siteProprio);
 const fundoMapa =

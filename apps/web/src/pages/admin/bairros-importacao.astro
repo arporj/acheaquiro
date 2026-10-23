@@ -1,0 +1,118 @@
+---
+// Bairros escritos na Receita que não batem com a tabela de bairros (D5). A
+// administração liga o nome a um bairro existente, cria um bairro novo ou
+// deixa de fora. Os comércios desses bairros entram na próxima importação.
+import { classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo } from "@/components/conta/estilos";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { listarApelidos, listarBairrosAdmin, resolverApelido, type ApelidoBairro } from "@/lib/importacao";
+import type { Resultado } from "@acheaqui/types";
+
+const supabase = Astro.locals.supabase!;
+let erro = "";
+const aviso = Astro.url.searchParams.get("aviso") === "salvo" ? "Salvo. Os comércios deste bairro entram na próxima importação." : "";
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const campo = (nome: string) => String(f.get(nome) ?? "").slice(0, 100);
+  const nomeReceita = campo("nome_receita");
+  let resultado: Resultado<null>;
+  switch (campo("acao")) {
+    case "ligar":
+      resultado = await resolverApelido(supabase, nomeReceita, { tipo: "ligar", bairroId: campo("bairro") });
+      break;
+    case "criar":
+      resultado = await resolverApelido(supabase, nomeReceita, { tipo: "criar", nome: campo("nome") });
+      break;
+    case "ignorar":
+      resultado = await resolverApelido(supabase, nomeReceita, { tipo: "ignorar" });
+      break;
+    case "pendente":
+      resultado = await resolverApelido(supabase, nomeReceita, { tipo: "pendente" });
+      break;
+    default:
+      resultado = { ok: false, erro: { codigo: "DADOS_INVALIDOS", mensagem: "Ação desconhecida." } };
+  }
+  if (resultado.ok) return Astro.redirect("/admin/bairros-importacao?aviso=salvo", 303);
+  erro = resultado.erro.mensagem;
+  Astro.response.status = resultado.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const [apelidosR, bairrosR] = await Promise.all([listarApelidos(supabase), listarBairrosAdmin(supabase)]);
+if (!apelidosR.ok) erro ||= apelidosR.erro.mensagem;
+if (!bairrosR.ok) erro ||= bairrosR.erro.mensagem;
+const apelidos = apelidosR.ok ? apelidosR.dados : [];
+const bairros = bairrosR.ok ? bairrosR.dados : [];
+const nomeBairro = new Map(bairros.map((b) => [b.id, b.nome]));
+
+const pendentes = apelidos.filter((a) => !a.bairro_id && !a.ignorar);
+const resolvidos = apelidos.filter((a) => a.bairro_id || a.ignorar);
+const situacao = (a: ApelidoBairro) => (a.ignorar ? "Fica de fora" : `→ ${nomeBairro.get(a.bairro_id ?? "") ?? "?"}`);
+const campoPequeno = classesCampo.replace("h-12", "h-10").replace("mt-1 ", "");
+---
+
+<PaginaAdmin titulo="Bairros da importação" descricao="Nomes de bairro escritos na Receita que não batem com a lista de bairros do site.">
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <section class="mt-5">
+    <h2 class="font-display text-xl font-bold text-azul-900">Pendentes ({pendentes.length})</h2>
+    {pendentes.length === 0 && <p class="mt-3 rounded-2xl bg-white p-6 text-center text-slate-500 ring-1 ring-black/5">Nenhum bairro pendente.</p>}
+    <ul class="mt-3 space-y-3">
+      {
+        pendentes.map((a) => (
+          <li class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+            <p class="font-bold text-azul-900">
+              "{a.nome_receita}" <span class="text-sm font-semibold text-slate-500">· {a.comercios} {a.comercios === 1 ? "comércio" : "comércios"}</span>
+            </p>
+            <div class="mt-3 grid gap-2 lg:grid-cols-3">
+              <form method="post" class="flex gap-2">
+                <input type="hidden" name="acao" value="ligar" />
+                <input type="hidden" name="nome_receita" value={a.nome_receita} />
+                <select name="bairro" required aria-label="Bairro existente" class={campoPequeno}>
+                  <option value="">É o bairro…</option>
+                  {bairros.map((b) => (
+                    <option value={b.id}>{b.nome}</option>
+                  ))}
+                </select>
+                <button class={classesBotao("azul", "m", "shrink-0")}>Ligar</button>
+              </form>
+              <form method="post" class="flex gap-2">
+                <input type="hidden" name="acao" value="criar" />
+                <input type="hidden" name="nome_receita" value={a.nome_receita} />
+                <input name="nome" required minlength="2" maxlength="80" placeholder="Nome do bairro novo" aria-label="Nome do bairro novo" class={campoPequeno} />
+                <button class={classesBotao("contorno", "m", "shrink-0")}>Criar</button>
+              </form>
+              <form method="post">
+                <input type="hidden" name="acao" value="ignorar" />
+                <input type="hidden" name="nome_receita" value={a.nome_receita} />
+                <button class={classesBotao("fantasma", "m")}>Deixar de fora</button>
+              </form>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <section class="mt-8">
+    <h2 class="font-display text-xl font-bold text-azul-900">Resolvidos ({resolvidos.length})</h2>
+    <ul class="mt-3 divide-y divide-slate-100 rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+      {
+        resolvidos.map((a) => (
+          <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
+            <span>
+              "{a.nome_receita}" <span class={a.ignorar ? "text-slate-400" : "font-bold text-azul-900"}>{situacao(a)}</span>
+            </span>
+            <form method="post">
+              <input type="hidden" name="acao" value="pendente" />
+              <input type="hidden" name="nome_receita" value={a.nome_receita} />
+              <button class="text-sm font-bold text-azul-600 hover:underline">Rever</button>
+            </form>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+</PaginaAdmin>

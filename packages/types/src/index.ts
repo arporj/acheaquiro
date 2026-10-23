@@ -156,6 +156,8 @@ interface AnuncianteBase {
   id: string;
   /** "receita": importado dos dados abertos do CNPJ (decisão de 22/10/2026). */
   origem?: "cadastro" | "receita";
+  /** Importado que já tem dono (convite enviado pela administração). */
+  assumido?: boolean;
   slug: string;
   cidadeId: string;
   nome: string;

@@ -99,18 +99,19 @@ async function carregarCatalogo() {
   if (e2) throw e2;
   const { data: bairros, error: e3 } = await banco.from("bairros").select("id, nome").eq("cidade_id", cidade.id);
   if (e3) throw e3;
+  // Bairros da Receita escritos de outro jeito, resolvidos na administração (/admin/bairros-importacao).
+  const { data: apelidos, error: e4 } = await banco.from("apelidos_bairro").select("nome_receita, bairro_id, ignorar").eq("cidade_id", cidade.id);
+  if (e4) throw e4;
   return {
     cidadeId: cidade.id,
     categoriaPorSlug: new Map(categorias.map((c) => [c.slug_lista, c.id])),
     slugPorCategoria: new Map(categorias.map((c) => [c.id, c.slug_lista])),
     bairroPorNome: new Map(bairros.map((b) => [normalizar(b.nome), b.id])),
+    nomeDoBairro: new Map(bairros.map((b) => [b.id, b.nome])),
+    apelidos: new Map(apelidos.map((a) => [a.nome_receita, a])),
   };
 }
 
-// Bairros da Receita escritos de outro jeito → nome na tabela de bairros (preenchido na revisão).
-const APELIDOS_BAIRRO = existsSync(new URL("./apelidos-bairro.json", import.meta.url))
-  ? JSON.parse(readFileSync(new URL("./apelidos-bairro.json", import.meta.url), "utf8"))
-  : {};
 
 function lerJson(arquivo, padrao) {
   const caminho = join(saida, arquivo);
@@ -168,7 +169,10 @@ async function etapaMapa() {
 // ---------------------------------------------------------------------------
 
 async function etapaPreparar() {
-  const { cidadeId, categoriaPorSlug, slugPorCategoria, bairroPorNome } = await carregarCatalogo();
+  const { cidadeId, categoriaPorSlug, slugPorCategoria, bairroPorNome, nomeDoBairro, apelidos } = await carregarCatalogo();
+  const { data: bloqueados, error: eBloqueados } = await banco.from("cnpjs_bloqueados").select("cnpj").eq("cidade_id", cidadeId);
+  if (eBloqueados) throw eBloqueados;
+  const cnpjsBloqueados = new Set(bloqueados.map((b) => b.cnpj));
   const { data: mapa, error } = await banco.from("cnae_categoria").select("cnae, categoria_id").eq("cidade_id", cidadeId);
   if (error) throw error;
   const categoriaDoMapa = new Map(mapa.map((m) => [m.cnae, m.categoria_id]));
@@ -176,7 +180,7 @@ async function etapaPreparar() {
   const empresas = new Map(lerLinhas("empresas").map((e) => [e[0], { razao: e[1], natureza: e[2] }]));
   const mei = new Set(lerLinhas("simples").filter((s) => s[4] === "S").map((s) => s[0]));
 
-  const contagem = { ativos: 0, mei: 0, empresario_individual: 0, orgao_publico: 0, sem_empresa: 0, cnae_fora: 0, sem_bairro: 0, prontos: 0 };
+  const contagem = { ativos: 0, bloqueados: 0, mei: 0, empresario_individual: 0, orgao_publico: 0, sem_empresa: 0, cnae_fora: 0, sem_bairro: 0, prontos: 0 };
   const comercios = [];
   const semBairro = [];
   const slugsUsados = new Set();
@@ -185,6 +189,7 @@ async function etapaPreparar() {
     if (e[5] !== "02") continue;
     contagem.ativos++;
     const basico = e[0];
+    if (cnpjsBloqueados.has(`${basico}${e[1]}${e[2]}`)) { contagem.bloqueados++; continue; }
     const empresa = empresas.get(basico);
     if (!empresa) { contagem.sem_empresa++; continue; }
     if (mei.has(basico)) { contagem.mei++; continue; }
@@ -201,8 +206,10 @@ async function etapaPreparar() {
     const categoriaFinal = categoriaPorSlug.get(slugCategoria);
 
     const bairroReceita = normalizarEspacos(e[17]);
-    const nomeBairro = APELIDOS_BAIRRO[normalizar(bairroReceita)] ?? bairroReceita;
-    const bairroId = bairroPorNome.get(normalizar(nomeBairro));
+    const apelido = apelidos.get(normalizar(bairroReceita));
+    if (apelido?.ignorar) { contagem.sem_bairro++; continue; }
+    const bairroId = apelido?.bairro_id ?? bairroPorNome.get(normalizar(bairroReceita));
+    const nomeBairro = nomeDoBairro.get(bairroId) ?? bairroReceita;
     const cnpj = `${basico}${e[1]}${e[2]}`;
     if (!bairroId) {
       contagem.sem_bairro++;
@@ -245,8 +252,19 @@ async function etapaPreparar() {
   contagem.prontos = comercios.length;
 
   gravarJson("comercios.json", comercios);
+  // Bairros sem correspondência vão para a fila da administração, com o número de comércios.
   const porBairro = new Map();
-  for (const [b] of semBairro) porBairro.set(b, (porBairro.get(b) ?? 0) + 1);
+  for (const [b] of semBairro) {
+    const chave = normalizar(b).slice(0, 100) || "(vazio)";
+    porBairro.set(chave, (porBairro.get(chave) ?? 0) + 1);
+  }
+  const pendentes = [...porBairro]
+    .filter(([nome]) => !apelidos.get(nome)?.ignorar)
+    .map(([nome_receita, comercios]) => ({ cidade_id: cidadeId, nome_receita, comercios }));
+  if (pendentes.length > 0) {
+    const { error: ePendentes } = await banco.from("apelidos_bairro").upsert(pendentes, { onConflict: "cidade_id,nome_receita" });
+    if (ePendentes) throw ePendentes;
+  }
   gravarCsv("bairros_sem_correspondencia.csv", [["bairro_na_receita", "comercios"], ...[...porBairro].sort((a, b) => b[1] - a[1])]);
   const porCategoria = new Map();
   for (const c of comercios) {
