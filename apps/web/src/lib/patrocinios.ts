@@ -40,6 +40,7 @@ export interface PatrocinioAdmin {
   ramo: string;
   frase: string;
   whatsapp: string | null;
+  site: string | null;
   logo_caminho: string | null;
   logo: string | null;
   grupo: string | null;
@@ -90,7 +91,7 @@ export async function listarPatrociniosAdmin(supabase: SupabaseClient): Promise<
   const { data, error } = await supabase
     .from("patrocinios")
     .select(
-      "id, cota, slug, nome, ramo, frase, whatsapp, logo_caminho, grupo, categoria_id, situacao, inicio, fim, dias_somados, " +
+      "id, cota, slug, nome, ramo, frase, whatsapp, site, logo_caminho, grupo, categoria_id, situacao, inicio, fim, dias_somados, " +
         "categorias(nome_plural), pagamentos_patrocinio(valor_centavos, preco_fundador, pago_em, observacao), cliques_patrocinio(cliques)",
     )
     .order("situacao")
@@ -210,6 +211,7 @@ export async function salvarPatrocinio(
     ramo: dados.ramo,
     frase: dados.frase,
     whatsapp: dados.whatsapp,
+    site: dados.site,
     grupo: dados.grupo,
     categoria_id: dados.categoriaId,
     slug: await slugLivre(supabase, dados.nome, id),

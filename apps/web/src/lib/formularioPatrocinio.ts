@@ -14,6 +14,7 @@ interface Valores {
   ramo?: string;
   frase?: string;
   whatsapp?: string | null;
+  site?: string | null;
   logo?: string | null;
 }
 
@@ -69,6 +70,7 @@ export function ligarFormularioPatrocinio(form: HTMLFormElement): void {
   preencher("ramo", valores.ramo);
   preencher("frase", valores.frase);
   preencher("whatsapp", valores.whatsapp ? telefoneLegivel(valores.whatsapp) : "");
+  preencher("site", valores.site);
 
   const cota = alvo.querySelector<HTMLSelectElement>('[data-campo="cota"]')!;
   const escolher = alvo.querySelector<HTMLInputElement>("[data-escolher-logo]")!;

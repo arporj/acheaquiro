@@ -17,6 +17,14 @@ const esquemaWhatsapp = z
   .transform((v) => (v === "" ? "" : v.startsWith("55") && v.length >= 12 ? v : `55${v}`))
   .refine((v) => v === "" || /^55[1-9][0-9]{9,10}$/.test(v), "WhatsApp inválido: use DDD e número, como (22) 99999-0000.");
 
+/** Site opcional: sem "https://", ele é acrescentado. Vazio fica sem site. */
+const esquemaSite = z
+  .string()
+  .optional()
+  .transform((v) => (v ?? "").trim())
+  .transform((v) => (v === "" || /^https?:\/\//i.test(v) ? v.replace(/^http:\/\//i, "https://") : `https://${v}`))
+  .refine((v) => v === "" || (/^https:\/\/[^\s]{4,300}$/.test(v) && URL.canParse(v)), "Site inválido: use o endereço completo, como https://empresa.com.br.");
+
 export const esquemaPatrocinio = z
   .object({
     cota: z.enum(COTAS_PATROCINIO, { error: "Escolha a cota." }),
@@ -27,6 +35,7 @@ export const esquemaPatrocinio = z
       .transform((v) => v.trim())
       .pipe(z.string().max(140, "Frase: no máximo 140 letras.")),
     whatsapp: esquemaWhatsapp,
+    site: esquemaSite,
     grupo: z.string().transform((v) => v.trim()),
     categoriaId: z.string().transform((v) => v.trim()),
   })
@@ -41,6 +50,7 @@ export const esquemaPatrocinio = z
     grupo: d.cota === "grupo" ? d.grupo : null,
     categoriaId: d.cota === "categoria" ? d.categoriaId : null,
     whatsapp: d.whatsapp || null,
+    site: d.site || null,
   }));
 
 export type DadosPatrocinio = z.output<typeof esquemaPatrocinio>;

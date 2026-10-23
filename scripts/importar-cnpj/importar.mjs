@@ -34,6 +34,13 @@ const CIDADE_SLUG = "rio-das-ostras";
 // Natureza jurídica 213-5: empresário individual (nome da pessoa). Órgãos públicos: 1xxx.
 const NATUREZA_EMPRESARIO_INDIVIDUAL = "2135";
 
+/** Órgão público entra no grupo próprio (decisão de 23/10/2026), pela atividade. */
+function categoriaDoOrgaoPublico(cnae) {
+  if (cnae.startsWith("85")) return "escolas-publicas";
+  if (cnae.startsWith("86")) return "saude-publica";
+  return "orgaos-publicos";
+}
+
 // ---------------------------------------------------------------------------
 // Leitura dos arquivos da Receita
 // ---------------------------------------------------------------------------
@@ -194,15 +201,16 @@ async function etapaPreparar() {
     if (!empresa) { contagem.sem_empresa++; continue; }
     if (mei.has(basico)) { contagem.mei++; continue; }
     if (empresa.natureza === NATUREZA_EMPRESARIO_INDIVIDUAL) { contagem.empresario_individual++; continue; }
-    if (empresa.natureza.startsWith("1")) { contagem.orgao_publico++; continue; }
+    const publico = empresa.natureza.startsWith("1");
+    if (publico) contagem.orgao_publico++;
 
-    const categoriaId = categoriaDoMapa.get(e[11]);
+    const categoriaId = publico ? categoriaPorSlug.get(categoriaDoOrgaoPublico(e[11])) : categoriaDoMapa.get(e[11]);
     if (!categoriaId) { contagem.cnae_fora++; continue; }
 
     const razao = normalizarEspacos(empresa.razao);
     const nome = nomeBonito(e[4] ? e[4] : semTipoSocietario(razao)).slice(0, 100);
     if (nome.length < 2) { contagem.cnae_fora++; continue; }
-    const slugCategoria = ajustarPeloNome(slugPorCategoria.get(categoriaId), normalizar(`${e[4]} ${razao}`));
+    const slugCategoria = publico ? slugPorCategoria.get(categoriaId) : ajustarPeloNome(slugPorCategoria.get(categoriaId), normalizar(`${e[4]} ${razao}`));
     const categoriaFinal = categoriaPorSlug.get(slugCategoria);
 
     const bairroReceita = normalizarEspacos(e[17]);

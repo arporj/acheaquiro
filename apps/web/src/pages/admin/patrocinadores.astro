@@ -59,7 +59,7 @@ if (Astro.request.method === "POST") {
         resultado = await salvarPatrocinio(
           supabase,
           id || null,
-          { cota: campo("cota"), nome: campo("nome"), ramo: campo("ramo"), frase: campo("frase"), whatsapp: campo("whatsapp"), grupo: campo("grupo"), categoriaId: campo("categoria") },
+          { cota: campo("cota"), nome: campo("nome"), ramo: campo("ramo"), frase: campo("frase"), whatsapp: campo("whatsapp"), site: campo("site"), grupo: campo("grupo"), categoriaId: campo("categoria") },
           logo,
         );
         chaveAviso = "salvo";
@@ -412,6 +412,8 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
     <input name="frase" data-campo="frase" maxlength="140" class={classesCampo} />
     <label class={classesRotulo} data-for="whatsapp">WhatsApp da empresa</label>
     <input name="whatsapp" data-campo="whatsapp" inputmode="tel" class={classesCampo} placeholder="(22) 99999-0000" />
+    <label class={classesRotulo} data-for="site">Site da empresa (opcional)</label>
+    <input name="site" data-campo="site" inputmode="url" maxlength="300" class={classesCampo} placeholder="https://empresa.com.br" />
     <label class={classesRotulo} data-for="logo">Logo</label>
     <input type="file" accept="image/png,image/jpeg,image/webp" data-escolher-logo class={classesCampo} />
     <input type="file" name="logo" data-logo-pronto hidden />

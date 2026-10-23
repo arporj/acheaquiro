@@ -67,17 +67,20 @@ const grupos = await Promise.all(
                     <p class="font-bold text-azul-900">{p.nome}</p>
                     {onde && <p class="text-xs font-bold text-slate-500">Patrocina: {onde}</p>}
                     <p class="text-sm text-slate-600">{p.frase}</p>
-                    {p.whatsapp && (
-                    <a
-                      href={`/p/${p.slug}`}
-                      target="_blank"
-                      rel="sponsored noopener"
-                      class={classesBotao("zap", "p", "mt-auto self-start")}
-                    >
-                      <Icone nome="mensagem" class="size-4" />
-                      Falar com a empresa
-                    </a>
-                    )}
+                    <div class="mt-auto flex flex-wrap gap-2">
+                      {p.whatsapp && (
+                        <a href={`/p/${p.slug}`} target="_blank" rel="sponsored noopener" class={classesBotao("zap", "p")}>
+                          <Icone nome="mensagem" class="size-4" />
+                          Falar com a empresa
+                        </a>
+                      )}
+                      {p.site && (
+                        <a href={`/p/${p.slug}?site`} target="_blank" rel="sponsored noopener" class={classesBotao("contorno", "p")}>
+                          <Icone nome="link" class="size-4" />
+                          Visitar o site
+                        </a>
+                      )}
+                    </div>
                   </li>
                 );
               })}

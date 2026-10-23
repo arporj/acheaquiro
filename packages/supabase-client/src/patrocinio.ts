@@ -43,7 +43,7 @@ export async function lerPatrocinioPublico(
     lerCotas(cliente, cidade),
     cliente
       .from("patrocinios")
-      .select("id, slug, nome, ramo, frase, whatsapp, logo_caminho, cota, grupo, fim, categorias(slug_lista), cidades!inner(slug)")
+      .select("id, slug, nome, ramo, frase, whatsapp, site, logo_caminho, cota, grupo, fim, categorias(slug_lista), cidades!inner(slug)")
       .eq("cidades.slug", cidade)
       .order("nome"),
   ]);
@@ -60,6 +60,7 @@ export async function lerPatrocinioPublico(
     ramo: string;
     frase: string;
     whatsapp: string | null;
+    site: string | null;
     logo_caminho: string | null;
     cota: CotaPatrocinio;
     grupo: string | null;
@@ -75,6 +76,7 @@ export async function lerPatrocinioPublico(
       ramo: l.ramo,
       frase: l.frase,
       whatsapp: l.whatsapp ?? "",
+      site: l.site ?? undefined,
       logo: `${enderecoArquivos}/${l.logo_caminho}`,
       formatoLogo: formato.get(l.cota)!,
       cota: l.cota,

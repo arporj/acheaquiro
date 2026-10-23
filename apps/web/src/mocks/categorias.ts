@@ -65,6 +65,7 @@ const TURISMO = "Turismo e hospedagem";
 const PROFISSIONAIS = "Serviços profissionais";
 const RELIGIAO = "Religião e espiritualidade";
 const ONGS = "ONGs";
+const ORGAOS = "Órgãos públicos";
 const OUTROS = "Outros serviços";
 
 export const categorias: Categoria[] = [
@@ -263,6 +264,7 @@ export const categorias: Categoria[] = [
   c("agencia-de-viagens", "Agência de viagens", "Agências de viagens", TURISMO, "plane", cor.celeste),
   c("passeio-de-barco", "Passeio de barco", "Passeios de barco", TURISMO, "sailboat", cor.turquesa),
   c("mergulho", "Mergulho", "Mergulho", TURISMO, "anchor", cor.azul),
+  c("lazer", "Lazer e entretenimento", "Lazer e entretenimento", TURISMO, "ferris-wheel", cor.magenta, { sinonimos: ["boliche", "parque de diversões"] }),
   c("nautica", "Náutica: barcos e jet ski", "Náutica: barcos e jet ski", TURISMO, "ship", cor.celeste, { sinonimos: ["jet ski", "lancha"] }),
 
   // Serviços profissionais
@@ -294,6 +296,11 @@ export const categorias: Categoria[] = [
   // ONGs
   c("ong", "ONG e projeto social", "ONGs e projetos sociais", ONGS, "hand-heart", cor.vermelho, { sinonimos: ["ong", "projeto social"] }),
   c("ong-protecao-animal", "ONG de proteção animal", "ONGs de proteção animal", ONGS, "heart", cor.verde),
+
+  // Órgãos públicos
+  c("orgao-publico", "Prefeitura e órgão público", "Prefeitura e órgãos públicos", ORGAOS, "landmark", cor.azul, { sinonimos: ["prefeitura", "secretaria"] }),
+  c("escola-publica", "Escola pública", "Escolas públicas", ORGAOS, "school", cor.amarelo, { sinonimos: ["escola municipal"] }),
+  c("saude-publica", "Saúde pública", "Saúde pública", ORGAOS, "hospital", cor.vermelho, { sinonimos: ["posto de saúde", "UPA"] }),
 
   // Outros serviços
   c("artesanato", "Artesanato", "Artesanato", OUTROS, "palette", cor.roxo, { sinonimos: ["artesã", "crochê"], atalho: true }),

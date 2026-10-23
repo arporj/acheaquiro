@@ -259,6 +259,8 @@ export interface Patrocinador {
   ramo: string;
   frase: string;
   whatsapp: string;
+  /** Site da empresa (opcional); o link passa por /p/[slug]?site. */
+  site?: string;
   /** Endereço do logo, no formato da cota. */
   logo: string;
   /** Tamanho do logo da cota, em pixels (vem da cota). */

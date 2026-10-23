@@ -173,7 +173,8 @@ export const MAPA_CNAE = [
   ["9001904", "organizacao-de-eventos"], ["9003500", "organizacao-de-eventos"], ["4329101", "publicidade-e-marketing"],
   ["4329102", null], ["4511104", null], ["4511105", null], ["4511106", null], ["4512901", null], ["7320300", null],
   ["7420005", null], ["7722500", null], ["7733100", null], ["7740300", null], ["9002701", null], ["9002702", null],
-  ["9101500", null], ["9102301", null], ["9102302", null], ["9103100", null], ["9321200", null],
+  ["9101500", null], ["9102301", null], ["9102302", null], ["9103100", null], ["9321200", "lazer-e-entretenimento"], ["9329802", "lazer-e-entretenimento"],
+  ["9001905", "organizacao-de-eventos"], ["8730102", "ongs"], ["4542101", null],
 
   // Religião e espiritualidade (igreja, centro espírita e ordem são separados pelo nome)
   ["9491000", "igrejas"], ["9609202", null], ["9609204", null],

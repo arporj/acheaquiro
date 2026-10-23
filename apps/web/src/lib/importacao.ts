@@ -239,6 +239,18 @@ export async function listarBairrosAdmin(supabase: SupabaseClient): Promise<Resu
 }
 
 /**
+ * Muda o nome do bairro em todo o site (filtros, perfis, listas). O endereço
+ * (slug) continua o mesmo, para não quebrar links já compartilhados.
+ */
+export async function renomearBairro(supabase: SupabaseClient, bairroId: string, nome: string): Promise<Resultado<null>> {
+  if (!UUID.test(bairroId)) return falha("DADOS_INVALIDOS", "Bairro inválido.");
+  const limpo = nome.trim().replace(/\s+/g, " ");
+  if (limpo.length < 2 || limpo.length > 80) return falha("DADOS_INVALIDOS", "Nome do bairro: de 2 a 80 letras.");
+  const { error } = await supabase.from("bairros").update({ nome: limpo }).eq("id", bairroId);
+  return error ? mensagemDoBanco(error, "renomearBairro") : { ok: true, dados: null };
+}
+
+/**
  * Resolve um nome da Receita: liga a um bairro existente, cria um bairro novo
  * com esse nome ou deixa de fora. Os comércios entram na próxima importação.
  */

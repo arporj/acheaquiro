@@ -14,19 +14,46 @@ interface Props {
 const { titulo, descricao } = Astro.props;
 const atual = Astro.url.pathname.replace(/\/$/, "") || "/admin";
 
-const secoes: { href: string; rotulo: string; icone: NomeIcone; pronta: boolean }[] = [
-  { href: "/admin", rotulo: "Painel", icone: "grafico", pronta: true },
-  { href: "/admin/equipe", rotulo: "Equipe", icone: "usuarios", pronta: true },
-  { href: "/admin/anunciantes", rotulo: "Anunciantes", icone: "megafone", pronta: false },
-  { href: "/admin/pagamentos", rotulo: "Pagamentos", icone: "dinheiro", pronta: false },
-  { href: "/admin/denuncias", rotulo: "Denúncias", icone: "bandeira", pronta: false },
-  { href: "/admin/catalogo", rotulo: "Catálogo e valores", icone: "etiqueta", pronta: false },
-  { href: "/admin/pedidos", rotulo: "Pedidos de perfil", icone: "info", pronta: true },
-  { href: "/admin/cnaes", rotulo: "CNAEs", icone: "filtro", pronta: true },
-  { href: "/admin/bairros-importacao", rotulo: "Bairros da importação", icone: "pin", pronta: true },
-  { href: "/admin/patrocinadores", rotulo: "Patrocinadores", icone: "estrela", pronta: true },
-  { href: "/admin/agenda", rotulo: "Agenda", icone: "estrela", pronta: false },
-  { href: "/admin/atividades", rotulo: "Registro de atividades", icone: "relogio", pronta: true },
+// Pedidos de perfil abertos, no contador do menu (de 1 a 9; acima disso, "9+").
+const { count: pedidosAbertos, error: erroPedidos } = await Astro.locals.supabase!
+  .from("pedidos_perfil")
+  .select("id", { count: "exact", head: true })
+  .eq("situacao", "aberto");
+if (erroPedidos) console.error("PaginaAdmin: contagem de pedidos falhou", { codigo: erroPedidos.code, mensagem: erroPedidos.message });
+const contadores: Record<string, number> = { "/admin/pedidos": pedidosAbertos ?? 0 };
+const textoContador = (n: number) => (n > 9 ? "9+" : String(n));
+
+interface Secao {
+  href: string;
+  rotulo: string;
+  icone: NomeIcone;
+  pronta: boolean;
+}
+
+// Dois grupos (pedido de 23/10/2026): o trabalho do dia a dia e a configuração do sistema.
+const grupos: { titulo: string; secoes: Secao[] }[] = [
+  {
+    titulo: "Dia a dia",
+    secoes: [
+      { href: "/admin", rotulo: "Painel", icone: "grafico", pronta: true },
+      { href: "/admin/pedidos", rotulo: "Pedidos de perfil", icone: "info", pronta: true },
+      { href: "/admin/anunciantes", rotulo: "Anunciantes", icone: "megafone", pronta: false },
+      { href: "/admin/pagamentos", rotulo: "Pagamentos", icone: "dinheiro", pronta: false },
+      { href: "/admin/denuncias", rotulo: "Denúncias", icone: "bandeira", pronta: false },
+      { href: "/admin/patrocinadores", rotulo: "Patrocinadores", icone: "estrela", pronta: true },
+      { href: "/admin/agenda", rotulo: "Agenda", icone: "estrela", pronta: false },
+      { href: "/admin/equipe", rotulo: "Equipe", icone: "usuarios", pronta: true },
+      { href: "/admin/atividades", rotulo: "Registro de atividades", icone: "relogio", pronta: true },
+    ],
+  },
+  {
+    titulo: "Configuração",
+    secoes: [
+      { href: "/admin/catalogo", rotulo: "Catálogo e valores", icone: "etiqueta", pronta: false },
+      { href: "/admin/bairros-importacao", rotulo: "Bairros da importação", icone: "pin", pronta: true },
+      { href: "/admin/cnaes", rotulo: "CNAEs", icone: "filtro", pronta: true },
+    ],
+  },
 ];
 ---
 
@@ -36,7 +63,16 @@ const secoes: { href: string; rotulo: string; icone: NomeIcone; pronta: boolean 
     <nav aria-label="Administração" class="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:overflow-visible lg:px-0">
       <ul class="flex gap-1.5 lg:sticky lg:top-6 lg:flex-col">
         {
-          secoes.map((secao) => (
+          grupos.flatMap((grupo, i) => [
+            <li
+              class:list={[
+                "hidden px-3 pb-1 text-xs font-extrabold tracking-wide text-slate-400 uppercase lg:block",
+                i > 0 && "mt-4 border-t border-slate-200 pt-4",
+              ]}
+            >
+              {grupo.titulo}
+            </li>,
+            ...grupo.secoes.map((secao) => (
             <li class="shrink-0">
               {secao.pronta ? (
                 <a
@@ -46,6 +82,14 @@ const secoes: { href: string; rotulo: string; icone: NomeIcone; pronta: boolean 
                 >
                   <Icone nome={secao.icone} class="size-4" />
                   {secao.rotulo}
+                  {(contadores[secao.href] ?? 0) > 0 && (
+                    <span
+                      class="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-vermelho-600 px-1.5 text-[0.7rem] leading-none font-extrabold text-white"
+                      aria-label={`${contadores[secao.href]} pendentes`}
+                    >
+                      {textoContador(contadores[secao.href]!)}
+                    </span>
+                  )}
                 </a>
               ) : (
                 <span class="flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-bold text-slate-400" title="Em breve">
@@ -55,7 +99,8 @@ const secoes: { href: string; rotulo: string; icone: NomeIcone; pronta: boolean 
                 </span>
               )}
             </li>
-          ))
+            )),
+          ])
         }
       </ul>
     </nav>
