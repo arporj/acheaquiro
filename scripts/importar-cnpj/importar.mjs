@@ -218,7 +218,9 @@ async function etapaPreparar() {
     if (!categoriaId) { contagem.cnae_fora++; continue; }
 
     const razao = normalizarEspacos(empresa.razao);
-    const nome = nomeBonito(e[4] ? e[4] : semTipoSocietario(razao)).slice(0, 100);
+    // Nome fantasia sem letra nem número ("...", "-") não serve: usa a razão social.
+    const fantasia = /[a-z0-9]/i.test(normalizar(e[4])) ? e[4] : "";
+    const nome = nomeBonito(fantasia || semTipoSocietario(razao)).slice(0, 100);
     if (nome.length < 2) { contagem.cnae_fora++; continue; }
     const slugCategoria = publico ? slugPorCategoria.get(categoriaId) : ajustarPeloNome(slugPorCategoria.get(categoriaId), normalizar(`${e[4]} ${razao}`));
     const categoriaFinal = categoriaPorSlug.get(slugCategoria);
