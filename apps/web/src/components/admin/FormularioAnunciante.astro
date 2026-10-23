@@ -267,11 +267,16 @@ const erro = (campo: string) => erros[campo];
       <div>
         <label class={classesRotulo}>
           Plano escolhido
-          <select name="planoEscolhidoId" class={classesCampo} aria-invalid={erro("planoEscolhidoId") ? "true" : undefined}>
-            <option value="">Ainda não escolheu</option>
+          <select name="planoEscolhidoId" required class={classesCampo} aria-invalid={erro("planoEscolhidoId") ? "true" : undefined}>
+            <option value="" disabled selected={!v.planoEscolhidoId}>Escolha o plano</option>
             {
               opcoes.planos.map((p) => (
-                <option value={p.id} data-tipo-plano={p.tipo} selected={p.id === v.planoEscolhidoId}>
+                <option
+                  value={p.id}
+                  data-tipo-plano={p.tipo}
+                  data-gratuito={p.tipo === "comercio" && p.valor_mensal_centavos === 0 ? "" : undefined}
+                  selected={p.id === v.planoEscolhidoId}
+                >
                   {p.nome} ({p.tipo === "profissional" ? "autônomo" : "comércio"}) · {formatarPreco(p.valor_mensal_centavos / 100)}/mês
                 </option>
               ))
@@ -321,6 +326,13 @@ const erro = (campo: string) => erros[campo];
         else ligar(el, serve);
       }
       for (const op of form.querySelectorAll<HTMLOptionElement>("[data-tipo-plano]")) op.hidden = op.disabled = !!tipo && op.dataset.tipoPlano !== tipo;
+      // Comércio começa no Gratuito; autônomo escolhe. Plano de outro tipo não fica marcado.
+      const plano = form.querySelector<HTMLSelectElement>('select[name="planoEscolhidoId"]');
+      if (plano && (plano.value === "" || plano.selectedOptions[0]?.disabled)) {
+        const gratuito = plano.querySelector<HTMLOptionElement>("option[data-gratuito]");
+        if (tipo === "comercio" && gratuito) gratuito.selected = true;
+        else plano.value = "";
+      }
       for (const marca of form.querySelectorAll<HTMLInputElement>("[data-esconde-bairros]")) {
         const caixa = form.querySelector<HTMLElement>(`[data-bairros="${marca.dataset.escondeBairros}"]`);
         if (caixa && !caixa.closest("[hidden]")) ligar(caixa, !marca.checked);

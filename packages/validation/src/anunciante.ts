@@ -80,7 +80,8 @@ export const esquemaCadastroAssistido = z.object({
     .optional()
     .transform((v) => (v ?? "").trim())
     .pipe(z.union([z.literal(""), esquemaEmail])),
-  planoEscolhidoId: uuidOuVazio("Plano inválido."),
+  // Comércio começa no Gratuito; autônomo escolhe o plano para se cadastrar.
+  planoEscolhidoId: z.uuid("Escolha o plano."),
   periodicidade: z.enum(["mensal", "anual"], { error: "Escolha mensal ou anual." }),
   representanteId: uuidOuVazio("Representante inválido."),
 });

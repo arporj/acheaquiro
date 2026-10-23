@@ -499,21 +499,23 @@ export async function salvarAnunciante(
     }
   }
 
-  if (cadastro.planoEscolhidoId) {
-    const { data: plano, error } = await supabase.from("planos").select("tipo").eq("id", cadastro.planoEscolhidoId).maybeSingle();
-    if (error) return mensagemDoBanco(error, "salvarAnunciante: plano");
-    if (!plano || plano.tipo !== perfil.tipo) {
-      return falha("DADOS_INVALIDOS", "Confira os campos marcados.", { planoEscolhidoId: "Este plano não é deste tipo de anunciante." });
-    }
+  // Plano obrigatório: o comércio começa no Gratuito (o banco preenche o plano em
+  // vigor) e o autônomo escolhe um plano para se cadastrar.
+  const { data: plano, error: erroPlano } = await supabase.from("planos").select("tipo").eq("id", cadastro.planoEscolhidoId).maybeSingle();
+  if (erroPlano) return mensagemDoBanco(erroPlano, "salvarAnunciante: plano");
+  if (!plano || plano.tipo !== perfil.tipo) {
+    return falha("DADOS_INVALIDOS", "Confira os campos marcados.", { planoEscolhidoId: "Este plano não é deste tipo de anunciante." });
   }
-  const problemaCategorias = await conferirCategorias(supabase, perfil, atual?.plano_id ?? (cadastro.planoEscolhidoId || null));
+  // No ar, vale o plano em vigor; antes de publicar, o escolhido (o perfil é preparado para ele).
+  const noAr = atual?.status === "publicado" || atual?.status === "pausado";
+  const problemaCategorias = await conferirCategorias(supabase, perfil, noAr ? atual!.plano_id : cadastro.planoEscolhidoId);
   if (problemaCategorias) return problemaCategorias;
 
   const colunas = {
     ...colunasDoPerfil(perfil),
     email_convite: cadastro.emailConvite || null,
-    plano_escolhido_id: cadastro.planoEscolhidoId || null,
-    periodicidade_escolhida: cadastro.planoEscolhidoId ? cadastro.periodicidade : null,
+    plano_escolhido_id: cadastro.planoEscolhidoId,
+    periodicidade_escolhida: cadastro.periodicidade,
     representante_id: cadastro.representanteId || null,
   };
 
@@ -775,7 +777,7 @@ export function valoresDoAnunciante(a: AnuncianteAdmin): ValoresFormulario {
     entregaTodaCidade: a.entrega_toda_cidade,
     bairrosEntrega: bairros("entrega"),
     emailConvite: a.email_convite ?? "",
-    planoEscolhidoId: a.plano_escolhido_id ?? "",
+    planoEscolhidoId: a.plano_escolhido_id ?? a.plano_id ?? "",
     periodicidade: a.periodicidade_escolhida ?? "anual",
     representanteId: a.representante_id ?? "",
   };
