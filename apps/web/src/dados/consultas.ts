@@ -3,7 +3,7 @@
 // bairros, categorias, planos, extras e regras) e, até as tabelas de
 // anunciantes existirem (etapa 2), mostra a lista de anunciantes vazia. A
 // página "em breve" não acessa o banco: usa as regras de src/mocks/planos.ts.
-import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, CotaPatrocinioVenda, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
+import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, CotaPatrocinio, CotaPatrocinioVenda, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
 import { dadosPublicosDoArtista, novaVagaAPartirDe, somarDias } from "@acheaqui/domain";
 import {
   criarClientePublico,
@@ -550,4 +550,13 @@ export async function listarCotasPatrocinio(): Promise<CotaComVagas[]> {
     const novaVagaEm = vagasLivres === 0 ? novaVagaAPartirDe(daCota.map((p) => p.fim)) : undefined;
     return { ...cota, vagasTotais, vagasLivres, novaVagaEm };
   });
+}
+
+/** Cotas que põem o link "Patrocine" no cabeçalho enquanto tiverem vaga. */
+const COTAS_DO_CABECALHO: readonly CotaPatrocinio[] = ["master", "ouro", "apoio"];
+
+/** Há vaga livre em Master, Ouro ou Apoio (mesma conta da página Patrocine). */
+export async function temPatrocinioDisponivel(): Promise<boolean> {
+  const cotas = await listarCotasPatrocinio();
+  return cotas.some((c) => COTAS_DO_CABECALHO.includes(c.cota) && c.vagasLivres > 0);
 }

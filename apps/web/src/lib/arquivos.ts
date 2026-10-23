@@ -67,6 +67,26 @@ export async function limparCache(enderecos: string[]): Promise<void> {
   }
 }
 
+/**
+ * Limpa do cache todas as páginas de um site (pelo endereço dele), para mudanças
+ * que aparecem em todas as páginas, como o link "Patrocine" do cabeçalho.
+ */
+export async function limparCacheDoSite(origem: string): Promise<void> {
+  const token = env.CLOUDFLARE_LIMPEZA_CACHE_TOKEN;
+  if (!token || !ZONA_CLOUDFLARE) {
+    console.error("limparCacheDoSite: token ou zona não configurados; as páginas seguem no cache até vencer", { origem });
+    return;
+  }
+  const resposta = await fetch(`https://api.cloudflare.com/client/v4/zones/${ZONA_CLOUDFLARE}/purge_cache`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ hosts: [new URL(origem).host] }),
+  });
+  if (!resposta.ok) {
+    console.error("limparCacheDoSite: a Cloudflare recusou", { status: resposta.status, corpo: (await resposta.text()).slice(0, 500) });
+  }
+}
+
 /** Os três caminhos de uma foto (um por tamanho). */
 export function caminhosFoto(chave: string, formato: FormatoFoto): string[] {
   return TAMANHOS_FOTO.map((tamanho) => caminhoFoto(chave, tamanho, formato));

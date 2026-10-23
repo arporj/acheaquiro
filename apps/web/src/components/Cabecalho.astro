@@ -1,5 +1,6 @@
 ---
 import { Icone, classesBotao } from "@acheaqui/ui";
+import { temPatrocinioDisponivel } from "@/dados/consultas";
 import { ambiente } from "@/lib/ambiente";
 import FormBusca from "./FormBusca.astro";
 import Logo from "./Logo.astro";
@@ -9,6 +10,8 @@ interface Props {
 }
 
 const { comBusca = false } = Astro.props;
+// "Patrocine" no cabeçalho enquanto Master, Ouro ou Apoio tiver vaga (decisão de 23/10/2026).
+const patrocinioDisponivel = await temPatrocinioDisponivel();
 ---
 
 <header class="fundo-raios text-white">
@@ -44,6 +47,18 @@ const { comBusca = false } = Astro.props;
         ambiente === "producao" && (
           <a href="/entrar" class="rounded-full px-3 py-2 text-sm font-bold text-white/90 hover:bg-white/10 sm:px-4">
             Entrar
+          </a>
+        )
+      }
+      {
+        patrocinioDisponivel && (
+          <a
+            href="/patrocine"
+            class="inline-flex items-center gap-1.5 rounded-full border-2 border-amarelo-400 px-3 py-1.5 text-sm font-bold text-amarelo-400 hover:bg-amarelo-400 hover:text-azul-900 sm:px-4"
+            aria-label="Patrocine"
+          >
+            <Icone nome="estrela" class="size-4" />
+            <span class="hidden sm:inline">Patrocine</span>
           </a>
         )
       }

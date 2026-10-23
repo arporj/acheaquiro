@@ -6,6 +6,7 @@ import { Icone, Modal, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { limparCacheDoSite } from "@/lib/arquivos";
 import { formatarCentavos } from "@/lib/precos";
 import {
   apagarRascunho,
@@ -29,8 +30,8 @@ const supabase = Astro.locals.supabase!;
 
 const AVISOS: Record<string, string> = {
   salvo: "Patrocínio salvo.",
-  "no-ar": "Patrocínio no ar. O site mostra a mudança em até 5 minutos.",
-  encerrado: "Patrocínio encerrado. O logo sai do site em até 5 minutos.",
+  "no-ar": "Patrocínio no ar. O site já mostra a mudança.",
+  encerrado: "Patrocínio encerrado. O logo já saiu do site.",
   apagado: "Rascunho apagado.",
   pagamento: "Pagamento registrado.",
   prazo: "Dias somados ao prazo.",
@@ -38,6 +39,13 @@ const AVISOS: Record<string, string> = {
 };
 const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
 let erro = "";
+
+/**
+ * Ações que mudam o que aparece em todas as páginas (faixa "Oferecimento" e o
+ * link "Patrocine" do cabeçalho, que some sem vaga em Master, Ouro e Apoio):
+ * limpam o cache do site inteiro.
+ */
+const AVISOS_QUE_LIMPAM_O_CACHE = new Set(["salvo", "no-ar", "encerrado", "prazo", "cota"]);
 
 /** Logo enviado: 2 MB do arquivo mais os campos de texto. */
 const TAMANHO_MAXIMO_PEDIDO = 2 * 1024 * 1024 + 64 * 1024;
@@ -110,6 +118,7 @@ if (Astro.request.method === "POST") {
         resultado = { ok: false, erro: { codigo: "DADOS_INVALIDOS", mensagem: "Ação desconhecida." } };
     }
   }
+  if (resultado.ok && AVISOS_QUE_LIMPAM_O_CACHE.has(chaveAviso)) await limparCacheDoSite(Astro.url.origin);
   if (resultado.ok) return Astro.redirect(`/admin/patrocinadores?aviso=${chaveAviso}`, 303);
   erro = resultado.erro.mensagem;
   Astro.response.status = resultado.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
