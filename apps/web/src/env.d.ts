@@ -33,6 +33,8 @@ interface BucketR2 {
 declare module "cloudflare:workers" {
   export const env: {
     readonly SUPABASE_SERVICE_ROLE_KEY?: string;
+    /** Chave secreta do Turnstile, para os formulários fora do Supabase Auth (lib/turnstile.ts). */
+    readonly TURNSTILE_SECRET_KEY?: string;
     /** Token da Cloudflare só com permissão de limpar o cache do domínio (remoção de fotos). */
     readonly CLOUDFLARE_LIMPEZA_CACHE_TOKEN?: string;
     /** Só na produção. */

@@ -8,6 +8,7 @@ import BarraContato from "@/components/perfil/BarraContato.astro";
 import BotaoDenunciar from "@/components/perfil/BotaoDenunciar.astro";
 import CartaoContato from "@/components/perfil/CartaoContato.astro";
 import ContatoNaoInformado from "@/components/perfil/ContatoNaoInformado.astro";
+import PedidosPerfil from "@/components/perfil/PedidosPerfil.astro";
 import Galeria from "@/components/perfil/Galeria.astro";
 import Horario from "@/components/perfil/Horario.astro";
 import Secao from "@/components/perfil/Secao.astro";
@@ -49,6 +50,8 @@ const rota = (e: { logradouro: string; numero: string; bairroId: string; latitud
 const comoChegar = anunciante.tipo === "comercio" && anunciante.enderecos[0] ? rota(anunciante.enderecos[0]) : undefined;
 // Comércio importado da Receita: nenhum contato publicado ainda.
 const semContato = !anunciante.whatsapp && !anunciante.telefone;
+// Importado e ainda sem dono: pode ser assumido, removido ou dado como fechado.
+const importado = anunciante.origem === "receita";
 const semPagamentoNemRedes =
   anunciante.formasPagamento.length === 0 && !anunciante.instagram && !(anunciante.tipo === "comercio" && anunciante.siteProprio);
 const fundoMapa =
@@ -143,10 +146,12 @@ const fundoMapa =
         {
           semContato && (
             <Secao titulo="Contato">
-              <ContatoNaoInformado />
+              <ContatoNaoInformado podeAssumir={importado} />
             </Secao>
           )
         }
+
+        {importado && <PedidosPerfil anuncianteId={anunciante.id} nomeAnunciante={anunciante.nome} />}
 
         {
           anunciante.descricao && (

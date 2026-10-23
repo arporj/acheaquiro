@@ -4,20 +4,11 @@
 // contam uma vez (no banco). O banco recebe só um resumo do visitante: o hash
 // do IP com o navegador e o dia, que não volta a ser o IP e muda todo dia.
 import type { APIRoute } from "astro";
-import { contarCliquePatrocinador, hojeNaCidade, patrocinadorPorSlug } from "@/dados/consultas";
+import { contarCliquePatrocinador, patrocinadorPorSlug } from "@/dados/consultas";
 import { linkWhatsApp } from "@/lib/contato";
+import { resumoDoVisitante } from "@/lib/visitante";
 
 const MENSAGEM = "Olá! Vi vocês como patrocinadores do Ache Aqui RO e gostaria de uma informação.";
-
-async function resumoDoVisitante(request: Request): Promise<string> {
-  const ip = request.headers.get("cf-connecting-ip") ?? "";
-  const navegador = (request.headers.get("user-agent") ?? "").slice(0, 200);
-  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${ip}|${navegador}|${hojeNaCidade()}`));
-  return [...new Uint8Array(bytes)]
-    .slice(0, 16)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 export const GET: APIRoute = async ({ params, request, rewrite }) => {
   const slug = params.slug ?? "";

@@ -7,3 +7,4 @@ export { lerCatalogoPublico } from "./catalogo";
 export { lerAnunciantePublico, lerAnunciantesPublicos, type FiltroAnunciantes } from "./anunciantes";
 export { entrar, limitarRecuperacaoSenha, registrarAcesso, type ResultadoEntrada } from "./acesso";
 export { lerPatrocinioPublico, registrarCliquePatrocinio } from "./patrocinio";
+export { registrarPedidoPerfil, type PedidoPerfilValidado } from "./pedidos";

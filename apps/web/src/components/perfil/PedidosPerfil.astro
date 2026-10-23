@@ -1,0 +1,248 @@
+---
+// Pedidos sobre o perfil de um comércio importado da Receita (decisão de
+// 23/10/2026): assumir, remover ou informar que fechou. O envio não muda o
+// perfil: o pedido vai para a administração, que confere quem pediu (telefone
+// ou e-mail da Receita, ou documento) antes de mandar o convite ou de agir.
+import { Icone, Modal, classesBotao } from "@acheaqui/ui";
+
+interface Props {
+  anuncianteId: string;
+  nomeAnunciante: string;
+}
+
+const { anuncianteId, nomeAnunciante } = Astro.props;
+const chaveTurnstile = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY;
+if (!chaveTurnstile) throw new Error("PUBLIC_TURNSTILE_SITE_KEY não definida.");
+const campo =
+  "mt-1 w-full rounded-xl border-0 p-3 ring-1 ring-slate-200 focus:ring-3 focus:ring-amarelo-400 focus:outline-none aria-invalid:ring-vermelho-500";
+---
+
+<section class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-6" data-pedidos data-anunciante={anuncianteId} data-turnstile={chaveTurnstile}>
+  <h2 class="font-display text-xl font-bold text-azul-900">Este comércio é seu?</h2>
+  <p class="mt-1 text-sm text-slate-600">
+    As informações vieram dos dados públicos da Receita Federal. O dono pode assumir o perfil e completar, ou pedir para tirar do site.
+  </p>
+  <div class="mt-4 flex flex-col gap-2 sm:flex-row">
+    <button type="button" data-pedido-abrir="assumir" class={classesBotao("azul", "m", "flex-1")}>
+      <Icone nome="certo" class="size-4" />
+      É meu: quero assumir
+    </button>
+    <button type="button" data-pedido-abrir="remover" class={classesBotao("contorno", "m", "flex-1")}>
+      Remover meu comércio
+    </button>
+  </div>
+  <button type="button" data-pedido-abrir="fechou" class="mt-3 text-sm font-bold text-slate-500 hover:text-azul-600 hover:underline">
+    Este comércio fechou? Avise a gente
+  </button>
+</section>
+
+<Modal id="modal-pedido-perfil" titulo="Assumir este perfil">
+  <form data-pedido-formulario novalidate>
+    <p class="mb-4 text-sm text-slate-600" data-pedido-explicacao></p>
+
+    <div data-pedido-dados class="space-y-3">
+      <label class="block">
+        <span class="text-sm font-bold">Seu nome</span>
+        <input name="nome" autocomplete="name" maxlength="100" class={campo} />
+        <span class="text-xs text-vermelho-600" data-erro="nome"></span>
+      </label>
+      <label class="block">
+        <span class="text-sm font-bold">E-mail</span>
+        <input name="email" type="email" autocomplete="email" maxlength="254" class={campo} />
+        <span class="text-xs text-slate-500">Para onde vai o link de acesso, depois da conferência.</span>
+        <span class="block text-xs text-vermelho-600" data-erro="email"></span>
+      </label>
+      <label class="block">
+        <span class="text-sm font-bold">Telefone com DDD</span>
+        <input name="telefone" type="tel" autocomplete="tel" maxlength="20" placeholder="(22) 99999-0000" class={campo} />
+        <span class="text-xs text-vermelho-600" data-erro="telefone"></span>
+      </label>
+      <label class="flex items-start gap-2 text-sm">
+        <input type="checkbox" name="declaracao" class="mt-0.5 size-4 accent-azul-600" />
+        <span>Declaro que sou o responsável por <strong>{nomeAnunciante}</strong>.</span>
+      </label>
+      <span class="block text-xs text-vermelho-600" data-erro="declaracao"></span>
+    </div>
+
+    <label class="mt-3 block">
+      <span class="text-sm font-bold" data-pedido-rotulo-mensagem>Observação (opcional)</span>
+      <textarea name="mensagem" rows="3" maxlength="1000" class={campo}></textarea>
+    </label>
+
+    <div class="mt-4 min-h-[65px]" data-pedido-turnstile></div>
+    <p class="mt-2 text-sm font-bold text-vermelho-600" data-pedido-erro hidden></p>
+
+    <div class="mt-5 flex gap-2">
+      <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>Cancelar</button>
+      <button type="submit" class={classesBotao("azul", "m", "flex-1")}>Enviar pedido</button>
+    </div>
+  </form>
+
+  <div class="text-center" data-pedido-enviado hidden>
+    <span class="mx-auto grid size-14 place-items-center rounded-full bg-zap-50 text-zap-700">
+      <Icone nome="certo" class="size-7" strokeWidth={3} />
+    </span>
+    <p class="mt-3 text-slate-600" data-pedido-confirmacao></p>
+    <button type="button" data-modal-fechar class={classesBotao("azul", "m", "mt-5 w-full")}>Fechar</button>
+  </div>
+</Modal>
+
+<script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+<script>
+  type Tipo = "assumir" | "remover" | "fechou";
+  interface Turnstile {
+    render(alvo: HTMLElement, opcoes: Record<string, unknown>): string;
+    reset(id: string): void;
+  }
+  const global = window as unknown as { turnstile?: Turnstile };
+
+  const TEXTOS: Record<Tipo, { titulo: string; explicacao: string; confirmacao: string; rotuloMensagem: string }> = {
+    assumir: {
+      titulo: "Assumir este perfil",
+      explicacao:
+        "Nada muda no perfil agora. A equipe vai conferir que você é o responsável (pelo telefone ou e-mail da empresa na Receita, ou pedindo um documento) e depois manda o link de acesso para o seu e-mail.",
+      confirmacao: "Pedido recebido! A equipe do Ache Aqui vai entrar em contato para confirmar que o comércio é seu.",
+      rotuloMensagem: "Observação (opcional)",
+    },
+    remover: {
+      titulo: "Remover meu comércio",
+      explicacao:
+        "Para ninguém tirar do site o comércio de outra pessoa, a equipe confere que você é o responsável antes de remover o perfil.",
+      confirmacao: "Pedido recebido! A equipe do Ache Aqui vai confirmar que você é o responsável e então remover o perfil.",
+      rotuloMensagem: "Motivo (opcional)",
+    },
+    fechou: {
+      titulo: "Avisar que fechou",
+      explicacao: "Obrigado por avisar. A equipe confere antes de tirar o comércio do site.",
+      confirmacao: "Aviso recebido! Obrigado por ajudar a manter o Ache Aqui atualizado.",
+      rotuloMensagem: "Alguma informação a mais? (opcional)",
+    },
+  };
+
+  const secao = document.querySelector<HTMLElement>("[data-pedidos]");
+  const dialogo = document.querySelector<HTMLDialogElement>("#modal-pedido-perfil");
+  const formulario = dialogo?.querySelector<HTMLFormElement>("[data-pedido-formulario]");
+  const enviado = dialogo?.querySelector<HTMLElement>("[data-pedido-enviado]");
+  const titulo = dialogo?.querySelector<HTMLElement>("[data-modal-titulo]");
+  const explicacao = dialogo?.querySelector<HTMLElement>("[data-pedido-explicacao]");
+  const dados = dialogo?.querySelector<HTMLElement>("[data-pedido-dados]");
+  const rotuloMensagem = dialogo?.querySelector<HTMLElement>("[data-pedido-rotulo-mensagem]");
+  const caixaTurnstile = dialogo?.querySelector<HTMLElement>("[data-pedido-turnstile]");
+  const erroGeral = dialogo?.querySelector<HTMLElement>("[data-pedido-erro]");
+  const confirmacao = dialogo?.querySelector<HTMLElement>("[data-pedido-confirmacao]");
+  const botaoEnviar = formulario?.querySelector<HTMLButtonElement>("button[type=submit]");
+
+  if (secao && dialogo && formulario && enviado && titulo && explicacao && dados && rotuloMensagem && caixaTurnstile && erroGeral && confirmacao && botaoEnviar) {
+    let tipo: Tipo = "assumir";
+    let widget: string | undefined;
+    let token = "";
+
+    const limparErros = () => {
+      erroGeral.hidden = true;
+      for (const span of formulario.querySelectorAll<HTMLElement>("[data-erro]")) span.textContent = "";
+      for (const campo of formulario.querySelectorAll("[aria-invalid]")) campo.removeAttribute("aria-invalid");
+    };
+
+    const mostrarErro = (mensagem: string, campos: Record<string, string> = {}) => {
+      erroGeral.textContent = mensagem;
+      erroGeral.hidden = false;
+      for (const [nome, texto] of Object.entries(campos)) {
+        const span = formulario.querySelector<HTMLElement>(`[data-erro="${nome}"]`);
+        if (span) span.textContent = texto;
+        const alvo = formulario.elements.namedItem(nome);
+        if (alvo instanceof Element) alvo.setAttribute("aria-invalid", "true");
+      }
+    };
+
+    const prepararTurnstile = () => {
+      token = "";
+      if (!global.turnstile) {
+        // O script do Turnstile ainda carrega; tenta de novo em instantes.
+        setTimeout(prepararTurnstile, 300);
+        return;
+      }
+      if (widget) {
+        global.turnstile.reset(widget);
+        return;
+      }
+      widget = global.turnstile.render(caixaTurnstile, {
+        sitekey: secao.dataset.turnstile,
+        language: "pt-br",
+        callback: (t: string) => (token = t),
+        "expired-callback": () => (token = ""),
+        "error-callback": () => {
+          token = "";
+          console.error("Pedido do perfil: o Turnstile não carregou.");
+        },
+      });
+    };
+
+    const abrir = (novo: Tipo) => {
+      tipo = novo;
+      const textos = TEXTOS[tipo];
+      titulo.textContent = textos.titulo;
+      explicacao.textContent = textos.explicacao;
+      rotuloMensagem.textContent = textos.rotuloMensagem;
+      dados.hidden = tipo === "fechou";
+      formulario.reset();
+      formulario.hidden = false;
+      enviado.hidden = true;
+      limparErros();
+      dialogo.showModal();
+      prepararTurnstile();
+    };
+
+    for (const botao of document.querySelectorAll<HTMLElement>("[data-pedido-abrir]")) {
+      botao.addEventListener("click", () => abrir(botao.dataset.pedidoAbrir as Tipo));
+    }
+
+    formulario.addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+      limparErros();
+      if (!token) {
+        mostrarErro("Confirme que você não é um robô.");
+        return;
+      }
+      const valores = new FormData(formulario);
+      const corpo =
+        tipo === "fechou"
+          ? { tipo, anuncianteId: secao.dataset.anunciante, mensagem: valores.get("mensagem"), tokenRobo: token }
+          : {
+              tipo,
+              anuncianteId: secao.dataset.anunciante,
+              nome: valores.get("nome"),
+              email: valores.get("email"),
+              telefone: valores.get("telefone"),
+              declaracao: valores.get("declaracao") === "on",
+              mensagem: valores.get("mensagem"),
+              tokenRobo: token,
+            };
+
+      botaoEnviar.disabled = true;
+      try {
+        const resposta = await fetch("/api/pedidos-perfil", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(corpo),
+        });
+        const resultado = (await resposta.json()) as { ok: boolean; erro?: { mensagem: string; campos?: Record<string, string> } };
+        if (resultado.ok) {
+          formulario.hidden = true;
+          enviado.hidden = false;
+          confirmacao.textContent = TEXTOS[tipo].confirmacao;
+          return;
+        }
+        mostrarErro(resultado.erro?.mensagem ?? "Não foi possível enviar agora.", resultado.erro?.campos);
+      } catch (erro) {
+        console.error("Pedido do perfil: envio falhou", erro);
+        mostrarErro("Sem conexão com o Ache Aqui. Confira a internet e tente de novo.");
+      } finally {
+        botaoEnviar.disabled = false;
+        // O token do Turnstile vale uma vez: um novo para a próxima tentativa.
+        prepararTurnstile();
+      }
+    });
+  } else if (secao) {
+    console.error("Pedido do perfil: elementos do modal não encontrados na página.");
+  }
+</script>

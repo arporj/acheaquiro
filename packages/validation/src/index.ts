@@ -4,3 +4,4 @@ export * from "./senha";
 export * from "./acesso";
 export * from "./arquivos";
 export * from "./patrocinio";
+export * from "./pedidoPerfil";

@@ -4,6 +4,13 @@
 // informado pelo comércio, e não que o site deixou de mostrar.
 import { Icone } from "@acheaqui/ui";
 
+interface Props {
+  /** Com a seção de pedidos na página (PedidosPerfil), o convite abre o pedido de assumir. */
+  podeAssumir?: boolean;
+}
+
+const { podeAssumir = false } = Astro.props;
+
 const campos = ["Telefone", "WhatsApp", "Instagram"];
 ---
 
@@ -20,7 +27,15 @@ const campos = ["Telefone", "WhatsApp", "Instagram"];
 <p class="mt-3 flex items-start gap-2 rounded-xl bg-azul-50 px-3 py-2.5 text-sm text-azul-900">
   <Icone nome="info" class="mt-0.5 size-4 shrink-0" />
   <span>
-    Este comércio ainda não informou seus contatos ao Ache Aqui. <strong>É o dono?</strong> Assuma este perfil e comece a
-    receber contatos. É grátis.
+    Este comércio ainda não informou seus contatos ao Ache Aqui. <strong>É o dono?</strong>
+    {
+      podeAssumir ? (
+        <button type="button" data-pedido-abrir="assumir" class="font-bold underline hover:text-azul-600">
+          Assuma este perfil
+        </button>
+      ) : (
+        "Assuma este perfil"
+      )
+    } e comece a receber contatos. É grátis.
   </span>
 </p>
