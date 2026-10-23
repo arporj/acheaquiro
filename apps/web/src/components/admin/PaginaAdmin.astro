@@ -37,7 +37,7 @@ const grupos: { titulo: string; secoes: Secao[] }[] = [
     secoes: [
       { href: "/admin", rotulo: "Painel", icone: "grafico", pronta: true },
       { href: "/admin/pedidos", rotulo: "Pedidos de perfil", icone: "info", pronta: true },
-      { href: "/admin/anunciantes", rotulo: "Anunciantes", icone: "megafone", pronta: false },
+      { href: "/admin/anunciantes", rotulo: "Anunciantes", icone: "megafone", pronta: true },
       { href: "/admin/pagamentos", rotulo: "Pagamentos", icone: "dinheiro", pronta: false },
       { href: "/admin/denuncias", rotulo: "Denúncias", icone: "bandeira", pronta: false },
       { href: "/admin/patrocinadores", rotulo: "Patrocinadores", icone: "estrela", pronta: true },
@@ -77,7 +77,7 @@ const grupos: { titulo: string; secoes: Secao[] }[] = [
               {secao.pronta ? (
                 <a
                   href={secao.href}
-                  aria-current={atual === secao.href ? "page" : undefined}
+                  aria-current={atual === secao.href || (secao.href !== "/admin" && atual.startsWith(`${secao.href}/`)) ? "page" : undefined}
                   class="flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-bold text-tinta hover:bg-white aria-[current=page]:bg-azul-600 aria-[current=page]:text-white"
                 >
                   <Icone nome={secao.icone} class="size-4" />

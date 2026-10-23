@@ -1,0 +1,340 @@
+---
+// Campos do perfil do anunciante, no cadastro assistido (/admin/anunciantes/novo)
+// e na edição (/admin/anunciantes/[id]). O servidor valida tudo de novo
+// (lerFormulario, em src/lib/anunciantesAdmin.ts). Os blocos de autônomo e de
+// comércio ficam desligados quando não servem, para não serem enviados.
+import { classesBotao } from "@acheaqui/ui";
+import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
+import { formatarPreco } from "@/lib/contato";
+import type { Opcoes, ValoresFormulario } from "@/lib/anunciantesAdmin";
+
+interface Props {
+  opcoes: Opcoes;
+  valores: ValoresFormulario;
+  erros: Record<string, string>;
+  /** Na edição o tipo não muda. */
+  tipoFixo?: "profissional" | "comercio";
+  /** Com a conta já ligada, o e-mail do convite não muda aqui. */
+  emailTravado?: boolean;
+  textoBotao: string;
+}
+
+const { opcoes, valores: v, erros, tipoFixo, emailTravado = false, textoBotao } = Astro.props;
+const tipo = tipoFixo ?? v.tipo;
+
+const grupos = [...new Set(opcoes.categorias.map((c) => c.grupo))];
+const FORMAS = [
+  { id: "pix", rotulo: "Pix" },
+  { id: "cartao", rotulo: "Cartão" },
+  { id: "dinheiro", rotulo: "Dinheiro" },
+];
+const caixa = "mt-2 max-h-64 overflow-y-auto rounded-2xl border-2 border-azul-100 bg-white p-3";
+const opcaoMarcavel = "flex items-center gap-2 py-1 text-sm";
+const secao = "mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
+const tituloSecao = "font-display text-lg font-bold text-azul-900";
+const textarea = "mt-1 w-full rounded-2xl border-2 border-azul-100 p-3 focus:border-azul-500 focus:outline-none";
+const erro = (campo: string) => erros[campo];
+---
+
+<form method="post" data-formulario-anunciante data-tipo-fixo={tipoFixo} novalidate>
+  <input type="hidden" name="acao" value="salvar" />
+
+  <section class={secao}>
+    <h2 class={tituloSecao}>Perfil</h2>
+
+    {
+      tipoFixo ? (
+        <p class="mt-2 text-sm text-slate-600">{tipoFixo === "profissional" ? "Autônomo" : "Comércio"} (o tipo não muda depois do cadastro).</p>
+      ) : (
+        <fieldset class="mt-3">
+          <legend class="text-sm font-bold text-azul-900">Tipo</legend>
+          <div class="mt-1 flex gap-4">
+            <label class="flex items-center gap-2"><input type="radio" name="tipo" value="profissional" checked={tipo === "profissional"} required /> Autônomo</label>
+            <label class="flex items-center gap-2"><input type="radio" name="tipo" value="comercio" checked={tipo === "comercio"} /> Comércio</label>
+          </div>
+          {erro("tipo") && <p class={classesErroCampo}>{erro("tipo")}</p>}
+        </fieldset>
+      )
+    }
+
+    <label class={classesRotulo}>
+      Nome no site
+      <input name="nome" value={v.nome} required maxlength="100" class={classesCampo} aria-invalid={erro("nome") ? "true" : undefined} />
+    </label>
+    {erro("nome") && <p class={classesErroCampo}>{erro("nome")}</p>}
+
+    <label class={classesRotulo}>
+      Categoria principal
+      <select name="categoriaPrincipalId" required class={classesCampo} aria-invalid={erro("categoriaPrincipalId") ? "true" : undefined}>
+        <option value="">Escolha</option>
+        {
+          grupos.map((g) => (
+            <optgroup label={g}>
+              {opcoes.categorias
+                .filter((c) => c.grupo === g)
+                .map((c) => (
+                  <option value={c.id} data-tipo-categoria={c.tipo} selected={c.id === v.categoriaPrincipalId}>
+                    {c.nome}
+                  </option>
+                ))}
+            </optgroup>
+          ))
+        }
+      </select>
+    </label>
+    {erro("categoriaPrincipalId") && <p class={classesErroCampo}>{erro("categoriaPrincipalId")}</p>}
+
+    <details class="mt-4" open={v.categoriasAdicionais.length > 0 || !!erro("categoriasAdicionais")}>
+      <summary class="cursor-pointer text-sm font-bold text-azul-900">
+        Categorias adicionais ({v.categoriasAdicionais.length} marcada(s); o limite depende do plano)
+      </summary>
+      <div class={caixa}>
+        {
+          grupos.map((g) => (
+            <div class="mb-2" data-grupo-categoria>
+              <p class="text-xs font-extrabold tracking-wide text-slate-400 uppercase">{g}</p>
+              {opcoes.categorias
+                .filter((c) => c.grupo === g)
+                .map((c) => (
+                  <label class={opcaoMarcavel} data-tipo-categoria={c.tipo}>
+                    <input type="checkbox" name="categoriasAdicionais" value={c.id} checked={v.categoriasAdicionais.includes(c.id)} />
+                    {c.nome}
+                  </label>
+                ))}
+            </div>
+          ))
+        }
+      </div>
+    </details>
+    {erro("categoriasAdicionais") && <p class={classesErroCampo}>{erro("categoriasAdicionais")}</p>}
+
+    <label class={classesRotulo}>
+      Descrição
+      <textarea name="descricao" rows="4" maxlength="2000" class={textarea}>{v.descricao}</textarea>
+    </label>
+    {erro("descricao") && <p class={classesErroCampo}>{erro("descricao")}</p>}
+  </section>
+
+  <section class={secao}>
+    <h2 class={tituloSecao}>Contato</h2>
+    <div class="grid gap-x-4 sm:grid-cols-2">
+      <div>
+        <label class={classesRotulo}>
+          WhatsApp
+          <input name="whatsapp" value={v.whatsapp} inputmode="tel" placeholder="(22) 99999-0000" class={classesCampo} aria-invalid={erro("whatsapp") ? "true" : undefined} />
+        </label>
+        {erro("whatsapp") && <p class={classesErroCampo}>{erro("whatsapp")}</p>}
+      </div>
+      <div>
+        <label class={classesRotulo}>
+          Telefone
+          <input name="telefone" value={v.telefone} inputmode="tel" placeholder="(22) 2764-0000" class={classesCampo} aria-invalid={erro("telefone") ? "true" : undefined} />
+        </label>
+        {erro("telefone") && <p class={classesErroCampo}>{erro("telefone")}</p>}
+      </div>
+      <div>
+        <label class={classesRotulo}>
+          Instagram
+          <input name="instagram" value={v.instagram} placeholder="@perfil" class={classesCampo} aria-invalid={erro("instagram") ? "true" : undefined} />
+        </label>
+        {erro("instagram") && <p class={classesErroCampo}>{erro("instagram")}</p>}
+      </div>
+      <div data-so="comercio">
+        <label class={classesRotulo}>
+          Site próprio
+          <input name="siteProprio" value={v.siteProprio} placeholder="https://" class={classesCampo} aria-invalid={erro("siteProprio") ? "true" : undefined} />
+        </label>
+        {erro("siteProprio") && <p class={classesErroCampo}>{erro("siteProprio")}</p>}
+      </div>
+      <div data-so="profissional">
+        <label class={classesRotulo}>
+          Registro no conselho (CRM, CREA...)
+          <input name="registroConselho" value={v.registroConselho} maxlength="60" class={classesCampo} />
+        </label>
+        {erro("registroConselho") && <p class={classesErroCampo}>{erro("registroConselho")}</p>}
+      </div>
+    </div>
+    <fieldset class="mt-4">
+      <legend class="text-sm font-bold text-azul-900">Formas de pagamento</legend>
+      <div class="mt-1 flex flex-wrap gap-4">
+        {
+          FORMAS.map((f) => (
+            <label class="flex items-center gap-2">
+              <input type="checkbox" name="formasPagamento" value={f.id} checked={v.formasPagamento.includes(f.id)} />
+              {f.rotulo}
+            </label>
+          ))
+        }
+      </div>
+    </fieldset>
+  </section>
+
+  <section class={secao} data-so="profissional">
+    <h2 class={tituloSecao}>Onde atende</h2>
+    <label class="mt-3 flex items-center gap-2 font-bold">
+      <input type="checkbox" name="atendeTodaCidade" checked={v.atendeTodaCidade} data-esconde-bairros="atendimento" />
+      Atende a cidade toda
+    </label>
+    <div class={caixa} data-bairros="atendimento">
+      {
+        opcoes.bairros.map((b) => (
+          <label class={opcaoMarcavel}>
+            <input type="checkbox" name="bairrosAtendidos" value={b.id} checked={v.bairrosAtendidos.includes(b.id)} />
+            {b.nome}
+          </label>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class={secao} data-so="comercio">
+    <h2 class={tituloSecao}>Endereço</h2>
+    <p class="mt-1 text-sm text-slate-600">Mudar a rua, o número ou o bairro tira o ponto do mapa; o "Como chegar" passa a usar o endereço escrito.</p>
+    <div class="grid gap-x-4 sm:grid-cols-[1fr_8rem]">
+      <div>
+        <label class={classesRotulo}>
+          Rua
+          <input name="endereco.logradouro" value={v.logradouro} required maxlength="120" class={classesCampo} aria-invalid={erro("endereco.logradouro") ? "true" : undefined} />
+        </label>
+        {erro("endereco.logradouro") && <p class={classesErroCampo}>{erro("endereco.logradouro")}</p>}
+      </div>
+      <div>
+        <label class={classesRotulo}>
+          Número
+          <input name="endereco.numero" value={v.numero} required maxlength="10" placeholder="S/N" class={classesCampo} aria-invalid={erro("endereco.numero") ? "true" : undefined} />
+        </label>
+        {erro("endereco.numero") && <p class={classesErroCampo}>{erro("endereco.numero")}</p>}
+      </div>
+      <label class={classesRotulo}>
+        Complemento
+        <input name="endereco.complemento" value={v.complemento} maxlength="60" class={classesCampo} />
+      </label>
+      <div class="sm:col-span-2">
+        <label class={classesRotulo}>
+          Bairro
+          <select name="endereco.bairroId" required class={classesCampo} aria-invalid={erro("endereco.bairroId") ? "true" : undefined}>
+            <option value="">Escolha</option>
+            {opcoes.bairros.map((b) => <option value={b.id} selected={b.id === v.bairroEnderecoId}>{b.nome}</option>)}
+          </select>
+        </label>
+        {erro("endereco.bairroId") && <p class={classesErroCampo}>{erro("endereco.bairroId")}</p>}
+      </div>
+    </div>
+
+    <label class="mt-5 flex items-center gap-2 font-bold">
+      <input type="checkbox" name="fazEntrega" checked={v.fazEntrega} data-mostra-entrega />
+      Faz entrega
+    </label>
+    <div data-entrega>
+      <label class="mt-2 flex items-center gap-2">
+        <input type="checkbox" name="entregaTodaCidade" checked={v.entregaTodaCidade} data-esconde-bairros="entrega" />
+        Na cidade toda
+      </label>
+      <div class={caixa} data-bairros="entrega">
+        {
+          opcoes.bairros.map((b) => (
+            <label class={opcaoMarcavel}>
+              <input type="checkbox" name="bairrosEntrega" value={b.id} checked={v.bairrosEntrega.includes(b.id)} />
+              {b.nome}
+            </label>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class={secao}>
+    <h2 class={tituloSecao}>Cadastro assistido</h2>
+    <p class="mt-1 text-sm text-slate-600">
+      O convite vai para este e-mail: o anunciante confere o perfil, aceita os Termos e cria a senha. O perfil só vai para o ar depois disso e da aprovação.
+    </p>
+    <label class={classesRotulo}>
+      E-mail do anunciante
+      <input
+        name="emailConvite"
+        type="email"
+        value={v.emailConvite}
+        maxlength="254"
+        readonly={emailTravado}
+        class={classesCampo}
+        aria-invalid={erro("emailConvite") ? "true" : undefined}
+      />
+    </label>
+    {emailTravado && <p class="mt-1 text-xs text-slate-500">A conta já está ligada a este e-mail.</p>}
+    {erro("emailConvite") && <p class={classesErroCampo}>{erro("emailConvite")}</p>}
+
+    <div class="grid gap-x-4 sm:grid-cols-2">
+      <div>
+        <label class={classesRotulo}>
+          Plano escolhido
+          <select name="planoEscolhidoId" class={classesCampo} aria-invalid={erro("planoEscolhidoId") ? "true" : undefined}>
+            <option value="">Ainda não escolheu</option>
+            {
+              opcoes.planos.map((p) => (
+                <option value={p.id} data-tipo-plano={p.tipo} selected={p.id === v.planoEscolhidoId}>
+                  {p.nome} ({p.tipo === "profissional" ? "autônomo" : "comércio"}) · {formatarPreco(p.valor_mensal_centavos / 100)}/mês
+                </option>
+              ))
+            }
+          </select>
+        </label>
+        {erro("planoEscolhidoId") && <p class={classesErroCampo}>{erro("planoEscolhidoId")}</p>}
+      </div>
+      <fieldset class="mt-4">
+        <legend class="text-sm font-bold text-azul-900">Pagamento</legend>
+        <div class="mt-3 flex gap-4">
+          <label class="flex items-center gap-2"><input type="radio" name="periodicidade" value="anual" checked={v.periodicidade === "anual"} /> Anual</label>
+          <label class="flex items-center gap-2"><input type="radio" name="periodicidade" value="mensal" checked={v.periodicidade === "mensal"} /> Mensal</label>
+        </div>
+      </fieldset>
+    </div>
+
+    <label class={classesRotulo}>
+      Representante que trouxe
+      <select name="representanteId" class={classesCampo}>
+        <option value="">Nenhum (equipe)</option>
+        {opcoes.representantes.map((r) => <option value={r.id} selected={r.id === v.representanteId}>{r.nome} ({r.codigo})</option>)}
+      </select>
+    </label>
+  </section>
+
+  <div class="mt-6 flex justify-end">
+    <button type="submit" class={classesBotao("azul", "g")}>{textoBotao}</button>
+  </div>
+</form>
+
+<script>
+  // Mostra só os campos do tipo escolhido e desliga os outros (não vão no envio).
+  for (const form of document.querySelectorAll<HTMLFormElement>("form[data-formulario-anunciante]")) {
+    const escolhido = () => form.querySelector<HTMLInputElement>('input[name="tipo"]:checked')?.value ?? form.dataset.tipoFixo ?? "";
+    const ligar = (el: HTMLElement, ligado: boolean) => {
+      el.hidden = !ligado;
+      for (const campo of el.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea")) campo.disabled = !ligado;
+    };
+    const atualizar = () => {
+      const tipo = escolhido();
+      for (const bloco of form.querySelectorAll<HTMLElement>("[data-so]")) ligar(bloco, bloco.dataset.so === tipo);
+      // Categorias e planos só do tipo escolhido.
+      for (const el of form.querySelectorAll<HTMLElement>("[data-tipo-categoria]")) {
+        const serve = !tipo || el.dataset.tipoCategoria === "ambos" || el.dataset.tipoCategoria === tipo;
+        if (el instanceof HTMLOptionElement) el.hidden = el.disabled = !serve;
+        else ligar(el, serve);
+      }
+      for (const op of form.querySelectorAll<HTMLOptionElement>("[data-tipo-plano]")) op.hidden = op.disabled = !!tipo && op.dataset.tipoPlano !== tipo;
+      for (const marca of form.querySelectorAll<HTMLInputElement>("[data-esconde-bairros]")) {
+        const caixa = form.querySelector<HTMLElement>(`[data-bairros="${marca.dataset.escondeBairros}"]`);
+        if (caixa && !caixa.closest("[hidden]")) ligar(caixa, !marca.checked);
+      }
+      const entrega = form.querySelector<HTMLInputElement>("[data-mostra-entrega]");
+      const blocoEntrega = form.querySelector<HTMLElement>("[data-entrega]");
+      if (entrega && blocoEntrega && tipo === "comercio") {
+        ligar(blocoEntrega, entrega.checked);
+        const todaCidade = form.querySelector<HTMLInputElement>('[data-esconde-bairros="entrega"]');
+        const caixa = form.querySelector<HTMLElement>('[data-bairros="entrega"]');
+        if (entrega.checked && todaCidade && caixa) ligar(caixa, !todaCidade.checked);
+      }
+    };
+    form.addEventListener("change", atualizar);
+    atualizar();
+  }
+</script>

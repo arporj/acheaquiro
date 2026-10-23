@@ -20,7 +20,12 @@ function mensagemDoBanco(erro: { code?: string; message: string }, contexto: str
   return ERRO_INTERNO;
 }
 
-const limparObservacao = (texto: string) => texto.trim().slice(0, 1000) || null;
+/** Ligação um-para-um que o PostgREST devolve como lista (chave composta). */
+export function umSo<T>(valor: T | T[] | null): T | null {
+  return Array.isArray(valor) ? (valor[0] ?? null) : valor;
+}
+
+const limparObservacao =(texto: string) => texto.trim().slice(0, 1000) || null;
 
 // ---------------------------------------------------------------------------
 // Pedidos sobre o perfil
@@ -63,7 +68,12 @@ export async function listarPedidos(supabase: SupabaseClient, situacao: Situacao
     .order("criado_em", { ascending: situacao === "aberto" })
     .limit(200);
   if (error) return mensagemDoBanco(error, "listarPedidos");
-  return { ok: true, dados: data as unknown as PedidoAdmin[] };
+  // A chave estrangeira de dados_receita é composta (com a cidade): o PostgREST devolve lista, não registro único.
+  const pedidos = (data as unknown as (PedidoAdmin & { anunciante: { dados_receita: unknown } | null })[]).map((p) => ({
+    ...p,
+    anunciante: p.anunciante && { ...p.anunciante, dados_receita: umSo(p.anunciante.dados_receita) },
+  }));
+  return { ok: true, dados: pedidos as PedidoAdmin[] };
 }
 
 async function lerPedidoAberto(supabase: SupabaseClient, id: string): Promise<Resultado<PedidoAdmin>> {
@@ -198,19 +208,26 @@ export async function listarCnaes(supabase: SupabaseClient): Promise<Resultado<C
   }
 }
 
-export async function listarCategoriasAdmin(supabase: SupabaseClient): Promise<Resultado<{ id: string; nome: string; grupo: string }[]>> {
+export interface CategoriaAdmin {
+  id: string;
+  nome: string;
+  tipo: "profissional" | "comercio" | "ambos";
+  grupo: string;
+}
+
+export async function listarCategoriasAdmin(supabase: SupabaseClient): Promise<Resultado<CategoriaAdmin[]>> {
   const { data, error } = await supabase
     .from("categorias")
-    .select("id, nome, grupos_categoria!inner(nome, ordem)")
+    .select("id, nome, tipo, grupos_categoria!inner(nome, ordem)")
     .eq("ativa", true)
     .order("nome");
   if (error) return mensagemDoBanco(error, "listarCategoriasAdmin");
-  const linhas = data as unknown as { id: string; nome: string; grupos_categoria: { nome: string; ordem: number } }[];
+  const linhas = data as unknown as { id: string; nome: string; tipo: CategoriaAdmin["tipo"]; grupos_categoria: { nome: string; ordem: number } }[];
   return {
     ok: true,
     dados: linhas
       .sort((a, b) => a.grupos_categoria.ordem - b.grupos_categoria.ordem || a.nome.localeCompare(b.nome, "pt-BR"))
-      .map((l) => ({ id: l.id, nome: l.nome, grupo: l.grupos_categoria.nome })),
+      .map((l) => ({ id: l.id, nome: l.nome, tipo: l.tipo, grupo: l.grupos_categoria.nome })),
   };
 }
 

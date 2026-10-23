@@ -11,14 +11,14 @@ const textoLimpo = (minimo: number, maximo: number, nome: string) =>
     .pipe(z.string().min(minimo, `${nome[0]!.toUpperCase()}${nome.slice(1)}: pelo menos ${minimo} letras.`).max(maximo, `${nome[0]!.toUpperCase()}${nome.slice(1)}: no máximo ${maximo} letras.`));
 
 /** WhatsApp em qualquer formato ((22) 99999-0000, +55...) vira 55 + DDD + número. Vazio fica sem contato. */
-const esquemaWhatsapp = z
+export const esquemaWhatsapp = z
   .string()
   .transform((v) => v.replace(/\D/g, ""))
   .transform((v) => (v === "" ? "" : v.startsWith("55") && v.length >= 12 ? v : `55${v}`))
   .refine((v) => v === "" || /^55[1-9][0-9]{9,10}$/.test(v), "WhatsApp inválido: use DDD e número, como (22) 99999-0000.");
 
 /** Site opcional: sem "https://", ele é acrescentado. Vazio fica sem site. */
-const esquemaSite = z
+export const esquemaSite = z
   .string()
   .optional()
   .transform((v) => (v ?? "").trim())

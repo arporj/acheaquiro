@@ -1,0 +1,273 @@
+---
+// Um anunciante na administração: situação e ações (aprovar, pedir correção,
+// recusar, suspender, reativar), convite do cadastro assistido, edição do
+// perfil e as últimas alterações. Toda ação passa pela auditoria do banco.
+import { Icone, Modal, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesRotulo } from "@/components/conta/estilos";
+import FormularioAnunciante from "@/components/admin/FormularioAnunciante.astro";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import {
+  ORIGENS_DA_ACAO,
+  PEDE_MOTIVO,
+  ROTULO_SITUACAO,
+  enviarConvite,
+  lerAnunciante,
+  lerFormulario,
+  lerHistorico,
+  lerOpcoes,
+  mudarSituacao,
+  salvarAnunciante,
+  valoresDoAnunciante,
+  valoresDoEnvio,
+  type AcaoSituacao,
+  type ValoresFormulario,
+} from "@/lib/anunciantesAdmin";
+import { formatarTelefone } from "@/lib/contato";
+import { listarEquipe } from "@/lib/equipe";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+const id = Astro.params.id ?? "";
+
+const AVISOS: Record<string, string> = {
+  criado: "Rascunho salvo. Confira os dados e envie o convite quando estiver pronto.",
+  salvo: "Alterações salvas.",
+  convite: "Convite enviado. O anunciante recebe o link por e-mail para conferir o perfil e criar a senha.",
+  "convite-reenviado": "Convite reenviado.",
+  situacao: "Situação alterada.",
+};
+const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
+let erro = "";
+let erros: Record<string, string> = {};
+let valoresEnviados: ValoresFormulario | undefined;
+
+const lido = await lerAnunciante(supabase, id);
+if (!lido.ok && lido.erro.codigo === "NAO_ENCONTRADO") return new Response(null, { status: 404 });
+
+if (Astro.request.method === "POST" && lido.ok) {
+  const form = await Astro.request.formData();
+  const acao = String(form.get("acao") ?? "");
+  if (acao === "salvar") {
+    const dados = lerFormulario(form, lido.dados.tipo);
+    const r = dados.ok ? await salvarAnunciante(supabase, usuario.id, id, dados.dados, Astro.url.origin) : dados;
+    if (r.ok) return Astro.redirect(`/admin/anunciantes/${id}?aviso=salvo`, 303);
+    erro = r.erro.mensagem;
+    erros = r.erro.campos ?? {};
+    valoresEnviados = valoresDoEnvio(form, lido.dados.tipo);
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  } else if (acao === "convite") {
+    const r = await enviarConvite(supabase, id);
+    if (r.ok) return Astro.redirect(`/admin/anunciantes/${id}?aviso=${r.dados.reenvio ? "convite-reenviado" : "convite"}`, 303);
+    erro = r.erro.mensagem;
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  } else if (acao in ORIGENS_DA_ACAO) {
+    const r = await mudarSituacao(supabase, usuario.id, id, acao as AcaoSituacao, String(form.get("motivo") ?? "").slice(0, 1000), Astro.url.origin);
+    if (r.ok) return Astro.redirect(`/admin/anunciantes/${id}?aviso=situacao`, 303);
+    erro = r.erro.mensagem;
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  } else {
+    erro = "Ação desconhecida.";
+    Astro.response.status = 400;
+  }
+}
+
+const [opcoes, historico, equipe] = await Promise.all([lerOpcoes(supabase), lerHistorico(supabase, id), listarEquipe(supabase)]);
+if (!lido.ok) erro ||= lido.erro.mensagem;
+const a = lido.ok ? lido.dados : null;
+
+const planos = opcoes.ok ? opcoes.dados.planos : [];
+const nomePlano = (pid: string | null) => (pid ? (planos.find((p) => p.id === pid)?.nome ?? "plano inativo") : null);
+const representante = opcoes.ok && a?.representante_id ? opcoes.dados.representantes.find((r) => r.id === a.representante_id) : undefined;
+const nomes = new Map((equipe.ok ? equipe.dados : []).map((m) => [m.usuario_id, m.nome || m.email]));
+
+const ACOES: Record<AcaoSituacao, { botao: string; titulo: string; texto: string; variante: "azul" | "perigo" | "contorno"; rotuloMotivo?: string }> = {
+  aprovar: {
+    botao: "Aprovar",
+    titulo: "Aprovar cadastro",
+    texto: "Com o plano em vigor ou o plano escolhido gratuito, o perfil vai para o ar. Com plano pago escolhido, fica aguardando o Pix.",
+    variante: "azul",
+  },
+  correcao: {
+    botao: "Pedir correção",
+    titulo: "Pedir correção",
+    texto: "O cadastro volta para o anunciante, que vê o motivo na área dele.",
+    variante: "contorno",
+    rotuloMotivo: "O que corrigir (o anunciante vê)",
+  },
+  recusar: {
+    botao: "Recusar",
+    titulo: "Recusar cadastro",
+    texto: "O cadastro volta para rascunho, sem ser apagado. O motivo fica registrado.",
+    variante: "perigo",
+    rotuloMotivo: "Motivo da recusa",
+  },
+  suspender: {
+    botao: "Suspender",
+    titulo: "Suspender perfil",
+    texto: "O perfil sai do site na hora, sem ser apagado.",
+    variante: "perigo",
+    rotuloMotivo: "Motivo da suspensão",
+  },
+  reativar: {
+    botao: "Reativar",
+    titulo: "Reativar perfil",
+    texto: "O perfil volta para o ar com o plano em vigor.",
+    variante: "azul",
+  },
+};
+const acoesDisponiveis = a ? (Object.keys(ACOES) as AcaoSituacao[]).filter((x) => ORIGENS_DA_ACAO[x].includes(a.status)) : [];
+const podeConvidar = a && a.origem === "cadastro" && (a.status === "rascunho" || a.status === "aguardando_anunciante");
+
+const dataHora = (iso: string) =>
+  new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(iso));
+const formatarCnpj = (c: string) => c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+const IGNORAR = new Set(["atualizado_em"]);
+const mudancas = (antes: Record<string, unknown> | null, depois: Record<string, unknown> | null) =>
+  Object.keys({ ...antes, ...depois }).filter((k) => !IGNORAR.has(k) && JSON.stringify(antes?.[k]) !== JSON.stringify(depois?.[k]));
+const mostrar = (valor: unknown) => (valor === null || valor === undefined || valor === "" ? "—" : typeof valor === "string" ? valor : JSON.stringify(valor));
+const ACAO_HISTORICO: Record<string, string> = { insert: "Criou", update: "Alterou", delete: "Apagou" };
+const campoTexto = "mt-1 w-full rounded-2xl border-2 border-azul-100 p-3 focus:border-azul-500 focus:outline-none";
+const caixa = "rounded-xl bg-fundo p-3";
+---
+
+<PaginaAdmin titulo={a?.nome ?? "Anunciante"} descricao={a ? `${a.tipo === "profissional" ? "Autônomo" : "Comércio"} · ${ROTULO_SITUACAO[a.status]}` : undefined}>
+  <p class="mt-2 text-sm"><a href="/admin/anunciantes" class="font-bold text-azul-600 hover:underline">← Anunciantes</a></p>
+  {aviso && <Aviso tipo="sucesso" class="mt-4">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro" class="mt-4">{erro}</Aviso>}
+
+  {
+    a && (
+      <>
+        <section class="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+          <div class="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <div class={caixa}>
+              <p class="font-bold text-azul-900">Situação</p>
+              <p>{ROTULO_SITUACAO[a.status]}</p>
+              {a.motivo_correcao && <p class="mt-1 text-slate-600 italic">Motivo: {a.motivo_correcao}</p>}
+              {a.status === "publicado" && (
+                <a href={`/perfil/${a.slug}`} target="_blank" class="mt-1 inline-block font-bold text-azul-600 hover:underline">
+                  Ver no site
+                </a>
+              )}
+            </div>
+            <div class={caixa}>
+              <p class="font-bold text-azul-900">Plano</p>
+              <p>Em vigor: {nomePlano(a.plano_id) ?? "nenhum"}</p>
+              <p>
+                Escolhido: {nomePlano(a.plano_escolhido_id) ?? "nenhum"}
+                {a.plano_escolhido_id && a.periodicidade_escolhida && ` (${a.periodicidade_escolhida})`}
+              </p>
+              {a.fundador && <p class="mt-1 font-bold text-azul-900">Fundador desde {a.fundador_desde?.split("-").reverse().join("/")}</p>}
+            </div>
+            <div class={caixa}>
+              <p class="font-bold text-azul-900">Conta e origem</p>
+              <p>{a.usuario_id ? `Conta ligada (${a.email_convite ?? "e-mail próprio"})` : "Sem conta ligada"}</p>
+              <p>{a.origem === "receita" ? "Importado da Receita" : "Cadastro"} em {dataHora(a.criado_em)}</p>
+              {representante && <p>Representante: {representante.nome}</p>}
+              <p class="text-slate-500">Endereço do perfil: /perfil/{a.slug}</p>
+            </div>
+          </div>
+
+          {
+            a.dados_receita && (
+              <div class={`${caixa} mt-3 text-sm`}>
+                <p class="font-bold text-azul-900">Na Receita (não publicado)</p>
+                <p>
+                  {a.dados_receita.razao_social} · CNPJ {formatarCnpj(a.dados_receita.cnpj)}
+                </p>
+                {a.dados_receita.telefones.length > 0 && <p>{a.dados_receita.telefones.map(formatarTelefone).join(" · ")}</p>}
+                {a.dados_receita.email && <p>{a.dados_receita.email}</p>}
+              </div>
+            )
+          }
+
+          {
+            (acoesDisponiveis.length > 0 || podeConvidar) && (
+              <div class="mt-4 flex flex-wrap gap-2">
+                {podeConvidar && (
+                  <form method="post">
+                    <input type="hidden" name="acao" value="convite" />
+                    <button type="submit" class={classesBotao("azul", "m")} disabled={!a.email_convite} title={a.email_convite ? undefined : "Informe o e-mail no cadastro"}>
+                      <Icone nome="mensagem" class="size-4" />
+                      {a.usuario_id ? "Reenviar convite" : "Enviar convite"}
+                    </button>
+                  </form>
+                )}
+                {acoesDisponiveis.map((x) => (
+                  <button type="button" data-abrir-modal={`modal-${x}`} class={classesBotao(ACOES[x].variante, "m")}>
+                    {ACOES[x].botao}
+                  </button>
+                ))}
+              </div>
+            )
+          }
+        </section>
+
+        {opcoes.ok ? (
+          <FormularioAnunciante
+            opcoes={opcoes.dados}
+            valores={valoresEnviados ?? valoresDoAnunciante(a)}
+            erros={erros}
+            tipoFixo={a.tipo}
+            emailTravado={!!a.usuario_id}
+            textoBotao="Salvar alterações"
+          />
+        ) : (
+          <Aviso tipo="erro" class="mt-4">{opcoes.erro.mensagem}</Aviso>
+        )}
+
+        <section class="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+          <h2 class="font-display text-lg font-bold text-azul-900">Últimas alterações do cadastro</h2>
+          {!historico.ok && <p class="mt-2 text-sm text-vermelho-700">{historico.erro.mensagem}</p>}
+          {historico.ok && historico.dados.length === 0 && <p class="mt-2 text-sm text-slate-500">Nenhuma alteração registrada.</p>}
+          <ul class="mt-2 space-y-2 text-sm">
+            {historico.ok &&
+              historico.dados.map((h) => (
+                <li class={caixa}>
+                  <p>
+                    <strong>{ACAO_HISTORICO[h.acao] ?? h.acao}</strong> · {h.ator_id ? (nomes.get(h.ator_id) ?? "conta") : "sistema"} · {dataHora(h.criado_em)}
+                  </p>
+                  {h.acao === "update" && (
+                    <ul class="mt-1 text-slate-600">
+                      {mudancas(h.antes, h.depois).map((k) => (
+                        <li class="break-words">
+                          {k}: {mostrar(h.antes?.[k])} → {mostrar(h.depois?.[k])}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+          </ul>
+          <p class="mt-3 text-xs text-slate-500">
+            Categorias, bairros e endereço ficam no <a href="/admin/atividades" class="font-bold text-azul-600 hover:underline">registro de atividades</a>.
+          </p>
+        </section>
+
+        {acoesDisponiveis.map((x) => (
+          <Modal id={`modal-${x}`} titulo={ACOES[x].titulo}>
+            <form method="post">
+              <input type="hidden" name="acao" value={x} />
+              <p class="text-sm text-slate-600">{ACOES[x].texto}</p>
+              {PEDE_MOTIVO.includes(x) && (
+                <label class={classesRotulo}>
+                  {ACOES[x].rotuloMotivo}
+                  <textarea name="motivo" rows="3" minlength="3" maxlength="1000" required class={campoTexto} />
+                </label>
+              )}
+              <div class="mt-5 flex gap-2">
+                <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>
+                  Cancelar
+                </button>
+                <button type="submit" class={classesBotao(ACOES[x].variante === "perigo" ? "perigo" : "azul", "m", "flex-1")}>
+                  {ACOES[x].botao}
+                </button>
+              </div>
+            </form>
+          </Modal>
+        ))}
+      </>
+    )
+  }
+</PaginaAdmin>

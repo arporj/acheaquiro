@@ -47,7 +47,8 @@ export async function apagarArquivosPublicos(caminhos: string[]): Promise<void> 
   await limparCache(caminhos.map(enderecoPublico));
 }
 
-async function limparCache(enderecos: string[]): Promise<void> {
+/** Limpa endereços do cache da Cloudflare (arquivos e páginas). */
+export async function limparCache(enderecos: string[]): Promise<void> {
   const token = env.CLOUDFLARE_LIMPEZA_CACHE_TOKEN;
   if (!token || !ZONA_CLOUDFLARE) {
     console.error("limparCache: token ou zona não configurados; o arquivo apagado pode seguir no cache", { enderecos });

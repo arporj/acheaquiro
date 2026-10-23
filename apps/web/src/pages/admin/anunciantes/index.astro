@@ -1,0 +1,155 @@
+---
+// Anunciantes (item 4.8): abas por situação, busca por nome ou endereço do
+// perfil e filtros. A lista vem em páginas do servidor (são milhares, quase
+// todos importados da Receita).
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo } from "@/components/conta/estilos";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { ABAS, POR_PAGINA, ROTULO_SITUACAO, lerFiltro, lerOpcoes, listarAnunciantes, type Aba, type Situacao } from "@/lib/anunciantesAdmin";
+
+const supabase = Astro.locals.supabase!;
+const filtro = lerFiltro(Astro.url.searchParams);
+const [lista, opcoes] = await Promise.all([listarAnunciantes(supabase, filtro), lerOpcoes(supabase)]);
+const erro = (!lista.ok && lista.erro.mensagem) || (!opcoes.ok && opcoes.erro.mensagem) || "";
+const linhas = lista.ok ? lista.dados.linhas : [];
+const total = lista.ok ? lista.dados.total : 0;
+const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+
+/** Endereço da lista com um parâmetro trocado (e a página de volta para 1). */
+function link(trocas: Record<string, string>): string {
+  const p = new URLSearchParams(Astro.url.searchParams);
+  p.delete("pagina");
+  for (const [k, v] of Object.entries(trocas)) (v ? p.set(k, v) : p.delete(k));
+  const q = p.toString();
+  return `/admin/anunciantes${q ? `?${q}` : ""}`;
+}
+
+const COR_SITUACAO: Record<Situacao, string> = {
+  rascunho: "bg-slate-200 text-slate-700",
+  aguardando_anunciante: "bg-amarelo-200 text-azul-900",
+  em_analise: "bg-azul-600 text-white",
+  aguardando_pagamento: "bg-amarelo-200 text-azul-900",
+  publicado: "bg-zap-600 text-white",
+  pausado: "bg-slate-200 text-slate-700",
+  escondido_por_vencimento: "bg-slate-200 text-slate-700",
+  suspenso: "bg-vermelho-600 text-white",
+};
+const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-extrabold";
+const filtrosAtivos = [filtro.tipo, filtro.origem, filtro.planoId, filtro.fundador, filtro.representanteId, filtro.categoriaId, filtro.bairroId].filter(Boolean).length;
+const selectFiltro = `${classesCampo} h-10 text-sm`;
+---
+
+<PaginaAdmin titulo="Anunciantes" descricao="Cadastro assistido, edição dos perfis e mudança de situação (aprovar, pedir correção, recusar, suspender).">
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+    <nav class="flex flex-wrap gap-1.5" aria-label="Situação">
+      {
+        (Object.keys(ABAS) as Aba[]).map((aba) => (
+          <a
+            href={link({ aba })}
+            aria-current={aba === filtro.aba ? "page" : undefined}
+            class="rounded-full px-3 py-1.5 text-sm font-bold text-azul-700 ring-1 ring-azul-100 hover:bg-white aria-[current=page]:bg-azul-600 aria-[current=page]:text-white aria-[current=page]:ring-azul-600"
+          >
+            {ABAS[aba].rotulo}
+            {lista.ok && <span class="ml-1 opacity-75">{lista.dados.porAba[aba].toLocaleString("pt-BR")}</span>}
+          </a>
+        ))
+      }
+    </nav>
+    <a href="/admin/anunciantes/novo" class={classesBotao("azul", "m")}>
+      <Icone nome="usuarios" class="size-4" />
+      Cadastro assistido
+    </a>
+  </div>
+
+  <form method="get" class="mt-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+    <input type="hidden" name="aba" value={filtro.aba} />
+    <div class="flex gap-2">
+      <input type="search" name="q" value={filtro.busca} placeholder="Buscar por nome ou endereço do perfil" class={`${classesCampo} mt-0 h-11`} />
+      <button type="submit" class={classesBotao("azul", "m", "shrink-0")}>Buscar</button>
+    </div>
+    <details class="mt-3" open={filtrosAtivos > 0}>
+      <summary class="cursor-pointer text-sm font-bold text-azul-700">Filtros{filtrosAtivos > 0 && ` (${filtrosAtivos})`}</summary>
+      <div class="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <select name="tipo" class={selectFiltro} aria-label="Tipo">
+          <option value="">Autônomos e comércios</option>
+          <option value="profissional" selected={filtro.tipo === "profissional"}>Autônomos</option>
+          <option value="comercio" selected={filtro.tipo === "comercio"}>Comércios</option>
+        </select>
+        <select name="origem" class={selectFiltro} aria-label="Origem">
+          <option value="">Qualquer origem</option>
+          <option value="cadastro" selected={filtro.origem === "cadastro"}>Cadastrados</option>
+          <option value="receita" selected={filtro.origem === "receita"}>Importados da Receita</option>
+        </select>
+        <select name="plano" class={selectFiltro} aria-label="Plano em vigor">
+          <option value="">Qualquer plano</option>
+          {opcoes.ok && opcoes.dados.planos.map((p) => <option value={p.id} selected={p.id === filtro.planoId}>{p.nome} ({p.tipo === "profissional" ? "autônomo" : "comércio"})</option>)}
+        </select>
+        <select name="representante" class={selectFiltro} aria-label="Representante">
+          <option value="">Qualquer representante</option>
+          {opcoes.ok && opcoes.dados.representantes.map((r) => <option value={r.id} selected={r.id === filtro.representanteId}>{r.nome}</option>)}
+        </select>
+        <select name="categoria" class={selectFiltro} aria-label="Categoria principal">
+          <option value="">Qualquer categoria</option>
+          {opcoes.ok && opcoes.dados.categorias.map((c) => <option value={c.id} selected={c.id === filtro.categoriaId}>{c.nome}</option>)}
+        </select>
+        <select name="bairro" class={selectFiltro} aria-label="Bairro do endereço">
+          <option value="">Qualquer bairro (endereço)</option>
+          {opcoes.ok && opcoes.dados.bairros.map((b) => <option value={b.id} selected={b.id === filtro.bairroId}>{b.nome}</option>)}
+        </select>
+        <label class="flex items-center gap-2 text-sm font-bold text-azul-900">
+          <input type="checkbox" name="fundador" value="1" checked={filtro.fundador} /> Só Fundadores
+        </label>
+        <div class="flex gap-2">
+          <button type="submit" class={classesBotao("contorno", "p")}>Aplicar</button>
+          {filtrosAtivos > 0 && <a href={`/admin/anunciantes?aba=${filtro.aba}`} class={classesBotao("fantasma", "p")}>Limpar</a>}
+        </div>
+      </div>
+      <p class="mt-2 text-xs text-slate-500">O filtro de bairro usa o bairro do endereço, que só os comércios têm.</p>
+    </details>
+  </form>
+
+  <p class="mt-4 text-sm text-slate-600">{total.toLocaleString("pt-BR")} anunciante(s)</p>
+
+  {linhas.length === 0 && !erro && <p class="mt-2 rounded-2xl bg-white p-6 text-center text-slate-500 ring-1 ring-black/5">Nenhum anunciante aqui.</p>}
+
+  <ul class="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+    {
+      linhas.map((a) => (
+        <li>
+          <a href={`/admin/anunciantes/${a.id}`} class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 hover:bg-azul-50">
+            <span class="min-w-0 flex-1">
+              <span class="block truncate font-bold text-azul-900">{a.nome}</span>
+              <span class="block truncate text-xs text-slate-500">
+                {a.tipo === "profissional" ? "Autônomo" : "Comércio"} · {a.categoria?.nome ?? "sem categoria"} · {a.plano?.nome ?? "sem plano"}
+                {a.origem === "receita" && " · Receita"}
+              </span>
+            </span>
+            {a.fundador && <span class={`${etiqueta} bg-amarelo-400 text-azul-900`}>Fundador</span>}
+            <span class={`${etiqueta} ${COR_SITUACAO[a.status]}`}>{ROTULO_SITUACAO[a.status]}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  {
+    paginas > 1 && (
+      <nav class="mt-4 flex items-center justify-between text-sm" aria-label="Páginas">
+        {filtro.pagina > 1 ? (
+          <a href={`${link({})}${link({}).includes("?") ? "&" : "?"}pagina=${filtro.pagina - 1}`} class={classesBotao("contorno", "p")}>Anterior</a>
+        ) : (
+          <span />
+        )}
+        <span class="text-slate-600">Página {filtro.pagina} de {paginas}</span>
+        {filtro.pagina < paginas ? (
+          <a href={`${link({})}${link({}).includes("?") ? "&" : "?"}pagina=${filtro.pagina + 1}`} class={classesBotao("contorno", "p")}>Próxima</a>
+        ) : (
+          <span />
+        )}
+      </nav>
+    )
+  }
+</PaginaAdmin>

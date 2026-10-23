@@ -1,0 +1,41 @@
+---
+// Cadastro assistido pela equipe (item 4.6): o perfil nasce como rascunho. Na
+// tela do anunciante, a equipe envia o convite por e-mail; ele confere o
+// perfil, aceita os Termos e cria a senha, e só então o perfil vai para análise.
+import Aviso from "@/components/conta/Aviso.astro";
+import FormularioAnunciante from "@/components/admin/FormularioAnunciante.astro";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { VALORES_VAZIOS, lerFormulario, lerOpcoes, salvarAnunciante, valoresDoEnvio } from "@/lib/anunciantesAdmin";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+
+let valores = VALORES_VAZIOS;
+let erro = "";
+let erros: Record<string, string> = {};
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const dados = lerFormulario(form);
+  const resultado = dados.ok ? await salvarAnunciante(supabase, usuario.id, null, dados.dados, Astro.url.origin) : dados;
+  if (resultado.ok) return Astro.redirect(`/admin/anunciantes/${resultado.dados.id}?aviso=criado`, 303);
+  erro = resultado.erro.mensagem;
+  erros = resultado.erro.campos ?? {};
+  valores = valoresDoEnvio(form);
+  Astro.response.status = resultado.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const opcoes = await lerOpcoes(supabase);
+---
+
+<PaginaAdmin titulo="Cadastro assistido" descricao="Novo anunciante cadastrado pela equipe. Fica como rascunho até o anunciante aceitar o convite.">
+  <p class="mt-2 text-sm"><a href="/admin/anunciantes" class="font-bold text-azul-600 hover:underline">← Anunciantes</a></p>
+  {erro && <Aviso tipo="erro" class="mt-4">{erro}</Aviso>}
+  {
+    opcoes.ok ? (
+      <FormularioAnunciante opcoes={opcoes.dados} valores={valores} erros={erros} textoBotao="Salvar rascunho" />
+    ) : (
+      <Aviso tipo="erro" class="mt-4">{opcoes.erro.mensagem}</Aviso>
+    )
+  }
+</PaginaAdmin>
