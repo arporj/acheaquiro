@@ -1,7 +1,8 @@
 ---
-// Painel da administração (item 4.8): números da equipe e dos perfis e
-// atalhos. O middleware só deixa entrar o administrador com a segunda etapa
-// feita nesta sessão (aal2).
+// Painel da administração (item 4.8): primeiro o que está pendente (pedido
+// de 23/10/2026), depois os números da equipe e dos perfis. O middleware só
+// deixa entrar o administrador com a segunda etapa feita nesta sessão (aal2).
+// As contagens são feitas no banco (count), sem trazer as linhas.
 import { Icone, type NomeIcone } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
@@ -9,53 +10,108 @@ import { listarEquipe } from "@/lib/equipe";
 
 const supabase = Astro.locals.supabase!;
 
-const [equipe, anunciantes] = await Promise.all([listarEquipe(supabase), supabase.from("anunciantes").select("status")]);
-if (anunciantes.error) console.error("admin: contagem de anunciantes falhou", { codigo: anunciantes.error.code, mensagem: anunciantes.error.message });
+/** Conta as linhas que batem com todos os filtros (coluna = valor, ou coluna em uma lista de valores). */
+async function contar(tabela: string, filtros: Record<string, string | string[]>): Promise<number> {
+  let consulta = supabase.from(tabela).select("*", { count: "exact", head: true });
+  for (const [coluna, valor] of Object.entries(filtros)) consulta = Array.isArray(valor) ? consulta.in(coluna, valor) : consulta.eq(coluna, valor);
+  const { count, error } = await consulta;
+  if (error) console.error("admin: contagem falhou", { tabela, codigo: error.code, mensagem: error.message });
+  return count ?? 0;
+}
+
+const [equipe, pedidos, publicados, importados, emAnalise, emAndamento, bairrosPendentes] = await Promise.all([
+  listarEquipe(supabase),
+  contar("pedidos_perfil", { situacao: "aberto" }),
+  contar("anunciantes", { status: "publicado" }),
+  contar("anunciantes", { status: "publicado", origem: "receita" }),
+  contar("anunciantes", { status: "em_analise" }),
+  contar("anunciantes", { status: ["rascunho", "aguardando_anunciante"] }),
+  supabase.from("apelidos_bairro").select("comercios").is("bairro_id", null).eq("ignorar", false),
+]);
+if (bairrosPendentes.error) {
+  console.error("admin: bairros pendentes falhou", { codigo: bairrosPendentes.error.code, mensagem: bairrosPendentes.error.message });
+}
+const listaBairros = (bairrosPendentes.data ?? []) as { comercios: number }[];
+const comerciosParados = listaBairros.reduce((soma, b) => soma + b.comercios, 0);
 
 const membros = equipe.ok ? equipe.dados : [];
-const porStatus = new Map<string, number>();
-for (const { status } of (anunciantes.data ?? []) as { status: string }[]) porStatus.set(status, (porStatus.get(status) ?? 0) + 1);
+const convites = membros.filter((m) => !m.convite_aceito).length;
 
-const cartoes: { rotulo: string; valor: number; icone: NomeIcone; href?: string }[] = [
+interface Cartao {
+  rotulo: string;
+  valor: number;
+  icone: NomeIcone;
+  href?: string;
+  detalhe?: string;
+}
+
+const pendencias: Cartao[] = [
+  { rotulo: "Pedidos de perfil abertos", valor: pedidos, icone: "info", href: "/admin/pedidos" },
+  {
+    rotulo: "Bairros da importação pendentes",
+    valor: listaBairros.length,
+    icone: "pin",
+    href: "/admin/bairros-importacao",
+    detalhe: comerciosParados > 0 ? `${comerciosParados} comércios esperando para entrar` : undefined,
+  },
+  { rotulo: "Perfis em análise", valor: emAnalise, icone: "megafone" },
+  { rotulo: "Convites da equipe não aceitos", valor: convites, icone: "relogio", href: "/admin/equipe" },
+];
+const resumo: Cartao[] = [
+  { rotulo: "Perfis publicados", valor: publicados, icone: "megafone", detalhe: importados > 0 ? `${importados} vindos da Receita` : undefined },
+  { rotulo: "Cadastros em andamento", valor: emAndamento, icone: "etiqueta" },
   { rotulo: "Administradores ativos", valor: membros.filter((m) => m.papel === "administrador" && m.ativo).length, icone: "escudo", href: "/admin/equipe" },
   { rotulo: "Representantes ativos", valor: membros.filter((m) => m.papel === "representante" && m.ativo).length, icone: "usuarios", href: "/admin/equipe" },
-  { rotulo: "Convites pendentes", valor: membros.filter((m) => !m.convite_aceito).length, icone: "relogio", href: "/admin/equipe" },
-  { rotulo: "Perfis publicados", valor: porStatus.get("publicado") ?? 0, icone: "megafone" },
-  { rotulo: "Perfis em análise", valor: porStatus.get("em_analise") ?? 0, icone: "info" },
-  { rotulo: "Cadastros em andamento", valor: (porStatus.get("rascunho") ?? 0) + (porStatus.get("aguardando_anunciante") ?? 0), icone: "etiqueta" },
 ];
+const totalPendencias = pendencias.reduce((soma, c) => soma + c.valor, 0);
 ---
 
-<PaginaAdmin titulo="Painel" descricao="Resumo da equipe e dos perfis.">
+<PaginaAdmin titulo="Painel" descricao="O que está pendente e o resumo da equipe e dos perfis.">
   {!equipe.ok && <Aviso tipo="erro">{equipe.erro.mensagem}</Aviso>}
-  <ul class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-    {
-      cartoes.map((c) => {
-        const conteudo = (
-          <>
-            <span class="grid size-11 place-items-center rounded-2xl bg-azul-50 text-azul-600">
-              <Icone nome={c.icone} class="size-5" />
-            </span>
-            <span>
-              <span class="block font-display text-3xl leading-none font-extrabold text-azul-900">{c.valor}</span>
-              <span class="text-sm font-semibold text-slate-600">{c.rotulo}</span>
-            </span>
-          </>
-        );
-        return (
-          <li>
-            {c.href ? (
-              <a href={c.href} class="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 hover:ring-azul-200">
-                {conteudo}
-              </a>
-            ) : (
-              <div class="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">{conteudo}</div>
-            )}
-          </li>
-        );
-      })
-    }
-  </ul>
+
+  {
+    [
+      { titulo: "Pendências", cartoes: pendencias, destaque: true },
+      { titulo: "Resumo", cartoes: resumo, destaque: false },
+    ].map((secao) => (
+      <section class="mt-6">
+        <h2 class="font-display text-xl font-bold text-azul-900">
+          {secao.titulo}
+          {secao.destaque && totalPendencias === 0 && <span class="ml-2 text-sm font-semibold text-zap-700">nada pendente</span>}
+        </h2>
+        <ul class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {secao.cartoes.map((c) => {
+            const alerta = secao.destaque && c.valor > 0;
+            const conteudo = (
+              <>
+                <span class:list={["grid size-11 shrink-0 place-items-center rounded-2xl", alerta ? "bg-vermelho-600 text-white" : "bg-azul-50 text-azul-600"]}>
+                  <Icone nome={c.icone} class="size-5" />
+                </span>
+                <span>
+                  <span class:list={["block font-display text-3xl leading-none font-extrabold", alerta ? "text-vermelho-700" : "text-azul-900"]}>{c.valor}</span>
+                  <span class="text-sm font-semibold text-slate-600">{c.rotulo}</span>
+                  {c.detalhe && <span class="block text-xs text-slate-500">{c.detalhe}</span>}
+                </span>
+              </>
+            );
+            const classes = ["flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1", alerta ? "ring-vermelho-200" : "ring-black/5"];
+            return (
+              <li>
+                {c.href ? (
+                  <a href={c.href} class:list={[...classes, "hover:ring-azul-300"]}>
+                    {conteudo}
+                  </a>
+                ) : (
+                  <div class:list={classes}>{conteudo}</div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    ))
+  }
+
   <p class="mt-6 text-sm text-slate-600">
     As seções marcadas como "em breve" no menu entram nas próximas fases: anunciantes e cadastro assistido até 08/11; catálogo,
     pagamentos, denúncias e agenda até a abertura.

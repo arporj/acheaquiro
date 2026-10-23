@@ -181,10 +181,21 @@ export interface CnaeAdmin {
   categoria_id: string | null;
 }
 
+/** O Supabase devolve no máximo 1.000 linhas por consulta: a lista vem em páginas. */
+const LINHAS_POR_PAGINA = 1000;
+
 export async function listarCnaes(supabase: SupabaseClient): Promise<Resultado<CnaeAdmin[]>> {
-  const { data, error } = await supabase.from("cnae_categoria").select("cnae, descricao, categoria_id").order("cnae");
-  if (error) return mensagemDoBanco(error, "listarCnaes");
-  return { ok: true, dados: data as CnaeAdmin[] };
+  const todos: CnaeAdmin[] = [];
+  for (let inicio = 0; ; inicio += LINHAS_POR_PAGINA) {
+    const { data, error } = await supabase
+      .from("cnae_categoria")
+      .select("cnae, descricao, categoria_id")
+      .order("cnae")
+      .range(inicio, inicio + LINHAS_POR_PAGINA - 1);
+    if (error) return mensagemDoBanco(error, "listarCnaes");
+    todos.push(...(data as CnaeAdmin[]));
+    if (data.length < LINHAS_POR_PAGINA) return { ok: true, dados: todos };
+  }
 }
 
 export async function listarCategoriasAdmin(supabase: SupabaseClient): Promise<Resultado<{ id: string; nome: string; grupo: string }[]>> {
@@ -220,12 +231,14 @@ export interface ApelidoBairro {
   bairro_id: string | null;
   ignorar: boolean;
   comercios: number;
+  /** Até 50 comércios que vieram com este nome, para decidir que bairro é. */
+  exemplos: { nome: string; endereco: string; cep: string }[];
 }
 
 export async function listarApelidos(supabase: SupabaseClient): Promise<Resultado<ApelidoBairro[]>> {
   const { data, error } = await supabase
     .from("apelidos_bairro")
-    .select("nome_receita, bairro_id, ignorar, comercios")
+    .select("nome_receita, bairro_id, ignorar, comercios, exemplos")
     .order("comercios", { ascending: false })
     .order("nome_receita");
   if (error) return mensagemDoBanco(error, "listarApelidos");

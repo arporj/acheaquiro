@@ -116,7 +116,25 @@ const ABAS = [
               {pendentes.map((a) => (
                 <tr>
                   <td class={`${celula} font-bold text-azul-900`}>{a.nome_receita}</td>
-                  <td class={celula}>{a.comercios}</td>
+                  <td class={celula}>
+                    {a.exemplos.length > 0 ? (
+                      <details>
+                        <summary class="cursor-pointer font-bold whitespace-nowrap text-azul-600">{a.comercios} {a.comercios === 1 ? "comércio" : "comércios"}</summary>
+                        <ul class="mt-2 min-w-72 space-y-1.5 text-xs">
+                          {a.exemplos.map((ex) => (
+                            <li>
+                              <strong>{ex.nome}</strong>
+                              <br />
+                              {ex.endereco} · CEP {ex.cep.replace(/^(\d{5})(\d{3})$/, "$1-$2")}
+                            </li>
+                          ))}
+                          {a.comercios > a.exemplos.length && <li class="text-slate-500">e mais {a.comercios - a.exemplos.length}</li>}
+                        </ul>
+                      </details>
+                    ) : (
+                      a.comercios
+                    )}
+                  </td>
                   <td class={celula}>
                     <form method="post" class="flex min-w-64 gap-2">
                       <input type="hidden" name="acao" value="ligado" />

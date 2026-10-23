@@ -99,6 +99,17 @@ function telefone(ddd, numero) {
   return t.length >= 10 && t.length <= 11 ? t : null;
 }
 
+/** O Supabase devolve no máximo 1.000 linhas por consulta: lê todas as páginas. */
+async function lerTudo(montarConsulta) {
+  const linhas = [];
+  for (let inicio = 0; ; inicio += 1000) {
+    const { data, error } = await montarConsulta().range(inicio, inicio + 999);
+    if (error) throw error;
+    linhas.push(...data);
+    if (data.length < 1000) return linhas;
+  }
+}
+
 async function carregarCatalogo() {
   const { data: cidade, error: e1 } = await banco.from("cidades").select("id").eq("slug", CIDADE_SLUG).single();
   if (e1) throw e1;
@@ -147,8 +158,7 @@ async function etapaMapa() {
     usados.add(e[11]);
     for (const s of e[12].split(",").filter(Boolean)) usados.add(s);
   }
-  const { data: existentes, error } = await banco.from("cnae_categoria").select("cnae").eq("cidade_id", cidadeId);
-  if (error) throw error;
+  const existentes = await lerTudo(() => banco.from("cnae_categoria").select("cnae").eq("cidade_id", cidadeId).order("cnae"));
   const jaGravados = new Set(existentes.map((r) => r.cnae));
 
   const novos = [];
@@ -180,8 +190,7 @@ async function etapaPreparar() {
   const { data: bloqueados, error: eBloqueados } = await banco.from("cnpjs_bloqueados").select("cnpj").eq("cidade_id", cidadeId);
   if (eBloqueados) throw eBloqueados;
   const cnpjsBloqueados = new Set(bloqueados.map((b) => b.cnpj));
-  const { data: mapa, error } = await banco.from("cnae_categoria").select("cnae, categoria_id").eq("cidade_id", cidadeId);
-  if (error) throw error;
+  const mapa = await lerTudo(() => banco.from("cnae_categoria").select("cnae, categoria_id").eq("cidade_id", cidadeId).order("cnae"));
   const categoriaDoMapa = new Map(mapa.map((m) => [m.cnae, m.categoria_id]));
 
   const empresas = new Map(lerLinhas("empresas").map((e) => [e[0], { razao: e[1], natureza: e[2] }]));
@@ -221,7 +230,8 @@ async function etapaPreparar() {
     const cnpj = `${basico}${e[1]}${e[2]}`;
     if (!bairroId) {
       contagem.sem_bairro++;
-      semBairro.push([bairroReceita, cnpj, nome]);
+      const numeroSemBairro = normalizarEspacos(e[15]);
+      semBairro.push({ bairro: bairroReceita, nome, endereco: nomeBonito(`${e[13]} ${e[14]}${numeroSemBairro ? `, ${numeroSemBairro}` : ""}`), cep: e[18] });
       continue;
     }
 
@@ -260,20 +270,23 @@ async function etapaPreparar() {
   contagem.prontos = comercios.length;
 
   gravarJson("comercios.json", comercios);
-  // Bairros sem correspondência vão para a fila da administração, com o número de comércios.
+  // Bairros sem correspondência vão para a fila da administração, com o número de
+  // comércios e até 50 deles (nome, endereço e CEP), para a equipe decidir que bairro é.
   const porBairro = new Map();
-  for (const [b] of semBairro) {
-    const chave = normalizar(b).slice(0, 100) || "(vazio)";
-    porBairro.set(chave, (porBairro.get(chave) ?? 0) + 1);
+  for (const item of semBairro) {
+    const chave = normalizar(item.bairro).slice(0, 100) || "(vazio)";
+    const lista = porBairro.get(chave) ?? [];
+    lista.push({ nome: item.nome, endereco: item.endereco, cep: item.cep });
+    porBairro.set(chave, lista);
   }
   const pendentes = [...porBairro]
     .filter(([nome]) => !apelidos.get(nome)?.ignorar)
-    .map(([nome_receita, comercios]) => ({ cidade_id: cidadeId, nome_receita, comercios }));
+    .map(([nome_receita, lista]) => ({ cidade_id: cidadeId, nome_receita, comercios: lista.length, exemplos: lista.slice(0, 50) }));
   if (pendentes.length > 0) {
     const { error: ePendentes } = await banco.from("apelidos_bairro").upsert(pendentes, { onConflict: "cidade_id,nome_receita" });
     if (ePendentes) throw ePendentes;
   }
-  gravarCsv("bairros_sem_correspondencia.csv", [["bairro_na_receita", "comercios"], ...[...porBairro].sort((a, b) => b[1] - a[1])]);
+  gravarCsv("bairros_sem_correspondencia.csv", [["bairro_na_receita", "comercios"], ...[...porBairro].map(([b, l]) => [b, l.length]).sort((a, b) => b[1] - a[1])]);
   const porCategoria = new Map();
   for (const c of comercios) {
     const s = slugPorCategoria.get(c.categoria_id);
@@ -338,11 +351,9 @@ async function etapaEnviar() {
   const { data: plano, error: ePlano } = await banco.from("planos").select("id").eq("cidade_id", cidadeId).eq("codigo", "com-gratuito").single();
   if (ePlano) throw ePlano;
 
-  const { data: jaImportados, error: eJa } = await banco.from("dados_receita").select("cnpj");
-  if (eJa) throw eJa;
+  const jaImportados = await lerTudo(() => banco.from("dados_receita").select("cnpj").order("cnpj"));
   const cnpjsNoBanco = new Set(jaImportados.map((r) => r.cnpj));
-  const { data: slugsExistentes, error: eSlugs } = await banco.from("anunciantes").select("slug").eq("cidade_id", cidadeId);
-  if (eSlugs) throw eSlugs;
+  const slugsExistentes = await lerTudo(() => banco.from("anunciantes").select("slug").eq("cidade_id", cidadeId).order("slug"));
   const slugsNoBanco = new Set(slugsExistentes.map((r) => r.slug));
 
   const agora = new Date().toISOString();
