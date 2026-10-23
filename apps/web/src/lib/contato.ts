@@ -15,8 +15,22 @@ export function linkTelefone(numero: string): string {
   return `tel:+${numero}`;
 }
 
-export function linkComoChegar(latitude: number, longitude: number): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+/**
+ * Rota no Google Maps: pela coordenada, quando o endereço já foi localizado no
+ * mapa; senão, pelo endereço escrito (comércio importado da Receita).
+ */
+export function linkComoChegar(destino: { latitude?: number; longitude?: number; endereco: string }): string {
+  const ponto =
+    destino.latitude !== undefined && destino.longitude !== undefined
+      ? `${destino.latitude},${destino.longitude}`
+      : encodeURIComponent(destino.endereco);
+  return `https://www.google.com/maps/dir/?api=1&destination=${ponto}`;
+}
+
+/** Endereço escrito para a rota, com a cidade (o Google acha a rua certa). */
+export function enderecoParaRota(endereco: { logradouro: string; numero: string }, bairro: string): string {
+  const numero = endereco.numero === "S/N" ? "" : `, ${endereco.numero}`;
+  return `${endereco.logradouro}${numero} - ${bairro}, Rio das Ostras - RJ`;
 }
 
 export function formatarTelefone(numero: string): string {
@@ -31,13 +45,17 @@ export function formatarPreco(valor: number): string {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-/** Links dos botões de contato do perfil (cartão no computador e barra no celular). */
-export function linksContato(anunciante: Anunciante) {
-  const endereco = anunciante.tipo === "comercio" ? anunciante.enderecos[0] : undefined;
+/**
+ * Links dos botões de contato do perfil (cartão no computador e barra no
+ * celular). Sem WhatsApp nem telefone (comércio importado da Receita), só a rota.
+ */
+export function linksContato(anunciante: Anunciante, comoChegar?: string) {
+  const numero = anunciante.telefone ?? anunciante.whatsapp;
   return {
-    orcamento: linkWhatsApp(anunciante.whatsapp, MENSAGEM_ORCAMENTO),
-    mensagem: linkWhatsApp(anunciante.whatsapp, MENSAGEM_INFORMACAO),
-    telefone: linkTelefone(anunciante.telefone ?? anunciante.whatsapp),
-    comoChegar: endereco && linkComoChegar(endereco.latitude, endereco.longitude),
+    orcamento: anunciante.whatsapp && linkWhatsApp(anunciante.whatsapp, MENSAGEM_ORCAMENTO),
+    mensagem: anunciante.whatsapp && linkWhatsApp(anunciante.whatsapp, MENSAGEM_INFORMACAO),
+    telefone: numero && linkTelefone(numero),
+    numero,
+    comoChegar,
   };
 }

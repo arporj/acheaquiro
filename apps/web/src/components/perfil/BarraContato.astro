@@ -1,15 +1,17 @@
 ---
-// Barra fixa de contato no rodapé da tela, no celular.
+// Barra fixa de contato no rodapé da tela, no celular. Sem WhatsApp nem
+// telefone (comércio importado), fica só a rota.
 import { Icone, classesBotao } from "@acheaqui/ui";
 import type { Anunciante } from "@acheaqui/types";
 import { linksContato } from "@/lib/contato";
 
 interface Props {
   anunciante: Anunciante;
+  comoChegar?: string;
 }
 
-const { anunciante } = Astro.props;
-const l = linksContato(anunciante);
+const { anunciante, comoChegar } = Astro.props;
+const l = linksContato(anunciante, comoChegar);
 const icone = "grid size-12 shrink-0 place-items-center rounded-full border-2 border-azul-100 bg-white text-azul-700";
 ---
 
@@ -17,28 +19,46 @@ const icone = "grid size-12 shrink-0 place-items-center rounded-full border-2 bo
   class="barra-contato fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.25)] backdrop-blur lg:hidden"
 >
   <div class="mx-auto flex max-w-xl items-center gap-2">
-    <a href={l.orcamento} target="_blank" rel="noopener noreferrer" class={classesBotao("zap", "g", "flex-1 px-3")}>
-      <Icone nome="mensagem" class="size-5" />
-      Pedir orçamento
-    </a>
-    <a
-      href={l.mensagem}
-      target="_blank"
-      rel="noopener noreferrer"
-      class={`${icone} border-zap-600 text-zap-700`}
-      aria-label="Enviar mensagem pelo WhatsApp"
-    >
-      <Icone nome="mensagem" class="size-5" />
-    </a>
-    <a href={l.telefone} class={icone} aria-label="Ligar">
-      <Icone nome="telefone" class="size-5" />
-    </a>
     {
-      l.comoChegar && (
-        <a href={l.comoChegar} target="_blank" rel="noopener noreferrer" class={icone} aria-label="Como chegar">
-          <Icone nome="rota" class="size-5" />
+      l.orcamento && (
+        <a href={l.orcamento} target="_blank" rel="noopener noreferrer" class={classesBotao("zap", "g", "flex-1 px-3")}>
+          <Icone nome="mensagem" class="size-5" />
+          Pedir orçamento
         </a>
       )
+    }
+    {
+      l.mensagem && (
+        <a
+          href={l.mensagem}
+          target="_blank"
+          rel="noopener noreferrer"
+          class={`${icone} border-zap-600 text-zap-700`}
+          aria-label="Enviar mensagem pelo WhatsApp"
+        >
+          <Icone nome="mensagem" class="size-5" />
+        </a>
+      )
+    }
+    {
+      l.telefone && (
+        <a href={l.telefone} class={icone} aria-label="Ligar">
+          <Icone nome="telefone" class="size-5" />
+        </a>
+      )
+    }
+    {
+      l.comoChegar &&
+        (l.orcamento || l.telefone ? (
+          <a href={l.comoChegar} target="_blank" rel="noopener noreferrer" class={icone} aria-label="Como chegar">
+            <Icone nome="rota" class="size-5" />
+          </a>
+        ) : (
+          <a href={l.comoChegar} target="_blank" rel="noopener noreferrer" class={classesBotao("azul", "g", "flex-1 px-3")}>
+            <Icone nome="rota" class="size-5" />
+            Como chegar
+          </a>
+        ))
     }
   </div>
 </div>

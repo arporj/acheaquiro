@@ -61,19 +61,34 @@ const perfil = `/perfil/${item.slug}`;
     </div>
   </a>
   <div class="mt-3 flex gap-2">
-    <a
-      href={linkWhatsApp(item.whatsapp, MENSAGEM_ORCAMENTO)}
-      target="_blank"
-      rel="noopener noreferrer"
-      class={classesBotao("zap", "m", "flex-1")}
-    >
-      <Icone nome="mensagem" class="size-5" />
-      WhatsApp
-    </a>
-    <a href={linkTelefone(item.telefone ?? item.whatsapp)} class={classesBotao("contorno", "m", "px-4")}>
-      <Icone nome="telefone" class="size-4" />
-      Ligar
-    </a>
+    {
+      item.whatsapp ? (
+        <a
+          href={linkWhatsApp(item.whatsapp, MENSAGEM_ORCAMENTO)}
+          target="_blank"
+          rel="noopener noreferrer"
+          class={classesBotao("zap", "m", "flex-1")}
+        >
+          <Icone nome="mensagem" class="size-5" />
+          WhatsApp
+        </a>
+      ) : (
+        item.comoChegar && (
+          <a href={item.comoChegar} target="_blank" rel="noopener noreferrer" class={classesBotao("contorno", "m", "flex-1")}>
+            <Icone nome="rota" class="size-4" />
+            Como chegar
+          </a>
+        )
+      )
+    }
+    {
+      (item.telefone ?? item.whatsapp) && (
+        <a href={linkTelefone(item.telefone ?? item.whatsapp ?? "")} class={classesBotao("contorno", "m", "px-4")}>
+          <Icone nome="telefone" class="size-4" />
+          Ligar
+        </a>
+      )
+    }
     <BotaoCompartilhar caminho={perfil} titulo={item.nome} />
   </div>
 </article>

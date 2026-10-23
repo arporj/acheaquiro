@@ -3,6 +3,8 @@ import type { HorarioDia } from "@acheaqui/types";
 
 interface Props {
   horario: HorarioDia[];
+  /** Sem WhatsApp nem telefone (comércio importado), não há com quem combinar. */
+  semContato?: boolean;
 }
 
 const nomesDias = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -12,7 +14,7 @@ function vinteEQuatroHoras(dia: HorarioDia) {
   return dia.intervalos.length === 1 && dia.intervalos[0].abre === "00:00" && dia.intervalos[0].fecha === "23:59";
 }
 
-const { horario } = Astro.props;
+const { horario, semContato = false } = Astro.props;
 const semHorario = horario.length === 0 || horario.every((d) => d.intervalos.length === 0);
 const dias = ordemDias.map((numero) => ({
   nome: nomesDias[numero],
@@ -22,7 +24,11 @@ const dias = ordemDias.map((numero) => ({
 
 {
   semHorario ? (
-    <p class="text-slate-600">Horário a combinar pelo WhatsApp.</p>
+    semContato ? (
+      <p class="text-slate-400 italic">não informado</p>
+    ) : (
+      <p class="text-slate-600">Horário a combinar pelo WhatsApp.</p>
+    )
   ) : horario.every(vinteEQuatroHoras) ? (
     <p class="font-bold text-zap-700">Atende 24 horas, todos os dias.</p>
   ) : (

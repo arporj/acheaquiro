@@ -5,8 +5,17 @@
 // página "em breve" não acessa o banco: usa as regras de src/mocks/planos.ts.
 import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, CotaPatrocinioVenda, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
 import { dadosPublicosDoArtista, novaVagaAPartirDe, somarDias } from "@acheaqui/domain";
-import { criarClientePublico, lerCatalogoPublico, lerPatrocinioPublico, registrarCliquePatrocinio } from "@acheaqui/supabase-client";
+import {
+  criarClientePublico,
+  lerAnunciantePublico,
+  lerAnunciantesPublicos,
+  lerCatalogoPublico,
+  lerPatrocinioPublico,
+  registrarCliquePatrocinio,
+  type FiltroAnunciantes,
+} from "@acheaqui/supabase-client";
 import { ENDERECO_ARQUIVOS } from "@/lib/arquivos";
+import { enderecoParaRota, linkComoChegar } from "@/lib/contato";
 import { ambiente } from "@/lib/ambiente";
 import { normalizar } from "@/lib/texto";
 import { anunciantes as anunciantesFicticios } from "@/mocks/anunciantes";
@@ -35,6 +44,25 @@ const catalogoFicticio: CatalogoPublico = {
 };
 
 const anunciantes: Anunciante[] = ficticio ? anunciantesFicticios : [];
+
+function clientePublico() {
+  return criarClientePublico({
+    url: import.meta.env.PUBLIC_SUPABASE_URL ?? "",
+    chavePublica: import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? "",
+  });
+}
+
+/**
+ * Anunciantes de uma lista: na produção, do banco (decisão de 23/10/2026);
+ * no site de apresentação, os fictícios, filtrados aqui. Sem os dados não há
+ * lista para montar: o erro vira a página de erro, e o cache continua
+ * entregando a última versão boa.
+ */
+async function anunciantesDoBanco(filtro: FiltroAnunciantes): Promise<Anunciante[]> {
+  const resultado = await lerAnunciantesPublicos(clientePublico(), CIDADE, filtro, ENDERECO_ARQUIVOS);
+  if (!resultado.ok) throw new Error(`Anunciantes indisponíveis: ${resultado.erro.codigo}`);
+  return resultado.dados;
+}
 
 /**
  * Uma página refeita chama várias consultas, e as páginas ficam 5 minutos no
@@ -86,8 +114,10 @@ export interface ItemResultado {
   local: string;
   bairroIds: string[];
   todaCidade: boolean;
-  whatsapp: string;
+  whatsapp?: string;
   telefone?: string;
+  /** Rota até o endereço principal (comércio). */
+  comoChegar?: string;
   abertoAgora?: boolean;
   distanciaKm?: number;
 }
@@ -155,7 +185,10 @@ export async function obterRegrasCobranca(): Promise<RegrasCobranca> {
 }
 
 export async function anunciantePorSlug(slug: string): Promise<Anunciante | undefined> {
-  return anunciantes.find((a) => a.slug === slug);
+  if (!catalogoDoBanco) return anunciantes.find((a) => a.slug === slug);
+  const resultado = await lerAnunciantePublico(clientePublico(), CIDADE, slug, ENDERECO_ARQUIVOS);
+  if (!resultado.ok) throw new Error(`Anunciante indisponível: ${resultado.erro.codigo}`);
+  return resultado.dados;
 }
 
 /** SIMULAÇÃO: no sistema real, "aberto agora" sai do horário e a distância, da localização. */
@@ -193,6 +226,7 @@ function paraItem(c: CatalogoPublico, anunciante: Anunciante, destacado = false)
 
   const [principal] = anunciante.enderecos;
   const outras = anunciante.enderecos.length - 1;
+  if (!principal) return { ...base, local: "", bairroIds: [], todaCidade: false };
   const simulacao = ficticio ? simulacaoComercios[anunciante.id] : undefined;
   return {
     ...base,
@@ -201,6 +235,11 @@ function paraItem(c: CatalogoPublico, anunciante: Anunciante, destacado = false)
       (outras > 0 ? ` (+${outras} ${outras === 1 ? "loja" : "lojas"})` : ""),
     bairroIds: anunciante.enderecos.map((e) => e.bairroId),
     todaCidade: false,
+    comoChegar: linkComoChegar({
+      latitude: principal.latitude,
+      longitude: principal.longitude,
+      endereco: enderecoParaRota(principal, nomeBairroEm(c, principal.bairroId)),
+    }),
     abertoAgora: simulacao?.abertoAgora,
     distanciaKm: simulacao?.distanciaKm,
   };
@@ -226,10 +265,12 @@ function ordenarSimulado(c: CatalogoPublico, itens: { anunciante: Anunciante; de
 export async function buscarPorCategoria(categoriaId: string): Promise<ItemResultado[]> {
   const c = await catalogo();
   const destacados = ficticio ? linksDestacados : [];
+  const daCategoria = catalogoDoBanco
+    ? await anunciantesDoBanco({ categorias: [categoriaId] })
+    : anunciantes.filter((a) => a.categoriaId === categoriaId || a.categoriasAdicionais.includes(categoriaId));
   const encontrados = ordenarSimulado(
     c,
-    anunciantes
-      .filter((a) => a.categoriaId === categoriaId || a.categoriasAdicionais.includes(categoriaId))
+    daCategoria
       .map((anunciante) => ({
         anunciante,
         destacado: destacados.some((l) => l.anuncianteId === anunciante.id && l.categoriaId === categoriaId),
@@ -243,7 +284,8 @@ export async function buscarPorTexto(termo: string): Promise<{ categorias: Categ
   const c = await catalogo();
   const busca = normalizar(termo);
   if (!busca) {
-    const todos = anunciantes.map((anunciante) => ({ anunciante, destacado: false }));
+    const lista = catalogoDoBanco ? await anunciantesDoBanco({}) : anunciantes;
+    const todos = lista.map((anunciante) => ({ anunciante, destacado: false }));
     return { categorias: [], resultados: ordenarSimulado(c, todos).map((r) => paraItem(c, r.anunciante)) };
   }
 
@@ -252,7 +294,8 @@ export async function buscarPorTexto(termo: string): Promise<{ categorias: Categ
   );
   const idsCategorias = new Set(categoriasEncontradas.map((categoria) => categoria.id));
 
-  const encontrados = anunciantes
+  const candidatos = catalogoDoBanco ? await anunciantesDoBanco({ categorias: [...idsCategorias], termo }) : anunciantes;
+  const encontrados = candidatos
     .filter(
       (a) =>
         idsCategorias.has(a.categoriaId) ||
@@ -274,7 +317,8 @@ export async function destaqueExclusivo(): Promise<{ item: ItemResultado; anunci
 /** Vitrine dos Fundadores (item 4.16), em ordem alfabética. */
 export async function listarFundadores(): Promise<ItemResultado[]> {
   const c = await catalogo();
-  return anunciantes
+  const lista = catalogoDoBanco ? await anunciantesDoBanco({ soFundadores: true }) : anunciantes;
+  return lista
     .filter((a) => a.fundador)
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
     .map((a) => paraItem(c, a));

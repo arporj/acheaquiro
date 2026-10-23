@@ -7,13 +7,14 @@ import BotaoCompartilhar from "@/components/BotaoCompartilhar.astro";
 import BarraContato from "@/components/perfil/BarraContato.astro";
 import BotaoDenunciar from "@/components/perfil/BotaoDenunciar.astro";
 import CartaoContato from "@/components/perfil/CartaoContato.astro";
+import ContatoNaoInformado from "@/components/perfil/ContatoNaoInformado.astro";
 import Galeria from "@/components/perfil/Galeria.astro";
 import Horario from "@/components/perfil/Horario.astro";
 import Secao from "@/components/perfil/Secao.astro";
 import { agendaDosMeses, anunciantePorSlug, mesesNaPagina, listarBairros, listarCategorias, planoPorId, situacaoComercio } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
-import { formatarPreco, linkComoChegar } from "@/lib/contato";
+import { enderecoParaRota, formatarPreco, linkComoChegar } from "@/lib/contato";
 
 const anunciante = await anunciantePorSlug(Astro.params.slug ?? "");
 if (!anunciante) return Astro.rewrite("/404");
@@ -43,6 +44,13 @@ const local =
       ? "Atende toda a cidade"
       : `Atende: ${anunciante.bairrosAtendidos.map(nomeBairro).join(", ")}`
     : anunciante.enderecos.map((e) => `${e.logradouro}, ${e.numero} · ${nomeBairro(e.bairroId)}`).join("  |  ");
+const rota = (e: { logradouro: string; numero: string; bairroId: string; latitude?: number; longitude?: number }) =>
+  linkComoChegar({ latitude: e.latitude, longitude: e.longitude, endereco: enderecoParaRota(e, nomeBairro(e.bairroId)) });
+const comoChegar = anunciante.tipo === "comercio" && anunciante.enderecos[0] ? rota(anunciante.enderecos[0]) : undefined;
+// Comércio importado da Receita: nenhum contato publicado ainda.
+const semContato = !anunciante.whatsapp && !anunciante.telefone;
+const semPagamentoNemRedes =
+  anunciante.formasPagamento.length === 0 && !anunciante.instagram && !(anunciante.tipo === "comercio" && anunciante.siteProprio);
 const fundoMapa =
   "background-image: linear-gradient(90deg, #fff 0 6px, transparent 6px), linear-gradient(0deg, #fff 0 6px, transparent 6px), linear-gradient(35deg, transparent 48%, #fde68a 48% 52%, transparent 52%); background-size: 70px 70px, 90px 90px, 100% 100%";
 ---
@@ -62,7 +70,12 @@ const fundoMapa =
       <span class="text-tinta">{anunciante.nome}</span>
     </nav>
 
-    <div class="mt-3 grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div
+      class:list={[
+        "mt-3 grid grid-cols-[minmax(0,1fr)] items-start gap-5",
+        semContato ? "mx-auto max-w-3xl" : "lg:grid-cols-[minmax(0,1fr)_340px]",
+      ]}
+    >
       <div class="space-y-4">
         <section class="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5">
           <FotoMarcador
@@ -127,9 +140,21 @@ const fundoMapa =
           </div>
         </section>
 
-        <Secao titulo="Sobre">
-          <p class="leading-relaxed text-slate-700">{anunciante.descricao}</p>
-        </Secao>
+        {
+          semContato && (
+            <Secao titulo="Contato">
+              <ContatoNaoInformado />
+            </Secao>
+          )
+        }
+
+        {
+          anunciante.descricao && (
+            <Secao titulo="Sobre">
+              <p class="leading-relaxed text-slate-700">{anunciante.descricao}</p>
+            </Secao>
+          )
+        }
 
         {
           agenda.length > 0 && (
@@ -221,7 +246,7 @@ const fundoMapa =
                         {endereco.logradouro}, {endereco.numero} · {nomeBairro(endereco.bairroId)}
                       </p>
                       <a
-                        href={linkComoChegar(endereco.latitude, endereco.longitude)}
+                        href={rota(endereco)}
                         target="_blank"
                         rel="noopener noreferrer"
                         class="inline-flex items-center gap-1 text-sm font-extrabold text-azul-600 hover:underline"
@@ -250,9 +275,10 @@ const fundoMapa =
 
         <div class="grid gap-4 sm:grid-cols-2">
           <Secao titulo={anunciante.tipo === "comercio" ? "Horário de funcionamento" : "Horário de atendimento"}>
-            <Horario horario={anunciante.horario} />
+            <Horario horario={anunciante.horario} semContato={semContato} />
           </Secao>
           <Secao titulo="Pagamento e redes">
+            {semPagamentoNemRedes && <p class="text-slate-400 italic">não informado</p>}
             <ul class="flex flex-wrap gap-1.5">
               {
                 anunciante.formasPagamento.map((forma) => (
@@ -292,10 +318,14 @@ const fundoMapa =
         </div>
       </div>
 
-      <aside class="hidden lg:sticky lg:top-4 lg:block">
-        <CartaoContato anunciante={anunciante} />
-      </aside>
+      {
+        !semContato && (
+          <aside class="hidden lg:sticky lg:top-4 lg:block">
+            <CartaoContato anunciante={anunciante} comoChegar={comoChegar} />
+          </aside>
+        )
+      }
     </div>
   </main>
-  <BarraContato anunciante={anunciante} />
+  <BarraContato anunciante={anunciante} comoChegar={comoChegar} />
 </Layout>

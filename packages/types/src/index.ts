@@ -132,8 +132,9 @@ export interface Endereco {
   numero: string;
   complemento?: string;
   bairroId: string;
-  latitude: number;
-  longitude: number;
+  /** Vazio quando o endereço ainda não foi localizado no mapa. */
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Encarte {
@@ -153,6 +154,8 @@ export interface Produto {
 
 interface AnuncianteBase {
   id: string;
+  /** "receita": importado dos dados abertos do CNPJ (decisão de 22/10/2026). */
+  origem?: "cadastro" | "receita";
   slug: string;
   cidadeId: string;
   nome: string;
@@ -161,7 +164,8 @@ interface AnuncianteBase {
   planoId: string;
   fundador: boolean;
   descricao: string;
-  whatsapp: string;
+  /** Vazio no comércio importado da Receita, que ainda não informou contato. */
+  whatsapp?: string;
   telefone?: string;
   fotoPerfil: Foto;
   galeria: Foto[];
