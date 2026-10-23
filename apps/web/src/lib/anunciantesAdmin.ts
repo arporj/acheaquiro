@@ -4,8 +4,8 @@
 // registrar quem fez; a chave de serviço entra só no convite, que o Supabase
 // Auth exige. "Recusar" volta o cadastro para rascunho com o motivo (a
 // exclusão do cadastro é outra ação, pela LGPD).
-import { limiteEfetivo } from "@acheaqui/domain";
-import type { Resultado } from "@acheaqui/types";
+import { calcularCobrancaPlano, limiteEfetivo, percentualFundadorNoAno } from "@acheaqui/domain";
+import type { DegrauDescontoFundador, Resultado } from "@acheaqui/types";
 import {
   esquemaCadastroAssistido,
   esquemaMotivo,
@@ -170,6 +170,8 @@ export interface PlanoOpcao {
   tipo: "profissional" | "comercio";
   valor_mensal_centavos: number;
   limite_categorias_adicionais: number;
+  /** Valor de cada periodicidade, calculado por calcularCobrancaPlano (packages/domain). */
+  valores: { mensal: number; anual: number; anualFundador: number | null };
 }
 
 export interface Opcoes {
@@ -180,25 +182,58 @@ export interface Opcoes {
 }
 
 export async function lerOpcoes(supabase: SupabaseClient): Promise<Resultado<Opcoes>> {
-  const [categorias, bairros, planos, representantes, perfis] = await Promise.all([
+  const [categorias, bairros, planos, representantes, perfis, config] = await Promise.all([
     listarCategoriasAdmin(supabase),
     supabase.from("bairros").select("id, nome").eq("ativo", true).order("nome"),
-    supabase.from("planos").select("id, nome, tipo, valor_mensal_centavos, limite_categorias_adicionais").eq("ativo", true).order("tipo").order("nivel"),
+    supabase
+      .from("planos")
+      .select("id, nome, tipo, valor_mensal_centavos, meses_cobrados_no_anual, limite_categorias_adicionais")
+      .eq("ativo", true)
+      .order("tipo")
+      .order("nivel"),
     supabase.from("representantes").select("id, codigo, usuario_id").eq("ativo", true).order("codigo"),
     supabase.from("perfis_usuario").select("usuario_id, nome").eq("papel", "representante"),
+    supabase.from("configuracoes").select("chave, valor").in("chave", ["desconto_fundador_escala", "prazo_fundador"]),
   ]);
   if (!categorias.ok) return categorias;
   if (bairros.error) return mensagemDoBanco(bairros.error, "lerOpcoes: bairros");
   if (planos.error) return mensagemDoBanco(planos.error, "lerOpcoes: planos");
   if (representantes.error) return mensagemDoBanco(representantes.error, "lerOpcoes: representantes");
   if (perfis.error) return mensagemDoBanco(perfis.error, "lerOpcoes: perfis");
+  if (config.error) return mensagemDoBanco(config.error, "lerOpcoes: configurações");
   const nomes = new Map(perfis.data.map((p) => [p.usuario_id as string, p.nome as string]));
+
+  // Preço de Fundador (1º ano, anual) só até o prazo; depois, só o valor cheio.
+  const valorConfig = (chave: string) => config.data.find((c) => c.chave === chave)?.valor;
+  const escala = valorConfig("desconto_fundador_escala") as DegrauDescontoFundador[] | undefined;
+  const prazo = valorConfig("prazo_fundador") as string | undefined;
+  const percentualFundador = escala && prazo && hoje() <= prazo ? percentualFundadorNoAno(escala, 1) : null;
+  const sem = { fundador: false, percentualFundador: 0 };
+
   return {
     ok: true,
     dados: {
       categorias: categorias.dados,
       bairros: bairros.data,
-      planos: planos.data as PlanoOpcao[],
+      planos: planos.data.map((p) => {
+        const valores = { valorMensalCentavos: p.valor_mensal_centavos, mesesCobradosNoAnual: p.meses_cobrados_no_anual };
+        const anual = calcularCobrancaPlano(valores, "anual", sem).valorDevidoCentavos;
+        return {
+          id: p.id,
+          nome: p.nome,
+          tipo: p.tipo,
+          valor_mensal_centavos: p.valor_mensal_centavos,
+          limite_categorias_adicionais: p.limite_categorias_adicionais,
+          valores: {
+            mensal: calcularCobrancaPlano(valores, "mensal", sem).valorDevidoCentavos,
+            anual,
+            anualFundador:
+              percentualFundador !== null && anual > 0
+                ? calcularCobrancaPlano(valores, "anual", { fundador: true, percentualFundador }).valorDevidoCentavos
+                : null,
+          },
+        };
+      }),
       representantes: representantes.data.map((r) => ({ id: r.id, codigo: r.codigo, nome: nomes.get(r.usuario_id) || r.codigo })),
     },
   };

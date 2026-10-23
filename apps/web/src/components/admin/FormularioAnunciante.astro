@@ -5,7 +5,7 @@
 // comércio ficam desligados quando não servem, para não serem enviados.
 import { classesBotao } from "@acheaqui/ui";
 import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
-import { formatarPreco } from "@/lib/contato";
+import { formatarCentavos } from "@/lib/precos";
 import type { Opcoes, ValoresFormulario } from "@/lib/anunciantesAdmin";
 
 interface Props {
@@ -34,6 +34,18 @@ const secao = "mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
 const tituloSecao = "font-display text-lg font-bold text-azul-900";
 const textarea = "mt-1 w-full rounded-2xl border-2 border-azul-100 p-3 focus:border-azul-500 focus:outline-none";
 const erro = (campo: string) => erros[campo];
+
+/** Valor do plano na periodicidade escolhida (o script ao fim refaz o texto quando algo muda). */
+function textoDoValor(plano: Opcoes["planos"][number] | undefined, periodicidade: "mensal" | "anual") {
+  if (!plano) return { valor: "", fundador: "" };
+  if (plano.valores.mensal === 0) return { valor: "Grátis", fundador: "" };
+  if (periodicidade === "mensal") return { valor: `${formatarCentavos(plano.valores.mensal)} por mês`, fundador: "" };
+  return {
+    valor: `${formatarCentavos(plano.valores.anual)} por ano`,
+    fundador: plano.valores.anualFundador === null ? "" : `Fundador: ${formatarCentavos(plano.valores.anualFundador)} no 1º ano`,
+  };
+}
+const textoValor = textoDoValor(opcoes.planos.find((p) => p.id === v.planoEscolhidoId), v.periodicidade);
 ---
 
 <form method="post" data-formulario-anunciante data-tipo-fixo={tipoFixo} novalidate>
@@ -275,9 +287,12 @@ const erro = (campo: string) => erros[campo];
                   value={p.id}
                   data-tipo-plano={p.tipo}
                   data-gratuito={p.tipo === "comercio" && p.valor_mensal_centavos === 0 ? "" : undefined}
+                  data-mensal={p.valores.mensal}
+                  data-anual={p.valores.anual}
+                  data-anual-fundador={p.valores.anualFundador ?? undefined}
                   selected={p.id === v.planoEscolhidoId}
                 >
-                  {p.nome} ({p.tipo === "profissional" ? "autônomo" : "comércio"}) · {formatarPreco(p.valor_mensal_centavos / 100)}/mês
+                  {p.nome} ({p.tipo === "profissional" ? "autônomo" : "comércio"})
                 </option>
               ))
             }
@@ -287,10 +302,12 @@ const erro = (campo: string) => erros[campo];
       </div>
       <fieldset class="mt-4">
         <legend class="text-sm font-bold text-azul-900">Pagamento</legend>
-        <div class="mt-3 flex gap-4">
+        <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
           <label class="flex items-center gap-2"><input type="radio" name="periodicidade" value="anual" checked={v.periodicidade === "anual"} /> Anual</label>
           <label class="flex items-center gap-2"><input type="radio" name="periodicidade" value="mensal" checked={v.periodicidade === "mensal"} /> Mensal</label>
+          <span class="font-bold text-azul-900" data-valor-plano aria-live="polite">{textoValor.valor}</span>
         </div>
+        <p class="mt-1 text-sm font-bold text-zap-700" data-valor-fundador>{textoValor.fundador}</p>
       </fieldset>
     </div>
 
@@ -316,6 +333,29 @@ const erro = (campo: string) => erros[campo];
       el.hidden = !ligado;
       for (const campo of el.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea")) campo.disabled = !ligado;
     };
+
+    // Mesmo texto de textoDoValor (no servidor), com os valores calculados lá.
+    const reais = (centavos: number) => (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const mostrarValor = () => {
+      const op = form.querySelector<HTMLSelectElement>('select[name="planoEscolhidoId"]')?.selectedOptions[0];
+      const periodicidade = form.querySelector<HTMLInputElement>('input[name="periodicidade"]:checked')?.value;
+      const valor = form.querySelector<HTMLElement>("[data-valor-plano]");
+      const fundador = form.querySelector<HTMLElement>("[data-valor-fundador]");
+      if (!valor || !fundador) return;
+      valor.textContent = "";
+      fundador.textContent = "";
+      if (!op?.value || op.disabled) return;
+      const mensal = Number(op.dataset.mensal);
+      if (mensal === 0) {
+        valor.textContent = "Grátis";
+      } else if (periodicidade === "mensal") {
+        valor.textContent = `${reais(mensal)} por mês`;
+      } else {
+        valor.textContent = `${reais(Number(op.dataset.anual))} por ano`;
+        if (op.dataset.anualFundador) fundador.textContent = `Fundador: ${reais(Number(op.dataset.anualFundador))} no 1º ano`;
+      }
+    };
+
     const atualizar = () => {
       const tipo = escolhido();
       for (const bloco of form.querySelectorAll<HTMLElement>("[data-so]")) ligar(bloco, bloco.dataset.so === tipo);
@@ -345,6 +385,7 @@ const erro = (campo: string) => erros[campo];
         const caixa = form.querySelector<HTMLElement>('[data-bairros="entrega"]');
         if (entrega.checked && todaCidade && caixa) ligar(caixa, !todaCidade.checked);
       }
+      mostrarValor();
     };
     form.addEventListener("change", atualizar);
     atualizar();
