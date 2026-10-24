@@ -12,6 +12,10 @@ export const PERCENTUAL_COMISSAO_ANUAL = 135;
  * (decisão de 20/10/2026).
  */
 export const PERCENTUAL_COMISSAO_EXTRAS = 20;
+/** Patrocinador trazido pelo representante: 20% do valor pago no contrato, de uma vez (decisão de 23/10/2026). */
+export const PERCENTUAL_COMISSAO_PATROCINIO = 20;
+/** A comissão fica aguardando o prazo de devolução do anunciante antes de ser liberada (decisão de 23/10/2026). */
+export const DIAS_ESPERA_COMISSAO = 7;
 
 export interface PagamentoComissionavel {
   /** O plano, ou um extra vendido junto com a assinatura (venda direta), ou um extra contratado depois. */

@@ -1,5 +1,11 @@
 ---
-import { PERCENTUAIS_COMISSAO_MENSAL, PERCENTUAL_COMISSAO_ANUAL, PERCENTUAL_COMISSAO_EXTRAS } from "@acheaqui/domain";
+import {
+  DIAS_ESPERA_COMISSAO,
+  PERCENTUAIS_COMISSAO_MENSAL,
+  PERCENTUAL_COMISSAO_ANUAL,
+  PERCENTUAL_COMISSAO_EXTRAS,
+  PERCENTUAL_COMISSAO_PATROCINIO,
+} from "@acheaqui/domain";
 import { Icone, type NomeIcone } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
 import Abertura from "@/components/institucional/Abertura.astro";
@@ -60,7 +66,22 @@ const regrasComissao: { icone: NomeIcone; titulo: string; texto: string }[] = [
     icone: "sacola",
     titulo: "Extras",
     texto:
-      `Quando vendidos junto com a assinatura, você recebe ${PERCENTUAL_COMISSAO_EXTRAS}% do valor pago pelo extra nessa venda, de uma vez. Extras contratados depois pelo anunciante não geram comissão.`,
+      `Vendidos por você, junto com a assinatura ou depois, rendem ${PERCENTUAL_COMISSAO_EXTRAS}% do valor pago pelo extra nessa venda, de uma vez. Extras que o anunciante contrata sozinho, sem atendimento, não geram comissão.`,
+  },
+  {
+    icone: "grafico",
+    titulo: "Mudança para um plano maior",
+    texto: "Se você atender um anunciante que passa para um plano mais caro, recebe a comissão sobre a diferença entre os planos, nas mesmas regras do mensal e do anual.",
+  },
+  {
+    icone: "estrela",
+    titulo: "Patrocinadores",
+    texto: `Trouxe uma empresa que patrocina o site? Você recebe ${PERCENTUAL_COMISSAO_PATROCINIO}% do valor pago pelo contrato, de uma vez.`,
+  },
+  {
+    icone: "escudo",
+    titulo: "Quando a comissão é liberada",
+    texto: `${DIAS_ESPERA_COMISSAO} dias depois do pagamento, que é o prazo que o anunciante tem para pedir a devolução. Se ele pedir, a comissão daquele pagamento é cancelada.`,
   },
 ];
 ---
