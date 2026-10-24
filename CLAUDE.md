@@ -106,6 +106,8 @@ Calendário: pré-cadastro dos Fundadores de 09/11 a 26/11/2026, feito pela equi
 
 ## Regras de negócio com testes obrigatórios
 
+Todo código novo em packages/domain e packages/validation vem com testes, sem perguntar (decisão de 24/10/2026): os dois pacotes exigem 90% de cobertura no CI, e o deploy só roda com os testes passando.
+
 Cada regra abaixo fica em packages/domain e tem testes automatizados:
 
 - Ordem da lista de resultados por grupo de plano, com alternância dentro de cada grupo.
