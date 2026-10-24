@@ -1,0 +1,44 @@
+---
+// Histórico de atendimento de um anunciante: quem entrou em contato, em que
+// dia e o resultado. O representante vê só os próprios registros; a equipe vê
+// todos. O botão abre o ModalAtendimento.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import ModalAtendimento from "./ModalAtendimento.astro";
+import type { RegistroAtendimento } from "@/lib/representante";
+import { formatarData } from "@/lib/texto";
+
+interface Props {
+  anuncianteId: string;
+  registros: RegistroAtendimento[];
+  /** Texto quando a lista mostra só os registros de quem está vendo. */
+  soOsMeus?: boolean;
+}
+
+const { anuncianteId, registros, soOsMeus = false } = Astro.props;
+---
+
+<section class="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 class="font-display text-lg font-bold text-azul-900">Histórico de atendimento</h2>
+    <button type="button" class={classesBotao("contorno", "p")} data-abrir-modal="modal-atendimento">
+      <Icone nome="mensagem" class="size-4" />
+      Registrei um contato
+    </button>
+  </div>
+  {soOsMeus && <p class="mt-1 text-sm text-slate-500">Aqui aparecem só os contatos que você registrou.</p>}
+  {
+    registros.length === 0 ? (
+      <p class="mt-3 text-sm text-slate-600">Nenhum contato registrado.</p>
+    ) : (
+      <ul class="mt-3 divide-y divide-slate-100">
+        {registros.map((r) => (
+          <li class="py-2 text-sm">
+            <span class="font-bold">{formatarData(r.dia)}</span> · {r.autor}
+            {r.observacao && <p class="text-slate-600">{r.observacao}</p>}
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</section>
+<ModalAtendimento anuncianteId={anuncianteId} />

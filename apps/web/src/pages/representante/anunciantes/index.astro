@@ -1,0 +1,71 @@
+---
+// Meus anunciantes (item 4.12): os que o representante trouxe, com a
+// situação e o plano de cada um, e o cadastro assistido.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
+import { ROTULO_SITUACAO } from "@/lib/anunciantesAdmin";
+import { lerMeuCadastro, listarMeusAnunciantes } from "@/lib/representante";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+
+const cadastro = await lerMeuCadastro(supabase, usuario.id);
+const lista = cadastro.ok ? await listarMeusAnunciantes(supabase, cadastro.dados.id) : cadastro;
+const linhas = lista.ok ? lista.dados : [];
+const AVISOS: Record<string, string> = { convertido: "Convite enviado ao comerciante. O comércio agora aparece aqui." };
+const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
+---
+
+<PaginaRepresentante titulo="Meus anunciantes" descricao="Os anunciantes que você trouxe. Clique no nome para ver os detalhes e registrar contatos.">
+  <div class="mt-4 flex flex-wrap gap-2">
+    <a href="/representante/anunciantes/novo" class={classesBotao("azul", "m")}>
+      <Icone nome="usuarios" class="size-4" />
+      Novo cadastro assistido
+    </a>
+  </div>
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {!lista.ok && <Aviso tipo="erro">{lista.erro.mensagem}</Aviso>}
+  {
+    lista.ok && linhas.length === 0 && (
+      <p class="mt-6 rounded-2xl bg-white p-5 text-slate-600 shadow-sm ring-1 ring-black/5">
+        Você ainda não trouxe anunciantes. Faça um cadastro assistido ou converta um comércio da prospecção.
+      </p>
+    )
+  }
+  {
+    linhas.length > 0 && (
+      <div class="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-fundo text-xs font-extrabold tracking-wide text-slate-500 uppercase">
+            <tr>
+              <th class="px-4 py-3">Anunciante</th>
+              <th class="px-4 py-3">Situação</th>
+              <th class="px-4 py-3">Plano</th>
+              <th class="px-4 py-3">Desde</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {linhas.map((a) => (
+              <tr>
+                <td class="px-4 py-3">
+                  <a href={`/representante/anunciantes/${a.id}`} class="font-bold text-azul-600 hover:underline">
+                    {a.nome}
+                  </a>
+                  <span class="block text-xs text-slate-500">
+                    {a.tipo === "profissional" ? "Autônomo" : "Comércio"}
+                    {a.origem === "receita" && " · importado da Receita"}
+                  </span>
+                </td>
+                <td class="px-4 py-3">{ROTULO_SITUACAO[a.status]}</td>
+                <td class="px-4 py-3">{a.plano?.nome ?? (a.planoEscolhido ? `${a.planoEscolhido.nome} (escolhido)` : "—")}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{formatarData(a.criado_em.slice(0, 10))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</PaginaRepresentante>

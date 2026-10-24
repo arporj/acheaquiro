@@ -1,0 +1,47 @@
+---
+// Cadastro assistido pelo representante (item 4.6): o mesmo formulário da
+// administração, sem a escolha do representante (o cadastro fica ligado a
+// quem cadastrou). O perfil nasce como rascunho; o convite sai pela tela do
+// anunciante, e o perfil só é publicado depois do aceite e da aprovação da equipe.
+import Aviso from "@/components/conta/Aviso.astro";
+import FormularioAnunciante from "@/components/admin/FormularioAnunciante.astro";
+import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
+import { obterRegrasCobranca } from "@/dados/consultas";
+import { VALORES_VAZIOS, lerFormulario, lerOpcoes, salvarAnunciante, valoresDoEnvio } from "@/lib/anunciantesAdmin";
+import { lerMeuCadastro } from "@/lib/representante";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+
+let valores = VALORES_VAZIOS;
+let erro = "";
+let erros: Record<string, string> = {};
+
+const cadastro = await lerMeuCadastro(supabase, usuario.id);
+if (!cadastro.ok) erro = cadastro.erro.mensagem;
+
+if (Astro.request.method === "POST" && cadastro.ok) {
+  const form = await Astro.request.formData();
+  const dados = lerFormulario(form);
+  const resultado = dados.ok ? await salvarAnunciante(supabase, usuario.id, null, dados.dados, Astro.url.origin, cadastro.dados.id) : dados;
+  if (resultado.ok) return Astro.redirect(`/representante/anunciantes/${resultado.dados.id}?aviso=criado`, 303);
+  erro = resultado.erro.mensagem;
+  erros = resultado.erro.campos ?? {};
+  valores = valoresDoEnvio(form);
+  Astro.response.status = resultado.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const opcoes = await lerOpcoes(supabase, await obterRegrasCobranca());
+---
+
+<PaginaRepresentante titulo="Cadastro assistido" descricao="Fica como rascunho até o anunciante aceitar o convite. Depois, a equipe confere e aprova.">
+  <p class="mt-2 text-sm"><a href="/representante/anunciantes" class="font-bold text-azul-600 hover:underline">← Meus anunciantes</a></p>
+  {erro && <Aviso tipo="erro" class="mt-4">{erro}</Aviso>}
+  {
+    opcoes.ok ? (
+      <FormularioAnunciante opcoes={opcoes.dados} valores={valores} erros={erros} textoBotao="Salvar rascunho" escolherRepresentante={false} />
+    ) : (
+      <Aviso tipo="erro" class="mt-4">{opcoes.erro.mensagem}</Aviso>
+    )
+  }
+</PaginaRepresentante>

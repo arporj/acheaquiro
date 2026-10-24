@@ -1,12 +1,13 @@
 ---
 // Um anunciante na administração: situação e ações (aprovar, pedir correção,
 // recusar, suspender, reativar), convite do cadastro assistido, edição do
-// perfil e as últimas alterações. Toda ação passa pela auditoria do banco.
+// perfil, histórico de atendimento (de todos) e as últimas alterações. Toda ação passa pela auditoria do banco.
 import { Icone, Modal, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesRotulo } from "@/components/conta/estilos";
 import FormularioAnunciante from "@/components/admin/FormularioAnunciante.astro";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import HistoricoAtendimento from "@/components/representante/HistoricoAtendimento.astro";
 import {
   ORIGENS_DA_ACAO,
   PEDE_MOTIVO,
@@ -25,6 +26,7 @@ import {
 } from "@/lib/anunciantesAdmin";
 import { formatarTelefone } from "@/lib/contato";
 import { listarEquipe } from "@/lib/equipe";
+import { listarAtendimentos, registrarDoFormulario } from "@/lib/representante";
 
 const supabase = Astro.locals.supabase!;
 const usuario = Astro.locals.usuario!;
@@ -36,6 +38,7 @@ const AVISOS: Record<string, string> = {
   convite: "Convite enviado. O anunciante recebe o link por e-mail para conferir o perfil e criar a senha.",
   "convite-reenviado": "Convite reenviado.",
   situacao: "Situação alterada.",
+  atendimento: "Contato registrado.",
 };
 const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
 let erro = "";
@@ -61,6 +64,11 @@ if (Astro.request.method === "POST" && lido.ok) {
     if (r.ok) return Astro.redirect(`/admin/anunciantes/${id}?aviso=${r.dados.reenvio ? "convite-reenviado" : "convite"}`, 303);
     erro = r.erro.mensagem;
     Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  } else if (acao === "atendimento") {
+    const r = await registrarDoFormulario(supabase, form);
+    if (r.ok) return Astro.redirect(`/admin/anunciantes/${id}?aviso=atendimento`, 303);
+    erro = r.erro.mensagem;
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
   } else if (acao in ORIGENS_DA_ACAO) {
     const r = await mudarSituacao(supabase, usuario.id, id, acao as AcaoSituacao, String(form.get("motivo") ?? "").slice(0, 1000), Astro.url.origin);
     if (r.ok) return Astro.redirect(`/admin/anunciantes/${id}?aviso=situacao`, 303);
@@ -72,7 +80,12 @@ if (Astro.request.method === "POST" && lido.ok) {
   }
 }
 
-const [opcoes, historico, equipe] = await Promise.all([lerOpcoes(supabase), lerHistorico(supabase, id), listarEquipe(supabase)]);
+const [opcoes, historico, equipe, atendimentos] = await Promise.all([
+  lerOpcoes(supabase),
+  lerHistorico(supabase, id),
+  listarEquipe(supabase),
+  listarAtendimentos(supabase, id),
+]);
 if (!lido.ok) erro ||= lido.erro.mensagem;
 const a = lido.ok ? lido.dados : null;
 
@@ -215,6 +228,12 @@ const caixa = "rounded-xl bg-fundo p-3";
           />
         ) : (
           <Aviso tipo="erro" class="mt-4">{opcoes.erro.mensagem}</Aviso>
+        )}
+
+        {atendimentos.ok ? (
+          <HistoricoAtendimento anuncianteId={a.id} registros={atendimentos.dados} />
+        ) : (
+          <Aviso tipo="erro" class="mt-4">{atendimentos.erro.mensagem}</Aviso>
         )}
 
         <section class="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">

@@ -1,0 +1,158 @@
+---
+// Um anunciante na área do representante: situação, plano, convite e edição
+// do cadastro assistido (só enquanto o anunciante não assumiu) e o histórico
+// de atendimento. O RLS mostra ao representante os que ele trouxe e os
+// publicados de todos; aqui entram só os que ele trouxe.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import FormularioAnunciante from "@/components/admin/FormularioAnunciante.astro";
+import HistoricoAtendimento from "@/components/representante/HistoricoAtendimento.astro";
+import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
+import { obterRegrasCobranca } from "@/dados/consultas";
+import {
+  ROTULO_SITUACAO,
+  enviarConvite,
+  lerAnunciante,
+  lerFormulario,
+  lerOpcoes,
+  salvarAnunciante,
+  valoresDoAnunciante,
+  valoresDoEnvio,
+  type ValoresFormulario,
+} from "@/lib/anunciantesAdmin";
+import { formatarTelefone } from "@/lib/contato";
+import { lerMeuCadastro, listarAtendimentos, registrarDoFormulario } from "@/lib/representante";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+const id = Astro.params.id ?? "";
+
+const AVISOS: Record<string, string> = {
+  criado: "Rascunho salvo. Confira os dados e envie o convite quando estiver pronto.",
+  salvo: "Alterações salvas.",
+  convite: "Convite enviado. O anunciante recebe o link por e-mail para conferir o perfil e criar a senha.",
+  "convite-reenviado": "Convite reenviado.",
+  atendimento: "Contato registrado.",
+};
+const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
+let erro = "";
+let erros: Record<string, string> = {};
+let valoresEnviados: ValoresFormulario | undefined;
+
+const [cadastro, lido] = await Promise.all([lerMeuCadastro(supabase, usuario.id), lerAnunciante(supabase, id)]);
+// Publicado de outro representante: para ele, a tela não existe.
+if (!lido.ok && lido.erro.codigo === "NAO_ENCONTRADO") return new Response(null, { status: 404 });
+if (lido.ok && cadastro.ok && lido.dados.representante_id !== cadastro.dados.id) return new Response(null, { status: 404 });
+
+const editavel = lido.ok && lido.dados.origem === "cadastro" && (lido.dados.status === "rascunho" || lido.dados.status === "aguardando_anunciante");
+
+if (Astro.request.method === "POST" && lido.ok && cadastro.ok) {
+  const form = await Astro.request.formData();
+  const acao = String(form.get("acao") ?? "");
+  let r: { ok: true; destino: string } | { ok: false; mensagem: string; interno: boolean; campos?: Record<string, string> };
+  if (acao === "salvar" && editavel) {
+    const dados = lerFormulario(form, lido.dados.tipo);
+    const s = dados.ok ? await salvarAnunciante(supabase, usuario.id, id, dados.dados, Astro.url.origin, cadastro.dados.id) : dados;
+    r = s.ok ? { ok: true, destino: "salvo" } : { ok: false, mensagem: s.erro.mensagem, interno: s.erro.codigo === "ERRO_INTERNO", campos: s.erro.campos };
+    if (!s.ok) valoresEnviados = valoresDoEnvio(form, lido.dados.tipo);
+  } else if (acao === "convite" && editavel) {
+    const s = await enviarConvite(supabase, id);
+    r = s.ok ? { ok: true, destino: s.dados.reenvio ? "convite-reenviado" : "convite" } : { ok: false, mensagem: s.erro.mensagem, interno: s.erro.codigo === "ERRO_INTERNO" };
+  } else if (acao === "atendimento") {
+    const s = await registrarDoFormulario(supabase, form);
+    r = s.ok ? { ok: true, destino: "atendimento" } : { ok: false, mensagem: s.erro.mensagem, interno: s.erro.codigo === "ERRO_INTERNO" };
+  } else {
+    r = { ok: false, mensagem: "Ação não permitida para este cadastro.", interno: false };
+  }
+  if (r.ok) return Astro.redirect(`/representante/anunciantes/${id}?aviso=${r.destino}`, 303);
+  erro = r.mensagem;
+  erros = r.campos ?? {};
+  Astro.response.status = r.interno ? 500 : 400;
+}
+
+const [opcoes, atendimentos] = await Promise.all([
+  editavel ? lerOpcoes(supabase, await obterRegrasCobranca()) : Promise.resolve(null),
+  listarAtendimentos(supabase, id),
+]);
+if (!lido.ok) erro ||= lido.erro.mensagem;
+if (!cadastro.ok) erro ||= cadastro.erro.mensagem;
+const a = lido.ok ? lido.dados : null;
+const caixa = "rounded-xl bg-fundo p-3";
+---
+
+<PaginaRepresentante titulo={a?.nome ?? "Anunciante"} descricao={a ? `${a.tipo === "profissional" ? "Autônomo" : "Comércio"} · ${ROTULO_SITUACAO[a.status]}` : undefined}>
+  <p class="mt-2 text-sm"><a href="/representante/anunciantes" class="font-bold text-azul-600 hover:underline">← Meus anunciantes</a></p>
+  {aviso && <Aviso tipo="sucesso" class="mt-4">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro" class="mt-4">{erro}</Aviso>}
+
+  {
+    a && (
+      <>
+        <section class="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+          <div class="grid gap-3 text-sm sm:grid-cols-2">
+            <div class={caixa}>
+              <p class="font-bold text-azul-900">Situação</p>
+              <p>{ROTULO_SITUACAO[a.status]}</p>
+              {a.motivo_correcao && <p class="mt-1 text-slate-600 italic">Pedido da equipe: {a.motivo_correcao}</p>}
+              {a.status === "publicado" && (
+                <a href={`/perfil/${a.slug}`} target="_blank" class="mt-1 inline-block font-bold text-azul-600 hover:underline">
+                  Ver no site
+                </a>
+              )}
+            </div>
+            <div class={caixa}>
+              <p class="font-bold text-azul-900">Conta</p>
+              <p>{a.usuario_id ? `Convite enviado para ${a.email_convite ?? "o e-mail do anunciante"}` : "Convite ainda não enviado"}</p>
+              {a.origem === "receita" && <p>Comércio importado da Receita</p>}
+            </div>
+          </div>
+          {
+            a.dados_receita && (
+              <div class={`${caixa} mt-3 text-sm`}>
+                <p class="font-bold text-azul-900">Na Receita (não publicado)</p>
+                <p>{a.dados_receita.razao_social}</p>
+                {a.dados_receita.telefones.length > 0 && <p>{a.dados_receita.telefones.map(formatarTelefone).join(" · ")}</p>}
+                {a.dados_receita.email && <p>{a.dados_receita.email}</p>}
+              </div>
+            )
+          }
+          {
+            editavel && (
+              <form method="post" class="mt-4">
+                <input type="hidden" name="acao" value="convite" />
+                <button type="submit" class={classesBotao("azul", "m")} disabled={!a.email_convite} title={a.email_convite ? undefined : "Informe o e-mail no cadastro"}>
+                  <Icone nome="mensagem" class="size-4" />
+                  {a.usuario_id ? "Reenviar convite" : "Enviar convite"}
+                </button>
+              </form>
+            )
+          }
+        </section>
+
+        {editavel && opcoes?.ok && (
+          <FormularioAnunciante
+            opcoes={opcoes.dados}
+            valores={valoresEnviados ?? valoresDoAnunciante(a)}
+            erros={erros}
+            tipoFixo={a.tipo}
+            emailTravado={!!a.usuario_id}
+            textoBotao="Salvar alterações"
+            escolherRepresentante={false}
+          />
+        )}
+        {editavel && opcoes && !opcoes.ok && <Aviso tipo="erro" class="mt-4">{opcoes.erro.mensagem}</Aviso>}
+        {!editavel && (
+          <p class="mt-4 text-sm text-slate-600">
+            O anunciante já assumiu o perfil: as alterações agora são feitas por ele, na área dele, ou pela equipe.
+          </p>
+        )}
+
+        {atendimentos.ok ? (
+          <HistoricoAtendimento anuncianteId={a.id} registros={atendimentos.dados} soOsMeus />
+        ) : (
+          <Aviso tipo="erro" class="mt-4">{atendimentos.erro.mensagem}</Aviso>
+        )}
+      </>
+    )
+  }
+</PaginaRepresentante>

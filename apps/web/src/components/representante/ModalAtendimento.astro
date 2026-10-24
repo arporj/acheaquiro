@@ -1,0 +1,63 @@
+---
+// "Registrei um contato" (histórico de atendimento, decisão de 23/10/2026):
+// modal com o dia e, se quiser, o resultado. Na prospecção, um modal só serve
+// para a lista inteira: o botão [data-atendimento] preenche o comércio.
+// Usado na área do representante e na administração.
+import { Modal, classesBotao } from "@acheaqui/ui";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+
+interface Props {
+  /** Anunciante fixo (tela de um anunciante). Vazio: vem do botão que abriu. */
+  anuncianteId?: string;
+  /** Mostra "Pediu para não ser mais procurado" (comércios da prospecção). */
+  comNaoProcurar?: boolean;
+}
+
+const { anuncianteId = "", comNaoProcurar = false } = Astro.props;
+const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+const [ano, mes, dia] = hoje.split("-").map(Number);
+const minimo = new Date(Date.UTC(ano!, mes! - 1, dia! - 30)).toISOString().slice(0, 10);
+---
+
+<Modal id="modal-atendimento" titulo="Registrei um contato">
+  <form method="post" data-form-atendimento>
+    <input type="hidden" name="acao" value="atendimento" />
+    <input type="hidden" name="anuncianteId" value={anuncianteId} data-atendimento-id />
+    <p class="text-sm font-bold text-slate-600" data-atendimento-nome></p>
+    <label class={classesRotulo}>
+      Dia do contato
+      <input type="date" name="dia" value={hoje} min={minimo} max={hoje} required class={classesCampo} />
+    </label>
+    <label class={classesRotulo}>
+      Resultado (opcional)
+      <textarea
+        name="observacao"
+        maxlength="300"
+        rows="3"
+        placeholder="Ex.: pediu para voltar na semana que vem"
+        class="mt-1 w-full rounded-2xl border-2 border-azul-100 p-3 focus:border-azul-500 focus:outline-none"></textarea>
+    </label>
+    {
+      comNaoProcurar && (
+        <label class="mt-4 flex items-start gap-2 text-sm font-semibold">
+          <input type="checkbox" name="naoProcurar" value="sim" class="mt-0.5 size-4 shrink-0 accent-vermelho-600" />
+          Pediu para não ser mais procurado (sai da prospecção de todos)
+        </label>
+      )
+    }
+    <button type="submit" class={classesBotao("azul", "m", "mt-5 w-full")}>Registrar</button>
+  </form>
+</Modal>
+
+<script>
+  for (const botao of document.querySelectorAll<HTMLElement>("[data-atendimento]")) {
+    botao.addEventListener("click", () => {
+      const form = document.querySelector<HTMLFormElement>("form[data-form-atendimento]");
+      const dialogo = document.getElementById("modal-atendimento");
+      if (!form || !(dialogo instanceof HTMLDialogElement)) return;
+      form.querySelector<HTMLInputElement>("[data-atendimento-id]")!.value = botao.dataset.atendimento ?? "";
+      form.querySelector<HTMLElement>("[data-atendimento-nome]")!.textContent = botao.dataset.atendimentoNome ?? "";
+      dialogo.showModal();
+    });
+  }
+</script>

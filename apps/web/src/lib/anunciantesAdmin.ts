@@ -5,7 +5,7 @@
 // Auth exige. "Recusar" volta o cadastro para rascunho com o motivo (a
 // exclusão do cadastro é outra ação, pela LGPD).
 import { calcularCobrancaPlano, limiteEfetivo, percentualFundadorNoAno } from "@acheaqui/domain";
-import type { DegrauDescontoFundador, Resultado } from "@acheaqui/types";
+import type { DegrauDescontoFundador, RegrasCobranca, Resultado } from "@acheaqui/types";
 import {
   esquemaCadastroAssistido,
   esquemaMotivo,
@@ -181,7 +181,13 @@ export interface Opcoes {
   representantes: { id: string; nome: string; codigo: string }[];
 }
 
-export async function lerOpcoes(supabase: SupabaseClient): Promise<Resultado<Opcoes>> {
+/**
+ * Opções do formulário. O representante não lê as configurações nem os outros
+ * representantes: a página dele passa as regras do catálogo público e recebe
+ * a lista de representantes vazia.
+ */
+export async function lerOpcoes(supabase: SupabaseClient, regrasPublicas?: RegrasCobranca): Promise<Resultado<Opcoes>> {
+  const vazio = Promise.resolve({ data: [], error: null });
   const [categorias, bairros, planos, representantes, perfis, config] = await Promise.all([
     listarCategoriasAdmin(supabase),
     supabase.from("bairros").select("id, nome").eq("ativo", true).order("nome"),
@@ -191,9 +197,17 @@ export async function lerOpcoes(supabase: SupabaseClient): Promise<Resultado<Opc
       .eq("ativo", true)
       .order("tipo")
       .order("nivel"),
-    supabase.from("representantes").select("id, codigo, usuario_id").eq("ativo", true).order("codigo"),
-    supabase.from("perfis_usuario").select("usuario_id, nome").eq("papel", "representante"),
-    supabase.from("configuracoes").select("chave, valor").in("chave", ["desconto_fundador_escala", "prazo_fundador"]),
+    regrasPublicas ? vazio : supabase.from("representantes").select("id, codigo, usuario_id").eq("ativo", true).order("codigo"),
+    regrasPublicas ? vazio : supabase.from("perfis_usuario").select("usuario_id, nome").eq("papel", "representante"),
+    regrasPublicas
+      ? Promise.resolve({
+          data: [
+            { chave: "desconto_fundador_escala", valor: regrasPublicas.escalaDescontoFundador },
+            { chave: "prazo_fundador", valor: regrasPublicas.prazoFundador },
+          ],
+          error: null,
+        })
+      : supabase.from("configuracoes").select("chave, valor").in("chave", ["desconto_fundador_escala", "prazo_fundador"]),
   ]);
   if (!categorias.ok) return categorias;
   if (bairros.error) return mensagemDoBanco(bairros.error, "lerOpcoes: bairros");
@@ -519,6 +533,8 @@ export async function salvarAnunciante(
   id: string | null,
   { perfil, cadastro }: DadosFormulario,
   origemDoSite: string,
+  /** Cadastro feito pelo representante: fica sempre ligado a ele, seja qual for o envio. */
+  representanteFixo?: string,
 ): Promise<Resultado<{ id: string }>> {
   const { data: cidade, error: erroCidade } = await supabase.from("cidades").select("id").eq("slug", CIDADE).single();
   if (erroCidade) return mensagemDoBanco(erroCidade, "salvarAnunciante: cidade");
@@ -551,7 +567,7 @@ export async function salvarAnunciante(
     email_convite: cadastro.emailConvite || null,
     plano_escolhido_id: cadastro.planoEscolhidoId,
     periodicidade_escolhida: cadastro.periodicidade,
-    representante_id: cadastro.representanteId || null,
+    representante_id: representanteFixo ?? (cadastro.representanteId || null),
   };
 
   let anuncianteId: string;
@@ -562,14 +578,18 @@ export async function salvarAnunciante(
   } else {
     const slug = await slugLivre(supabase, cidade.id, perfil.nome);
     if (!slug.ok) return slug;
-    const { data, error } = await supabase
-      .from("anunciantes")
-      .insert({ ...colunas, cidade_id: cidade.id, tipo: perfil.tipo, slug: slug.dados, status: "rascunho", origem: "cadastro", cadastrado_por: autorId })
-      .select("id")
-      .single();
+    const inserir = (endereco: string) =>
+      supabase
+        .from("anunciantes")
+        .insert({ ...colunas, cidade_id: cidade.id, tipo: perfil.tipo, slug: endereco, status: "rascunho", origem: "cadastro", cadastrado_por: autorId })
+        .select("id")
+        .single();
+    let { data, error } = await inserir(slug.dados);
+    // O representante não vê os rascunhos dos outros: o endereço pode já estar em uso sem ele saber.
+    if (error?.code === "23505") ({ data, error } = await inserir(`${slug.dados.slice(0, 74)}-${crypto.randomUUID().slice(0, 4)}`));
     if (error?.code === "23505") return falha("CONFLITO", "Já existe um anunciante com este endereço. Mude um pouco o nome e salve de novo.");
     if (error) return mensagemDoBanco(error, "salvarAnunciante: cadastro");
-    anuncianteId = data.id;
+    anuncianteId = data!.id;
   }
 
   const categoriasAtuais = (atual?.categorias ?? []).map((c) => c.categoria_id);

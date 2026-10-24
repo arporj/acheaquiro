@@ -1,6 +1,6 @@
 ---
-// Campos do perfil do anunciante, no cadastro assistido (/admin/anunciantes/novo)
-// e na edição (/admin/anunciantes/[id]). O servidor valida tudo de novo
+// Campos do perfil do anunciante, no cadastro assistido (/admin/anunciantes/novo
+// e /representante/anunciantes/novo) e na edição (as telas [id] das duas áreas). O servidor valida tudo de novo
 // (lerFormulario, em src/lib/anunciantesAdmin.ts). Os blocos de autônomo e de
 // comércio ficam desligados quando não servem, para não serem enviados.
 import { classesBotao } from "@acheaqui/ui";
@@ -17,9 +17,11 @@ interface Props {
   /** Com a conta já ligada, o e-mail do convite não muda aqui. */
   emailTravado?: boolean;
   textoBotao: string;
+  /** O representante não escolhe: o cadastro fica sempre ligado a ele. */
+  escolherRepresentante?: boolean;
 }
 
-const { opcoes, valores: v, erros, tipoFixo, emailTravado = false, textoBotao } = Astro.props;
+const { opcoes, valores: v, erros, tipoFixo, emailTravado = false, textoBotao, escolherRepresentante = true } = Astro.props;
 const tipo = tipoFixo ?? v.tipo;
 
 const grupos = [...new Set(opcoes.categorias.map((c) => c.grupo))];
@@ -311,6 +313,7 @@ const textoValor = textoDoValor(opcoes.planos.find((p) => p.id === v.planoEscolh
       </fieldset>
     </div>
 
+    {escolherRepresentante && (
     <label class={classesRotulo}>
       Representante que trouxe
       <select name="representanteId" class={classesCampo}>
@@ -318,6 +321,7 @@ const textoValor = textoDoValor(opcoes.planos.find((p) => p.id === v.planoEscolh
         {opcoes.representantes.map((r) => <option value={r.id} selected={r.id === v.representanteId}>{r.nome} ({r.codigo})</option>)}
       </select>
     </label>
+    )}
   </section>
 
   <div class="mt-6 flex justify-end">
