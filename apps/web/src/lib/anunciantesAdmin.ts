@@ -128,7 +128,9 @@ export async function listarAnunciantes(
     (f.bairroId ? ", enderecos!inner(bairro_id)" : "");
   let consulta = supabase.from("anunciantes").select(selecao, { count: "exact" });
   const situacoes: readonly Situacao[] = ABAS[f.aba].situacoes;
-  if (situacoes.length > 0) consulta = consulta.in("status", situacoes);
+  // "Para analisar" também traz os importados assumidos que foram ao ar sem aprovação prévia.
+  if (f.aba === "analisar") consulta = consulta.or("status.eq.em_analise,revisar.eq.true");
+  else if (situacoes.length > 0) consulta = consulta.in("status", situacoes);
   if (f.busca) consulta = consulta.or(`nome.ilike.%${f.busca}%,slug.ilike.%${paraSlug(f.busca) || f.busca}%`);
   if (f.tipo) consulta = consulta.eq("tipo", f.tipo);
   if (f.origem) consulta = consulta.eq("origem", f.origem);
@@ -144,6 +146,7 @@ export async function listarAnunciantes(
   const contagens = abas.map((aba) => {
     const q = supabase.from("anunciantes").select("id", { count: "exact", head: true });
     const s: readonly Situacao[] = ABAS[aba].situacoes;
+    if (aba === "analisar") return q.or("status.eq.em_analise,revisar.eq.true");
     return s.length > 0 ? q.in("status", s) : q;
   });
   const [lista, ...porAba] = await Promise.all([consulta.order("nome").order("id").range(inicio, inicio + POR_PAGINA - 1), ...contagens]);
@@ -286,6 +289,10 @@ export interface AnuncianteAdmin {
   entrega_toda_cidade: boolean;
   aprovado_em: string | null;
   criado_em: string;
+  /** Rascunho que vai substituir este comércio importado quando o comerciante aceitar. */
+  importado_id: string | null;
+  /** Foi ao ar sem a aprovação prévia da equipe (importado assumido): aparece em "Para analisar". */
+  revisar: boolean;
   categorias: { categoria_id: string }[];
   bairros: { bairro_id: string; finalidade: "atendimento" | "entrega" }[];
   enderecos: { id: string; logradouro: string; numero: string; complemento: string | null; bairro_id: string; principal: boolean }[];
@@ -299,7 +306,7 @@ export async function lerAnunciante(supabase: SupabaseClient, id: string): Promi
     .select(
       "id, nome, slug, tipo, status, origem, fundador, fundador_desde, usuario_id, representante_id, email_convite, plano_id, plano_escolhido_id, " +
         "periodicidade_escolhida, motivo_correcao, categoria_principal_id, descricao, whatsapp, telefone, instagram, formas_pagamento, registro_conselho, " +
-        "site_proprio, atende_toda_cidade, faz_entrega, entrega_toda_cidade, aprovado_em, criado_em, " +
+        "site_proprio, atende_toda_cidade, faz_entrega, entrega_toda_cidade, aprovado_em, criado_em, importado_id, revisar, " +
         "categorias:anunciante_categorias(categoria_id), bairros:anunciante_bairros(bairro_id, finalidade), " +
         "enderecos(id, logradouro, numero, complemento, bairro_id, principal), dados_receita(cnpj, razao_social, telefones, email)",
     )
@@ -620,6 +627,13 @@ export async function salvarAnunciante(
 // ---------------------------------------------------------------------------
 // Situação
 // ---------------------------------------------------------------------------
+
+/** Importado assumido que foi ao ar sem aprovação prévia: a equipe confere e tira de "Para analisar". */
+export async function marcarConferido(supabase: SupabaseClient, id: string): Promise<Resultado<null>> {
+  if (!UUID.test(id)) return falha("NAO_ENCONTRADO", "Anunciante não encontrado.");
+  const { error } = await supabase.from("anunciantes").update({ revisar: false }).eq("id", id).eq("revisar", true);
+  return error ? mensagemDoBanco(error, "marcarConferido") : { ok: true, dados: null };
+}
 
 export type AcaoSituacao = "aprovar" | "correcao" | "recusar" | "suspender" | "reativar";
 

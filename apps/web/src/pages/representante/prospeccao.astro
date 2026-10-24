@@ -3,18 +3,19 @@
 // importados da Receita que ainda não têm dono, com o telefone e o e-mail da
 // Receita (confidenciais, pelo termo). Sem reserva: cada linha mostra só quem
 // fez o último contato e o dia, para dois representantes não ligarem para o
-// mesmo comércio. O representante registra o contato e converte o comércio
-// para o comerciante, com o convite saindo na hora.
-import { Icone, Modal, classesBotao } from "@acheaqui/ui";
+// mesmo comércio. O representante registra o contato e, ao fechar a venda,
+// faz o cadastro completo num rascunho próprio: os outros veem "Em cadastro"
+// e não pegam o comércio por 7 dias, ou enquanto o convite estiver enviado.
+import { Icone, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
-import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import { classesCampo } from "@/components/conta/estilos";
 import ModalAtendimento from "@/components/representante/ModalAtendimento.astro";
 import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
 import { formatarTelefone, linkTelefone } from "@/lib/contato";
 import { listarCategoriasAdmin } from "@/lib/importacao";
 import {
   POR_PAGINA_PROSPECCAO,
-  converterImportado,
+  fecharComImportado,
   lerFiltroProspeccao,
   listarProspeccao,
   registrarDoFormulario,
@@ -22,7 +23,6 @@ import {
 import { formatarData } from "@/lib/texto";
 
 const supabase = Astro.locals.supabase!;
-const usuario = Astro.locals.usuario!;
 const filtro = lerFiltroProspeccao(Astro.url.searchParams);
 
 const AVISOS: Record<string, string> = {
@@ -44,9 +44,9 @@ if (Astro.request.method === "POST") {
     }
     erro = r.erro.mensagem;
     Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
-  } else if (acao === "converter") {
-    const r = await converterImportado(supabase, usuario.id, String(form.get("anuncianteId") ?? "").slice(0, 40), String(form.get("email") ?? "").slice(0, 254));
-    if (r.ok) return Astro.redirect("/representante/anunciantes?aviso=convertido", 303);
+  } else if (acao === "fechar") {
+    const r = await fecharComImportado(supabase, String(form.get("anuncianteId") ?? "").slice(0, 40));
+    if (r.ok) return Astro.redirect(`/representante/anunciantes/${r.dados.id}?aviso=fechado`, 303);
     erro = r.erro.mensagem;
     Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
   } else {
@@ -145,16 +145,35 @@ const linkPagina = (n: number) => {
               )}
               {c.telefones.length === 0 && !c.email && <span class="text-slate-500">Sem telefone nem e-mail na Receita.</span>}
             </div>
-            {c.emailConvite && <p class="mt-2 text-sm font-semibold text-azul-900">Convite em andamento para {c.emailConvite}.</p>}
+            {c.reserva && !c.reserva.meuRascunho && (
+              <p class="mt-2 rounded-xl bg-azul-50 px-3 py-2 text-sm font-semibold text-azul-900">
+                {c.reserva.conviteEnviado
+                  ? `Em atendimento por ${c.reserva.autor}: convite enviado ao comerciante.`
+                  : `Em cadastro por ${c.reserva.autor} até ${formatarData(c.reserva.ate)}.`}
+              </p>
+            )}
             <div class="mt-3 flex flex-wrap gap-2">
               <button type="button" class={classesBotao("contorno", "p")} data-atendimento={c.id} data-atendimento-nome={c.nome}>
                 <Icone nome="mensagem" class="size-4" />
                 Registrei um contato
               </button>
-              <button type="button" class={classesBotao("azul", "p")} data-converter={c.id} data-converter-nome={c.nome}>
-                <Icone nome="usuarios" class="size-4" />
-                Passar para o comerciante
-              </button>
+              {c.reserva?.meuRascunho ? (
+                <a href={`/representante/anunciantes/${c.reserva.meuRascunho}`} class={classesBotao("azul", "p")}>
+                  <Icone nome="usuarios" class="size-4" />
+                  Continuar o cadastro
+                </a>
+              ) : (
+                !c.reserva && (
+                  <form method="post">
+                    <input type="hidden" name="acao" value="fechar" />
+                    <input type="hidden" name="anuncianteId" value={c.id} />
+                    <button type="submit" class={classesBotao("azul", "p")}>
+                      <Icone nome="usuarios" class="size-4" />
+                      Fechei com este comércio
+                    </button>
+                  </form>
+                )
+              )}
             </div>
           </li>
         ))
@@ -175,35 +194,4 @@ const linkPagina = (n: number) => {
 
   <ModalAtendimento comNaoProcurar />
 
-  <Modal id="modal-converter" titulo="Passar para o comerciante">
-    <form method="post">
-      <input type="hidden" name="acao" value="converter" />
-      <input type="hidden" name="anuncianteId" value="" data-converter-id />
-      <p class="text-sm font-bold text-slate-600" data-converter-titulo></p>
-      <p class="mt-2 text-sm text-slate-600">
-        O comerciante recebe agora um convite por e-mail para conferir o perfil, aceitar os Termos e criar a senha. O perfil
-        fica sendo dele; você fica como o representante que o trouxe.
-      </p>
-      <label class={classesRotulo}>
-        E-mail do comerciante
-        <input type="email" name="email" required maxlength="254" autocomplete="off" class={classesCampo} />
-      </label>
-      <div class="mt-5 flex gap-2">
-        <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>Cancelar</button>
-        <button type="submit" class={classesBotao("azul", "m", "flex-1")}>Enviar convite</button>
-      </div>
-    </form>
-  </Modal>
 </PaginaRepresentante>
-
-<script>
-  for (const botao of document.querySelectorAll<HTMLElement>("[data-converter]")) {
-    botao.addEventListener("click", () => {
-      const dialogo = document.getElementById("modal-converter");
-      if (!(dialogo instanceof HTMLDialogElement)) return;
-      dialogo.querySelector<HTMLInputElement>("[data-converter-id]")!.value = botao.dataset.converter ?? "";
-      dialogo.querySelector<HTMLElement>("[data-converter-titulo]")!.textContent = botao.dataset.converterNome ?? "";
-      dialogo.showModal();
-    });
-  }
-</script>

@@ -14,8 +14,6 @@ const usuario = Astro.locals.usuario!;
 const cadastro = await lerMeuCadastro(supabase, usuario.id);
 const lista = cadastro.ok ? await listarMeusAnunciantes(supabase, cadastro.dados.id) : cadastro;
 const linhas = lista.ok ? lista.dados : [];
-const AVISOS: Record<string, string> = { convertido: "Convite enviado ao comerciante. O comércio agora aparece aqui." };
-const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
 ---
 
 <PaginaRepresentante titulo="Meus anunciantes" descricao="Os anunciantes que você trouxe. Clique no nome para ver os detalhes e registrar contatos.">
@@ -25,12 +23,11 @@ const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
       Novo cadastro assistido
     </a>
   </div>
-  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
   {!lista.ok && <Aviso tipo="erro">{lista.erro.mensagem}</Aviso>}
   {
     lista.ok && linhas.length === 0 && (
       <p class="mt-6 rounded-2xl bg-white p-5 text-slate-600 shadow-sm ring-1 ring-black/5">
-        Você ainda não trouxe anunciantes. Faça um cadastro assistido ou converta um comércio da prospecção.
+        Você ainda não trouxe anunciantes. Faça um cadastro assistido ou feche com um comércio da prospecção.
       </p>
     )
   }
@@ -55,7 +52,7 @@ const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
                   </a>
                   <span class="block text-xs text-slate-500">
                     {a.tipo === "profissional" ? "Autônomo" : "Comércio"}
-                    {a.origem === "receita" && " · importado da Receita"}
+                    {(a.origem === "receita" || a.importado_id) && " · comércio importado da Receita"}
                   </span>
                 </td>
                 <td class="px-4 py-3">{ROTULO_SITUACAO[a.status]}</td>

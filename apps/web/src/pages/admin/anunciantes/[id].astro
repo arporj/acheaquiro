@@ -17,6 +17,7 @@ import {
   lerFormulario,
   lerHistorico,
   lerOpcoes,
+  marcarConferido,
   mudarSituacao,
   salvarAnunciante,
   valoresDoAnunciante,
@@ -39,6 +40,7 @@ const AVISOS: Record<string, string> = {
   "convite-reenviado": "Convite reenviado.",
   situacao: "Situação alterada.",
   atendimento: "Contato registrado.",
+  conferido: "Marcado como conferido.",
 };
 const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
 let erro = "";
@@ -62,6 +64,11 @@ if (Astro.request.method === "POST" && lido.ok) {
   } else if (acao === "convite") {
     const r = await enviarConvite(supabase, id);
     if (r.ok) return Astro.redirect(`/admin/anunciantes/${id}?aviso=${r.dados.reenvio ? "convite-reenviado" : "convite"}`, 303);
+    erro = r.erro.mensagem;
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  } else if (acao === "conferido") {
+    const r = await marcarConferido(supabase, id);
+    if (r.ok) return Astro.redirect(`/admin/anunciantes/${id}?aviso=conferido`, 303);
     erro = r.erro.mensagem;
     Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
   } else if (acao === "atendimento") {
@@ -152,6 +159,24 @@ const caixa = "rounded-xl bg-fundo p-3";
   {
     a && (
       <>
+        {a.revisar && (
+          <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-amarelo-200 p-4 text-sm text-azul-900">
+            <p class="font-semibold">
+              Comércio importado assumido pelo comerciante: foi ao ar quando ele aceitou o convite, sem aprovação prévia. Confira os dados.
+            </p>
+            <form method="post">
+              <input type="hidden" name="acao" value="conferido" />
+              <button type="submit" class={classesBotao("azul", "p")}>Conferido</button>
+            </form>
+          </div>
+        )}
+        {a.importado_id && (
+          <p class="mt-4 rounded-2xl bg-azul-50 p-4 text-sm font-semibold text-azul-900">
+            Cadastro feito por um representante para um comércio importado. Quando o comerciante aceitar o convite, ele substitui o importado no site
+            (<a href={`/admin/anunciantes/${a.importado_id}`} class="underline">ver o importado</a>).
+          </p>
+        )}
+
         <section class="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
           <div class="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <div class={caixa}>

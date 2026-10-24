@@ -4,7 +4,7 @@
 // trata como representante com a segunda etapa feita e o termo aceito
 // (interno.meu_representante_id, migration 20261024100100).
 import type { Resultado } from "@acheaqui/types";
-import { esquemaAtendimento, esquemaChavePix, esquemaEmail, mensagensPorCampo, type TipoChavePix } from "@acheaqui/validation";
+import { esquemaAtendimento, esquemaChavePix, mensagensPorCampo, type TipoChavePix } from "@acheaqui/validation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Situacao } from "./anunciantesAdmin";
 import { DOCUMENTOS } from "./documentosLegais";
@@ -191,6 +191,7 @@ export interface MeuAnunciante {
   status: Situacao;
   origem: "cadastro" | "receita";
   criado_em: string;
+  importado_id: string | null;
   plano: { nome: string } | null;
   planoEscolhido: { nome: string } | null;
 }
@@ -200,7 +201,7 @@ export async function listarMeusAnunciantes(supabase: SupabaseClient, representa
   const { data, error } = await supabase
     .from("anunciantes")
     .select(
-      "id, nome, slug, tipo, status, origem, criado_em, plano:planos!anunciantes_plano_id_fkey(nome), planoEscolhido:planos!anunciantes_plano_escolhido_id_fkey(nome)",
+      "id, nome, slug, tipo, status, origem, criado_em, importado_id, plano:planos!anunciantes_plano_id_fkey(nome), planoEscolhido:planos!anunciantes_plano_escolhido_id_fkey(nome)",
     )
     .eq("representante_id", representanteId)
     .order("criado_em", { ascending: false })
@@ -232,9 +233,18 @@ export interface ComercioProspeccao {
   razaoSocial: string;
   telefones: string[];
   email: string | null;
-  /** Convite já enviado por um representante, esperando o comerciante. */
-  emailConvite: string | null;
   ultimoContato: UltimoContato | null;
+  /** Representante que fechou com o comércio e está fazendo o cadastro (vazio: livre). */
+  reserva: ReservaImportado | null;
+}
+
+export interface ReservaImportado {
+  autor: string;
+  /** Até quando os outros não pegam o comércio, se o convite não sair (AAAA-MM-DD). */
+  ate: string;
+  conviteEnviado: boolean;
+  /** Rascunho do próprio representante que está vendo, para continuar o cadastro. */
+  meuRascunho: string | null;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -258,7 +268,6 @@ interface LinhaProspeccao {
   id: string;
   nome: string;
   slug: string;
-  email_convite: string | null;
   categoria: { nome: string } | null;
   enderecos: { logradouro: string; numero: string; bairro: { nome: string } | null }[];
   dados_receita: DadosReceitaLinha | DadosReceitaLinha[] | null;
@@ -271,7 +280,7 @@ export async function listarProspeccao(
   let consulta = supabase
     .from("anunciantes")
     .select(
-      "id, nome, slug, email_convite, categoria:categorias(nome), " +
+      "id, nome, slug, categoria:categorias(nome), " +
         `enderecos${f.bairroId ? "!inner" : ""}(logradouro, numero, bairro_id, bairro:bairros(nome)), ` +
         "dados_receita(razao_social, telefones, email), nao_procurar(anunciante_id)",
       { count: "exact" },
@@ -288,9 +297,12 @@ export async function listarProspeccao(
   if (error) return mensagemDoBanco(error, "listarProspeccao");
   const linhas = data as unknown as LinhaProspeccao[];
 
-  const contatos = await ultimosContatos(supabase, linhas.map((l) => l.id));
+  const ids = linhas.map((l) => l.id);
+  const [contatos, reservas] = await Promise.all([ultimosContatos(supabase, ids), reservasDosImportados(supabase, ids)]);
   // Sem o último contato, a lista sai assim mesmo: o aviso já foi para o registro.
   const mapa = contatos.ok ? contatos.dados : new Map<string, UltimoContato>();
+  // Sem as reservas, não dá para saber quem está com cada comércio: melhor não mostrar a lista.
+  if (!reservas.ok) return reservas;
 
   return {
     ok: true,
@@ -309,8 +321,8 @@ export async function listarProspeccao(
           razaoSocial: receita?.razao_social ?? "",
           telefones: receita?.telefones ?? [],
           email: receita?.email ?? null,
-          emailConvite: l.email_convite,
           ultimoContato: mapa.get(l.id) ?? null,
+          reserva: reservas.dados.get(l.id) ?? null,
         };
       }),
     },
@@ -330,51 +342,46 @@ export async function marcarNaoProcurar(supabase: SupabaseClient, anuncianteId: 
 }
 
 /**
- * Converte o comércio importado para o comerciante (decisão de 23/10/2026):
- * guarda o e-mail, manda o convite na hora, sem confirmação da equipe, e liga
- * a conta ao perfil. O representante fica como quem trouxe, nunca como dono.
- * As etapas não ficam numa transação só: se o convite sair e a ligação
- * falhar, a conta fica no registro para a equipe ligar. Cada convite manda
- * um e-mail: no máximo 20 por representante a cada hora.
+ * Reservas em vigor: o convite já saiu, ou o representante fechou com o
+ * comércio há menos de 7 dias (a reserva vencida não conta; o banco apaga o
+ * rascunho vencido quando outro representante fecha com o comércio).
  */
-export async function converterImportado(
-  supabase: SupabaseClient,
-  usuarioId: string,
-  anuncianteId: string,
-  email: string,
-): Promise<Resultado<null>> {
-  if (!UUID.test(anuncianteId)) return falha("NAO_ENCONTRADO", "Comércio não encontrado.");
-  const valido = esquemaEmail.safeParse(email);
-  if (!valido.success) {
-    const mensagem = valido.error.issues[0]?.message ?? "E-mail inválido.";
-    return falha("DADOS_INVALIDOS", mensagem, { email: mensagem });
-  }
-
-  const limite = await clienteServico().rpc("consumir_limite", { p_chave: `conversao:${usuarioId}`, p_limite: 20, p_janela_segundos: 3600 });
-  if (limite.error) return mensagemDoBanco(limite.error, "converterImportado: limite");
-  if (limite.data === false) return falha("SEM_PERMISSAO", "Muitos convites seguidos. Espere uma hora e tente de novo.");
-
-  const { error: erroPreparo } = await supabase.rpc("preparar_conversao_importado", { p_anunciante: anuncianteId, p_email: valido.data });
-  if (erroPreparo) return mensagemDoBanco(erroPreparo, "converterImportado: preparo");
-
-  const { data: convite, error } = await clienteServico().auth.admin.inviteUserByEmail(valido.data);
-  if (error) {
-    if (error.code === "email_exists" || error.status === 422) {
-      return falha("CONFLITO", "Já existe uma conta com este e-mail. Peça outro e-mail ao comerciante ou fale com a equipe.");
-    }
-    console.error("converterImportado: inviteUserByEmail falhou", { codigo: error.code, status: error.status, mensagem: error.message });
-    return ERRO_INTERNO;
-  }
-  const { error: erroLigacao } = await supabase.rpc("vincular_conta_importado", { p_anunciante: anuncianteId, p_usuario: convite.user.id });
-  if (erroLigacao) {
-    console.error("converterImportado: ligação da conta falhou depois do convite", {
-      anunciante: anuncianteId,
-      usuario: convite.user.id,
-      codigo: erroLigacao.code,
-      mensagem: erroLigacao.message,
+async function reservasDosImportados(supabase: SupabaseClient, ids: string[]): Promise<Resultado<Map<string, ReservaImportado>>> {
+  const mapa = new Map<string, ReservaImportado>();
+  if (!ids.length) return { ok: true, dados: mapa };
+  const { data, error } = await supabase.rpc("situacao_importados", { p_importados: ids });
+  if (error) return mensagemDoBanco(error, "reservasDosImportados");
+  const agora = Date.now();
+  for (const l of data as { importado_id: string; autor_nome: string; ate: string; convite_enviado: boolean; meu_rascunho: string | null }[]) {
+    if (!l.convite_enviado && !l.meu_rascunho && new Date(l.ate).getTime() <= agora) continue;
+    mapa.set(l.importado_id, {
+      autor: l.autor_nome,
+      ate: new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(l.ate)),
+      conviteEnviado: l.convite_enviado,
+      meuRascunho: l.meu_rascunho,
     });
-    return mensagemDoBanco(erroLigacao, "converterImportado: ligação");
   }
+  return { ok: true, dados: mapa };
+}
+
+/**
+ * "Fechei com este comércio" (decisões Z1, Z3 e Z4, de 24/10/2026): cria o
+ * rascunho do cadastro completo, copiado do importado, ou devolve o que o
+ * representante já tem. O site continua mostrando o importado até o
+ * comerciante aceitar o convite; aí o banco troca um pelo outro.
+ */
+export async function fecharComImportado(supabase: SupabaseClient, importadoId: string): Promise<Resultado<{ id: string }>> {
+  if (!UUID.test(importadoId)) return falha("NAO_ENCONTRADO", "Comércio não encontrado.");
+  const { data, error } = await supabase.rpc("assumir_importado", { p_importado: importadoId });
+  if (error) return mensagemDoBanco(error, "fecharComImportado");
+  return { ok: true, dados: { id: data as string } };
+}
+
+/** Cada convite manda um e-mail: no máximo 20 por representante a cada hora. */
+export async function limiteDeConvites(usuarioId: string): Promise<Resultado<null>> {
+  const limite = await clienteServico().rpc("consumir_limite", { p_chave: `convite:${usuarioId}`, p_limite: 20, p_janela_segundos: 3600 });
+  if (limite.error) return mensagemDoBanco(limite.error, "limiteDeConvites");
+  if (limite.data === false) return falha("SEM_PERMISSAO", "Muitos convites seguidos. Espere uma hora e tente de novo.");
   return { ok: true, dados: null };
 }
 

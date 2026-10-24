@@ -21,7 +21,8 @@ import {
   type ValoresFormulario,
 } from "@/lib/anunciantesAdmin";
 import { formatarTelefone } from "@/lib/contato";
-import { lerMeuCadastro, listarAtendimentos, registrarDoFormulario } from "@/lib/representante";
+import { formatarData } from "@/lib/texto";
+import { lerMeuCadastro, limiteDeConvites, listarAtendimentos, registrarDoFormulario } from "@/lib/representante";
 
 const supabase = Astro.locals.supabase!;
 const usuario = Astro.locals.usuario!;
@@ -29,6 +30,7 @@ const id = Astro.params.id ?? "";
 
 const AVISOS: Record<string, string> = {
   criado: "Rascunho salvo. Confira os dados e envie o convite quando estiver pronto.",
+  fechado: "O comércio é seu por 7 dias: faça o cadastro completo e envie o convite ao comerciante. Até ele aceitar, o site continua mostrando só os dados da Receita.",
   salvo: "Alterações salvas.",
   convite: "Convite enviado. O anunciante recebe o link por e-mail para conferir o perfil e criar a senha.",
   "convite-reenviado": "Convite reenviado.",
@@ -56,7 +58,8 @@ if (Astro.request.method === "POST" && lido.ok && cadastro.ok) {
     r = s.ok ? { ok: true, destino: "salvo" } : { ok: false, mensagem: s.erro.mensagem, interno: s.erro.codigo === "ERRO_INTERNO", campos: s.erro.campos };
     if (!s.ok) valoresEnviados = valoresDoEnvio(form, lido.dados.tipo);
   } else if (acao === "convite" && editavel) {
-    const s = await enviarConvite(supabase, id);
+    const limite = await limiteDeConvites(usuario.id);
+    const s = limite.ok ? await enviarConvite(supabase, id) : limite;
     r = s.ok ? { ok: true, destino: s.dados.reenvio ? "convite-reenviado" : "convite" } : { ok: false, mensagem: s.erro.mensagem, interno: s.erro.codigo === "ERRO_INTERNO" };
   } else if (acao === "atendimento") {
     const s = await registrarDoFormulario(supabase, form);
@@ -78,6 +81,9 @@ if (!lido.ok) erro ||= lido.erro.mensagem;
 if (!cadastro.ok) erro ||= cadastro.erro.mensagem;
 const a = lido.ok ? lido.dados : null;
 const caixa = "rounded-xl bg-fundo p-3";
+// Reserva do comércio importado: 7 dias depois de fechar, sem convite (o banco confere de novo).
+const fimReserva = a?.importado_id && !a.usuario_id ? new Date(new Date(a.criado_em).getTime() + 7 * 86_400_000) : null;
+const diaFimReserva = fimReserva ? new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(fimReserva) : "";
 ---
 
 <PaginaRepresentante titulo={a?.nome ?? "Anunciante"} descricao={a ? `${a.tipo === "profissional" ? "Autônomo" : "Comércio"} · ${ROTULO_SITUACAO[a.status]}` : undefined}>
@@ -104,6 +110,7 @@ const caixa = "rounded-xl bg-fundo p-3";
               <p class="font-bold text-azul-900">Conta</p>
               <p>{a.usuario_id ? `Convite enviado para ${a.email_convite ?? "o e-mail do anunciante"}` : "Convite ainda não enviado"}</p>
               {a.origem === "receita" && <p>Comércio importado da Receita</p>}
+              {a.importado_id && <p>Cadastro de um comércio importado da Receita: até o comerciante aceitar, o site mostra só os dados da Receita.</p>}
             </div>
           </div>
           {
@@ -116,6 +123,13 @@ const caixa = "rounded-xl bg-fundo p-3";
               </div>
             )
           }
+          {fimReserva && (
+            <p class:list={["mt-3 rounded-xl px-3 py-2 text-sm font-semibold", fimReserva.getTime() > Date.now() ? "bg-azul-50 text-azul-900" : "bg-vermelho-500/10 text-vermelho-700"]}>
+              {fimReserva.getTime() > Date.now()
+                ? `O comércio fica com você até ${formatarData(diaFimReserva)}. Envie o convite até lá.`
+                : `A reserva venceu em ${formatarData(diaFimReserva)}: outro representante já pode fechar com este comércio. Envie o convite para garantir.`}
+            </p>
+          )}
           {
             editavel && (
               <form method="post" class="mt-4">
