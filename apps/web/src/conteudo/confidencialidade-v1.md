@@ -10,6 +10,7 @@ Para vender os planos, os extras e as cotas de patrocínio, o Representante aces
 
 - os dados dos anunciantes que trouxe ou atendeu (nome, telefone, e-mail, endereço, plano e situação do pagamento);
 - a lista de prospecção, com o telefone e o e-mail que os comércios importados registraram na Receita Federal, que não são publicados no site;
+- o nome do representante que fez o último contato com cada comércio da prospecção e o dia desse contato. O nome do Representante e o dia dos contatos que ele registrar também aparecem para os outros representantes;
 - os valores das suas comissões.
 
 Esses dados são **confidenciais** e protegidos pela Lei Geral de Proteção de Dados (Lei nº 13.709/2018).
@@ -24,7 +25,7 @@ Usar os dados só para apresentar o Ache Aqui à empresa ou ao profissional, ofe
 2. Repassar os dados a outra pessoa ou empresa, inclusive a outro representante.
 3. Usar os dados para vender produtos ou serviços que não sejam do Ache Aqui, ou para qualquer finalidade pessoal.
 4. Incluir os telefones em listas de transmissão ou grupos de WhatsApp, ou mandar mensagens em massa.
-5. Insistir no contato com quem disse que não tem interesse. Quem pedir para não ser mais procurado deve ser informado à equipe, que tira o comércio da lista de prospecção.
+5. Insistir no contato com quem disse que não tem interesse. Quando alguém pedir para não ser mais procurado, o Representante marca isso no registro do contato, o que tira o comércio da lista de prospecção de todos os representantes.
 6. Emprestar a sua senha, o seu celular com o aplicativo autenticador ou o acesso à área do representante a outra pessoa.
 7. Prometer ao anunciante condições que não estão nos planos, nos extras ou nas regras de desconto do Ache Aqui.
 
