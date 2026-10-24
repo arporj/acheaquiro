@@ -334,15 +334,25 @@ export async function marcarNaoProcurar(supabase: SupabaseClient, anuncianteId: 
  * guarda o e-mail, manda o convite na hora, sem confirmação da equipe, e liga
  * a conta ao perfil. O representante fica como quem trouxe, nunca como dono.
  * As etapas não ficam numa transação só: se o convite sair e a ligação
- * falhar, a conta fica no registro para a equipe ligar.
+ * falhar, a conta fica no registro para a equipe ligar. Cada convite manda
+ * um e-mail: no máximo 20 por representante a cada hora.
  */
-export async function converterImportado(supabase: SupabaseClient, anuncianteId: string, email: string): Promise<Resultado<null>> {
+export async function converterImportado(
+  supabase: SupabaseClient,
+  usuarioId: string,
+  anuncianteId: string,
+  email: string,
+): Promise<Resultado<null>> {
   if (!UUID.test(anuncianteId)) return falha("NAO_ENCONTRADO", "Comércio não encontrado.");
   const valido = esquemaEmail.safeParse(email);
   if (!valido.success) {
     const mensagem = valido.error.issues[0]?.message ?? "E-mail inválido.";
     return falha("DADOS_INVALIDOS", mensagem, { email: mensagem });
   }
+
+  const limite = await clienteServico().rpc("consumir_limite", { p_chave: `conversao:${usuarioId}`, p_limite: 20, p_janela_segundos: 3600 });
+  if (limite.error) return mensagemDoBanco(limite.error, "converterImportado: limite");
+  if (limite.data === false) return falha("SEM_PERMISSAO", "Muitos convites seguidos. Espere uma hora e tente de novo.");
 
   const { error: erroPreparo } = await supabase.rpc("preparar_conversao_importado", { p_anunciante: anuncianteId, p_email: valido.data });
   if (erroPreparo) return mensagemDoBanco(erroPreparo, "converterImportado: preparo");

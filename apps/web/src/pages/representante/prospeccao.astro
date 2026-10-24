@@ -22,6 +22,7 @@ import {
 import { formatarData } from "@/lib/texto";
 
 const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
 const filtro = lerFiltroProspeccao(Astro.url.searchParams);
 
 const AVISOS: Record<string, string> = {
@@ -44,7 +45,7 @@ if (Astro.request.method === "POST") {
     erro = r.erro.mensagem;
     Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
   } else if (acao === "converter") {
-    const r = await converterImportado(supabase, String(form.get("anuncianteId") ?? "").slice(0, 40), String(form.get("email") ?? "").slice(0, 254));
+    const r = await converterImportado(supabase, usuario.id, String(form.get("anuncianteId") ?? "").slice(0, 40), String(form.get("email") ?? "").slice(0, 254));
     if (r.ok) return Astro.redirect("/representante/anunciantes?aviso=convertido", 303);
     erro = r.erro.mensagem;
     Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
