@@ -1,0 +1,29 @@
+---
+// Link para o WhatsApp da equipe (WHATSAPP_EQUIPE) com uma mensagem pronta.
+// Quem chegou pelo link de um representante leva a indicação no fim da
+// mensagem (o script do navegador acrescenta, porque a página fica no cache).
+// A aparência fica com quem usa: botão, texto da faixa ou link do rodapé.
+import { WHATSAPP_EQUIPE, linkWhatsApp } from "@/lib/contato";
+
+interface Props {
+  /** Texto que chega no WhatsApp. */
+  mensagem: string;
+  class?: string;
+}
+
+const { mensagem, class: classe } = Astro.props;
+---
+
+<a
+  href={linkWhatsApp(WHATSAPP_EQUIPE, mensagem)}
+  target="_blank"
+  rel="noopener noreferrer"
+  class={classe}
+  data-contato-equipe={mensagem}
+>
+  <slot />
+</a>
+
+<script>
+  import "@/lib/indicacaoNosContatos";
+</script>

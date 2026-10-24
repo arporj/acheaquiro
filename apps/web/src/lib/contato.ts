@@ -7,6 +7,14 @@ export const MENSAGEM_INFORMACAO = "Olá! Encontrei você no Ache Aqui RO e gost
 /** WhatsApp da equipe, destino de todos os botões de contato (decisão de 22/10/2026). */
 export const WHATSAPP_EQUIPE = "5521988520666";
 
+/** Mensagem pronta para a equipe, que diz de onde veio o contato ("Quero anunciar"). */
+export function mensagemEquipe(assunto: string): string {
+  return `Olá! Vim pelo site do Ache Aqui RO. ${assunto}.`;
+}
+
+/** Fale conosco: botão flutuante e faixa do site de apresentação, e rodapé (decisão de 24/10/2026). */
+export const MENSAGEM_DUVIDA = mensagemEquipe("Quero tirar uma dúvida");
+
 export function linkWhatsApp(numero: string, mensagem: string): string {
   return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
 }

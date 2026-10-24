@@ -1,5 +1,6 @@
 ---
 import { Font } from "astro:assets";
+import BotaoDuvidas from "@/components/BotaoDuvidas.astro";
 import FaixaApresentacao from "@/components/FaixaApresentacao.astro";
 import Rodape from "@/components/Rodape.astro";
 import { ambiente } from "@/lib/ambiente";
@@ -46,5 +47,6 @@ const { titulo, descricao = DESCRICAO_PADRAO, previa } = Astro.props;
     {ambiente === "apresentacao" && <FaixaApresentacao />}
     <slot />
     <Rodape />
+    {ambiente === "apresentacao" && <BotaoDuvidas />}
   </body>
 </html>

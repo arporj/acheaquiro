@@ -59,10 +59,23 @@ body {
     linear-gradient(160deg, var(--color-azul-500), var(--color-azul-800));
 }
 
-/* Espaço para a barra fixa de contato do perfil não cobrir o rodapé. */
+/*
+ * Espaço para a barra fixa de contato do perfil e o botão "Dúvidas? Fale
+ * conosco" (site de apresentação) não cobrirem o rodapé. No perfil, pelo
+ * celular, o botão sobe acima da barra.
+ */
+body:has(.botao-duvidas) footer {
+  padding-bottom: 4.5rem;
+}
 @media (width < 64rem) {
   body:has(.barra-contato) footer {
     padding-bottom: 5rem;
+  }
+  body:has(.barra-contato):has(.botao-duvidas) footer {
+    padding-bottom: 9rem;
+  }
+  body:has(.barra-contato) .botao-duvidas {
+    bottom: calc(5.25rem + env(safe-area-inset-bottom));
   }
 }
 

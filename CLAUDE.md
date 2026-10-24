@@ -48,7 +48,8 @@ Calendário: pré-cadastro dos Fundadores de 09/11 a 26/11/2026, feito pela equi
 
 ## Contato
 
-- Todos os botões de contato com a equipe (Quero anunciar, Quero ser Fundador, Quero ser representante, Quero patrocinar, Quero esta cota) abrem o WhatsApp da equipe, +55 21 98852-0666 (WHATSAPP_EQUIPE em apps/web/src/lib/contato.ts), com uma mensagem pronta que diz de onde veio o contato (decisão de 22/10/2026).
+- Todos os botões de contato com a equipe (Quero anunciar, Quero ser Fundador, Quero ser representante, Quero patrocinar, Quero esta cota, Fale conosco) abrem o WhatsApp da equipe, +55 21 98852-0666 (WHATSAPP_EQUIPE em apps/web/src/lib/contato.ts), com uma mensagem pronta que diz de onde veio o contato (decisão de 22/10/2026).
+- Fale conosco (decisão de 24/10/2026), para quem quer só tirar uma dúvida: abre o mesmo WhatsApp com "Quero tirar uma dúvida" (MENSAGEM_DUVIDA). Fica no rodapé da produção e do site de apresentação; no site de apresentação, também num botão flutuante "Dúvidas? Fale conosco" em todas as páginas (no perfil, pelo celular, acima da barra de contato) e no fim da faixa amarela do topo.
 
 ## Documentação
 

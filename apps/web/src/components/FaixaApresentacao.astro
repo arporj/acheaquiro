@@ -1,13 +1,21 @@
 ---
 // Aviso do site de apresentação para anunciantes: os dados são fictícios,
 // para ninguém tentar contratar um anunciante inventado. Só aparece no
-// ambiente "apresentacao" (.env.teste); a produção nunca mostra.
+// ambiente "apresentacao" (.env.teste); a produção nunca mostra. Termina com o
+// Fale conosco, para quem quer tirar uma dúvida (decisão de 24/10/2026).
 import { Icone } from "@acheaqui/ui";
+import { MENSAGEM_DUVIDA } from "@/lib/contato";
+import LinkContatoEquipe from "./institucional/LinkContatoEquipe.astro";
 ---
 
 <div role="note" class="bg-amarelo-300 px-4 py-2 text-azul-900">
   <p class="mx-auto flex max-w-6xl items-center justify-center gap-2 text-center text-xs font-bold sm:text-sm">
     <Icone nome="info" class="size-4 shrink-0" strokeWidth={2.5} />
-    Site de apresentação: anunciantes, telefones e endereços são fictícios.
+    <span>
+      Site de apresentação: anunciantes, telefones e endereços são fictícios.
+      <LinkContatoEquipe mensagem={MENSAGEM_DUVIDA} class="whitespace-nowrap underline underline-offset-2 hover:text-azul-700">
+        Dúvidas? Fale conosco
+      </LinkContatoEquipe>
+    </span>
   </p>
 </div>

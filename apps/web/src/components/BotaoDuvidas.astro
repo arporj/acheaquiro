@@ -1,0 +1,18 @@
+---
+// Botão flutuante "Dúvidas? Fale conosco", em todas as páginas do site de
+// apresentação (decisão de 24/10/2026): quem recebe o link quer tirar uma
+// dúvida sem passar por Anuncie ou Patrocine. Azul do Ache Aqui e com o texto
+// à mostra, para não parecer o WhatsApp do anunciante. No perfil, pelo
+// celular, sobe acima da barra de contato (global.css).
+import { Icone, classesBotao } from "@acheaqui/ui";
+import { MENSAGEM_DUVIDA } from "@/lib/contato";
+import LinkContatoEquipe from "./institucional/LinkContatoEquipe.astro";
+---
+
+<LinkContatoEquipe
+  mensagem={MENSAGEM_DUVIDA}
+  class={classesBotao("azul", "m", "botao-duvidas fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 shadow-lg")}
+>
+  <Icone nome="mensagem" class="size-5" />
+  Dúvidas? Fale conosco
+</LinkContatoEquipe>
