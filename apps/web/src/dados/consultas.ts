@@ -6,6 +6,7 @@
 import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, CotaPatrocinio, CotaPatrocinioVenda, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
 import { dadosPublicosDoArtista, novaVagaAPartirDe, somarDias } from "@acheaqui/domain";
 import {
+  codigoRepresentanteValido,
   criarClientePublico,
   lerAnunciantePublico,
   lerAnunciantesPublicos,
@@ -400,6 +401,16 @@ export async function contarCliquePatrocinador(slug: string, visitante: string):
     chavePublica: import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? "",
   });
   await registrarCliquePatrocinio(cliente, CIDADE, slug, visitante);
+}
+
+/**
+ * Código do link /r/codigo de um representante ativo. Só a produção confere
+ * no banco; o aviso "em breve" não acessa o banco e guarda o código como veio
+ * (a equipe confere quando a mensagem chega).
+ */
+export async function indicacaoValida(codigo: string): Promise<boolean> {
+  if (!catalogoDoBanco) return true;
+  return codigoRepresentanteValido(clientePublico(), codigo);
 }
 
 // Agenda (módulo de eventos). Por enquanto só no site de apresentação.

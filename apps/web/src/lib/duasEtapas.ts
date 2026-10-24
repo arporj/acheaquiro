@@ -1,5 +1,5 @@
 // Verificação em duas etapas por aplicativo autenticador (TOTP, item 4.14):
-// obrigatória para administradores e opcional para os outros papéis.
+// obrigatória para administradores e representantes e opcional para os anunciantes.
 import type { Resultado } from "@acheaqui/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { clienteServico } from "./sessao";

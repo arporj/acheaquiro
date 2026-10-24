@@ -1,6 +1,6 @@
 ---
 // Cadastro do aplicativo autenticador (item 4.14): obrigatório para o
-// administrador no primeiro acesso, opcional para anunciantes e representantes.
+// administrador e o representante no primeiro acesso, opcional para os anunciantes.
 import { classesBotao } from "@acheaqui/ui";
 import { esquemaCodigoDuasEtapas, mensagensPorCampo } from "@acheaqui/validation";
 import Aviso from "@/components/conta/Aviso.astro";
@@ -10,7 +10,7 @@ import { verificarCodigo } from "@/lib/duasEtapas";
 
 const supabase = Astro.locals.supabase!;
 const usuario = Astro.locals.usuario!;
-const obrigatoria = usuario.papel === "administrador";
+const obrigatoria = usuario.papel === "administrador" || usuario.papel === "representante";
 const ERRO_INTERNO = "Não foi possível preparar a verificação agora. Tente de novo em instantes.";
 
 const fatores = await supabase.auth.mfa.listFactors();
@@ -77,7 +77,7 @@ if (!ativa && Astro.request.method === "POST") {
       <>
         <p class="mt-1 text-slate-600">
           {obrigatoria
-            ? "Para administradores, a verificação em duas etapas é obrigatória: além da senha, a entrada pede um código do celular."
+            ? "Para administradores e representantes, a verificação em duas etapas é obrigatória: além da senha, a entrada pede um código do celular."
             : "Além da senha, a entrada passa a pedir um código do celular. Assim, uma senha descoberta por outra pessoa não basta para entrar."}
         </p>
 

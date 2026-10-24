@@ -1,0 +1,57 @@
+---
+// Termo de confidencialidade (decisão de 23/10/2026): o representante aceita
+// no primeiro acesso, antes de ver qualquer dado de anunciante ou da Receita.
+// Uma nova versão do termo pede um novo aceite. O banco guarda a data e a versão.
+import { classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import { DOCUMENTOS, textoDocumento } from "@/lib/documentosLegais";
+import { aceitarTermo, termoAceito } from "@/lib/representante";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+const { titulo, vigente } = DOCUMENTOS.confidencialidade;
+const Texto = textoDocumento("confidencialidade", vigente)!;
+
+let erro = "";
+const aceito = await termoAceito(supabase, usuario.id);
+if (!aceito.ok) erro = aceito.erro.mensagem;
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  if (form.get("aceite") !== "sim") {
+    erro = "Marque que leu e aceita o termo para continuar.";
+    Astro.response.status = 400;
+  } else {
+    const resultado = await aceitarTermo(supabase, usuario.id);
+    if (resultado.ok) return Astro.redirect("/representante/inicio", 303);
+    erro = resultado.erro.mensagem;
+    Astro.response.status = 500;
+  }
+}
+const jaAceito = aceito.ok && aceito.dados;
+---
+
+<PaginaAcesso titulo={titulo} logado largura="larga">
+  {!jaAceito && <p class="mt-1 text-slate-600">Antes de entrar na sua área, leia e aceite o termo. Ele vale para tudo o que você vê lá.</p>}
+  <article class="texto-legal mt-4 max-h-[60vh] overflow-y-auto rounded-2xl bg-fundo p-5">
+    <Texto.Content />
+  </article>
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+  {
+    jaAceito ? (
+      <>
+        <Aviso tipo="sucesso">Você já aceitou a versão {vigente} deste termo.</Aviso>
+        <a href="/representante/inicio" class={classesBotao("azul", "m", "mt-6")}>Ir para a minha área</a>
+      </>
+    ) : (
+      <form method="post" class="mt-5">
+        <label class="flex items-start gap-3 font-semibold">
+          <input type="checkbox" name="aceite" value="sim" required class="mt-1 size-5 shrink-0 accent-azul-600" />
+          Li e aceito o {titulo}, versão {vigente}.
+        </label>
+        <button type="submit" class={classesBotao("azul", "g", "mt-6 w-full")}>Aceitar e continuar</button>
+      </form>
+    )
+  }
+</PaginaAcesso>

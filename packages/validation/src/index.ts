@@ -6,3 +6,4 @@ export * from "./arquivos";
 export * from "./patrocinio";
 export * from "./pedidoPerfil";
 export * from "./anunciante";
+export * from "./representante";

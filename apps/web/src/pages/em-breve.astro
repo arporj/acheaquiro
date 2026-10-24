@@ -2,6 +2,7 @@
 // Página única de acheaquiro.com.br até a abertura (ambiente "em-breve"). O
 // middleware leva todos os endereços para cá; nos outros sites, dá 404.
 import { Icone } from "@acheaqui/ui";
+import BotaoContato from "@/components/institucional/BotaoContato.astro";
 import Logo from "@/components/Logo.astro";
 import { obterRegrasCobranca } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
@@ -48,6 +49,7 @@ const regras = await obterRegrasCobranca();
             Fundador e tem {percentualInicialFundador(regras)}% de desconto já no primeiro ano.
           </p>
         </div>
+        <BotaoContato rotulo="Quero ser Fundador" class="mt-6" />
       </section>
     </div>
   </main>

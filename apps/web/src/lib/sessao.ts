@@ -83,8 +83,8 @@ export function areaDoPapel(papel: Papel | null): string {
 }
 
 /**
- * Para onde vai quem acabou de entrar: o administrador sem a segunda etapa
- * cadastra o aplicativo autenticador; quem já tem a segunda etapa digita o
+ * Para onde vai quem acabou de entrar: o administrador e o representante sem
+ * a segunda etapa cadastram o aplicativo autenticador; quem já tem a segunda etapa digita o
  * código; os outros seguem para a sua área.
  */
 export async function destinoDepoisDeEntrar(supabase: SupabaseClient, usuario: UsuarioLogado): Promise<string> {
@@ -94,7 +94,7 @@ export async function destinoDepoisDeEntrar(supabase: SupabaseClient, usuario: U
     return "/entrar?erro=interno";
   }
   if (data.currentLevel === "aal1" && data.nextLevel === "aal2") return "/entrar/codigo";
-  if (usuario.papel === "administrador" && data.nextLevel !== "aal2") return "/conta/duas-etapas";
+  if ((usuario.papel === "administrador" || usuario.papel === "representante") && data.nextLevel !== "aal2") return "/conta/duas-etapas";
   return areaDoPapel(usuario.papel);
 }
 

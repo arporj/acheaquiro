@@ -1,9 +1,140 @@
 ---
-// Área do representante (item 4.12). A página /representante é a pública.
-import AreaInicial from "@/components/conta/AreaInicial.astro";
+// Início da área do representante (item 4.12): o link e o código, para
+// copiar e mandar pelo WhatsApp, e a chave Pix para receber as comissões.
+// As comissões entram na etapa 2, com os pagamentos.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import { normalizarChavePix } from "@acheaqui/validation";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
+import { DIAS_INDICACAO } from "@/lib/indicacao";
+import { ROTULO_TIPO_PIX, lerMeuCadastro, salvarChavePix } from "@/lib/representante";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+
+let aviso = "";
+let erroPix = "";
+let chaveDigitada: string | null = null;
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  chaveDigitada = String(form.get("chave") ?? "").slice(0, 120);
+  const resultado = await salvarChavePix(supabase, chaveDigitada);
+  if (resultado.ok) return Astro.redirect("/representante/inicio?aviso=pix", 303);
+  erroPix = resultado.erro.mensagem;
+  Astro.response.status = resultado.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+if (Astro.url.searchParams.get("aviso") === "pix") aviso = "Chave Pix salva.";
+
+const cadastro = await lerMeuCadastro(supabase, usuario.id);
+const meu = cadastro.ok ? cadastro.dados : null;
+// Endereço fixo do site, mesmo antes da abertura: o aviso "em breve" já guarda a indicação.
+const link = meu ? `https://acheaquiro.com.br/r/${meu.codigo}` : "";
+const mensagemCompartilhar = `Conheça o Ache Aqui RO, o site dos profissionais e comércios de Rio das Ostras: ${link}`;
+const tipoPix = meu?.chavePix ? normalizarChavePix(meu.chavePix)?.tipo : undefined;
 ---
 
-<AreaInicial
-  titulo="Área do representante"
-  emBreve={["Seu link e seu código", "Anunciantes que você trouxe e a situação de cada um", "Comissões a receber e recebidas"]}
-/>
+<PaginaRepresentante titulo={meu?.nome ? `Olá, ${meu.nome.split(" ")[0]}` : "Área do representante"}>
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {
+    !meu ? (
+      <Aviso tipo="erro">{cadastro.ok ? "" : cadastro.erro.mensagem}</Aviso>
+    ) : (
+      <div class="mt-6 grid gap-6 lg:grid-cols-2">
+        <section class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-black/5">
+          <h2 class="font-display text-xl font-bold text-azul-900">Seu link</h2>
+          <p class="mt-1 text-sm text-slate-600">
+            Quem abre o link fica com a sua indicação por {DIAS_INDICACAO} dias. Se a pessoa abrir depois o link de outro
+            representante, vale o último. Os botões de contato com a equipe levam o seu código na mensagem.
+          </p>
+          <p class="mt-4 rounded-2xl bg-fundo px-4 py-3 font-bold break-all text-azul-900" data-link>{link}</p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button type="button" class={classesBotao("azul", "m")} data-copiar={link}>
+              <Icone nome="link" class="size-4" />
+              Copiar o link
+            </button>
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(mensagemCompartilhar)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              class={classesBotao("zap", "m")}
+            >
+              <Icone nome="compartilhar" class="size-4" />
+              Mandar pelo WhatsApp
+            </a>
+          </div>
+          <p class="mt-1 h-5 text-sm font-semibold text-zap-700" data-copiado role="status"></p>
+          <p class="mt-3 text-sm text-slate-600">
+            Seu código: <strong class="text-tinta">{meu.codigo}</strong>. Quem não abriu o link pode dizer o código à equipe.
+          </p>
+        </section>
+
+        <section class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-black/5">
+          <h2 class="font-display text-xl font-bold text-azul-900">Chave Pix</h2>
+          <p class="mt-1 text-sm text-slate-600">
+            {meu.recebeComissao
+              ? "É para ela que a equipe manda as suas comissões. A troca da chave fica registrada."
+              : "Seu cadastro, por enquanto, não recebe comissão. A chave fica guardada para quando receber."}
+          </p>
+          {meu.chavePix && (
+            <p class="mt-3 text-sm">
+              Chave atual{tipoPix ? ` (${ROTULO_TIPO_PIX[tipoPix]})` : ""}: <strong class="break-all">{meu.chavePix}</strong>
+            </p>
+          )}
+          <form method="post" novalidate>
+            <label for="chave" class={classesRotulo}>{meu.chavePix ? "Trocar a chave" : "Sua chave"}</label>
+            <input
+              id="chave"
+              name="chave"
+              required
+              maxlength="120"
+              autocomplete="off"
+              value={chaveDigitada ?? ""}
+              placeholder="CPF, CNPJ, e-mail, celular com +55 ou chave aleatória"
+              class={classesCampo}
+              aria-invalid={erroPix ? "true" : undefined}
+              aria-describedby={erroPix ? "chave-erro" : undefined}
+            />
+            {erroPix && <p id="chave-erro" class={classesErroCampo}>{erroPix}</p>}
+            <button type="submit" class={classesBotao("azul", "m", "mt-4")}>Salvar a chave</button>
+          </form>
+        </section>
+
+        <section class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-black/5 lg:col-span-2">
+          <h2 class="font-display text-xl font-bold text-azul-900">O que fazer por aqui</h2>
+          <ul class="mt-3 space-y-2 text-slate-700">
+            <li class="flex gap-2">
+              <Icone nome="megafone" class="mt-0.5 size-5 shrink-0 text-azul-600" />
+              <span><a href="/representante/anunciantes" class="font-bold text-azul-600 hover:underline">Meus anunciantes</a>: os que você trouxe, a situação de cada um e o cadastro assistido.</span>
+            </li>
+            <li class="flex gap-2">
+              <Icone nome="busca" class="mt-0.5 size-5 shrink-0 text-azul-600" />
+              <span><a href="/representante/prospeccao" class="font-bold text-azul-600 hover:underline">Prospecção</a>: os comércios da cidade que ainda não anunciam, com o telefone da Receita.</span>
+            </li>
+            <li class="flex gap-2">
+              <Icone nome="relogio" class="mt-0.5 size-5 shrink-0 text-azul-600" />
+              <span>Comissões: entram junto com o registro dos pagamentos.</span>
+            </li>
+          </ul>
+        </section>
+      </div>
+    )
+  }
+</PaginaRepresentante>
+
+<script>
+  for (const botao of document.querySelectorAll<HTMLButtonElement>("[data-copiar]")) {
+    botao.addEventListener("click", async () => {
+      const aviso = document.querySelector<HTMLElement>("[data-copiado]");
+      try {
+        await navigator.clipboard.writeText(botao.dataset.copiar ?? "");
+        if (aviso) aviso.textContent = "Link copiado.";
+      } catch (erro) {
+        // Navegador sem permissão de copiar: a pessoa copia do quadro acima.
+        console.error("Copiar o link falhou", erro);
+        if (aviso) aviso.textContent = "Não deu para copiar. Toque e segure no link acima para copiar.";
+      }
+    });
+  }
+</script>

@@ -3,6 +3,7 @@
 // cada área. As políticas de RLS do banco conferem de novo em cada consulta.
 import { defineMiddleware } from "astro:middleware";
 import { ambiente } from "@/lib/ambiente";
+import { termoAceito } from "@/lib/representante";
 import { clienteDaRequisicao, destinoDepoisDeEntrar, lerUsuario, type UsuarioLogado } from "@/lib/sessao";
 
 const DOMINIO_PRINCIPAL = "acheaquiro.com.br";
@@ -43,6 +44,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
     // O rewrite passa de novo por aqui, já com o caminho "/em-breve".
     if (pathname === "/em-breve") return next();
     if (pathname === "/") return context.rewrite("/em-breve");
+    // Link do representante: a indicação já fica guardada para depois da abertura.
+    if (pathname.startsWith("/r/")) return next();
     // Temporário (302): depois da abertura, esses endereços passam a existir.
     return context.redirect("/", 302);
   }
@@ -69,9 +72,20 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return context.redirect(`/entrar?voltar=${encodeURIComponent(pathname)}`, 303);
     }
     if (!regra(usuario)) return context.redirect(await destinoDepoisDeEntrar(supabase, usuario), 303);
-    // Administrador só passa da segunda etapa em diante (o RLS também exige aal2).
-    if (comecaCom(pathname, "/admin") && usuario.nivel !== "aal2") {
+    // Administrador e representante só passam da segunda etapa em diante (o RLS também exige aal2).
+    if ((comecaCom(pathname, "/admin") || pathname.startsWith("/representante/")) && usuario.nivel !== "aal2") {
       return context.redirect(await destinoDepoisDeEntrar(supabase, usuario), 303);
+    }
+    // O representante aceita o termo de confidencialidade antes de ver qualquer dado (o RLS também exige).
+    if (pathname.startsWith("/representante/") && pathname !== "/representante/termo") {
+      const aceito = await termoAceito(supabase, usuario.id);
+      if (!aceito.ok) {
+        return new Response(aceito.erro.mensagem, {
+          status: 500,
+          headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "private, no-store" },
+        });
+      }
+      if (!aceito.dados) return context.redirect("/representante/termo", 303);
     }
   }
 

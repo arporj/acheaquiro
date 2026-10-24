@@ -1,7 +1,9 @@
 ---
 // Botão de contato com a equipe: abre o WhatsApp da equipe (WHATSAPP_EQUIPE)
 // com uma mensagem pronta. Sem mensagem própria, a mensagem repete o rótulo
-// ("Quero anunciar"), para a equipe saber de onde veio o contato.
+// ("Quero anunciar"), para a equipe saber de onde veio o contato. Quem chegou
+// pelo link de um representante leva a indicação no fim da mensagem (o script
+// do navegador acrescenta, porque a página fica no cache).
 import { Icone, classesBotao, type VarianteBotao } from "@acheaqui/ui";
 import { WHATSAPP_EQUIPE, linkWhatsApp } from "@/lib/contato";
 
@@ -17,7 +19,25 @@ const { rotulo, mensagem, variante = "amarelo", class: classe = "" } = Astro.pro
 const texto = mensagem ?? `Olá! Vim pelo site do Ache Aqui RO. ${rotulo}.`;
 ---
 
-<a href={linkWhatsApp(WHATSAPP_EQUIPE, texto)} target="_blank" rel="noopener noreferrer" class={classesBotao(variante, "g", classe)}>
+<a
+  href={linkWhatsApp(WHATSAPP_EQUIPE, texto)}
+  target="_blank"
+  rel="noopener noreferrer"
+  class={classesBotao(variante, "g", classe)}
+  data-contato-equipe={texto}
+>
   <Icone nome="mensagem" class="size-5" />
   {rotulo}
 </a>
+
+<script>
+  import { WHATSAPP_EQUIPE, linkWhatsApp } from "@/lib/contato";
+  import { lerIndicacao, linhaIndicacao } from "@/lib/indicacao";
+
+  const codigo = lerIndicacao(document.cookie);
+  if (codigo) {
+    for (const botao of document.querySelectorAll<HTMLAnchorElement>("a[data-contato-equipe]")) {
+      botao.href = linkWhatsApp(WHATSAPP_EQUIPE, `${botao.dataset.contatoEquipe}${linhaIndicacao(codigo)}`);
+    }
+  }
+</script>
