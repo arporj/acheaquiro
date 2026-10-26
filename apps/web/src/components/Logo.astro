@@ -1,27 +1,28 @@
 ---
-// Logotipo provisório, até a identidade visual ser criada.
+// Logotipo do Ache Aqui RO. O site só usa a logo sobre fundo azul (cabeçalho,
+// rodapé, "em breve"); a versão para fundo branco fica em /marca/logo-principal.svg.
 interface Props {
   tamanho?: "m" | "g";
+  /** Só a lupa com a seta no celular, onde a logo completa não cabe ao lado dos botões (cabeçalhos). */
+  simboloNoCelular?: boolean;
 }
 
-const { tamanho = "m" } = Astro.props;
+const { tamanho = "m", simboloNoCelular = false } = Astro.props;
 const grande = tamanho === "g";
+const altura = grande ? "h-14 sm:h-16" : "h-10 sm:h-12";
 ---
 
-<a href="/" class="group inline-flex items-center gap-2" aria-label="Ache Aqui RO, página inicial">
-  <svg viewBox="0 0 32 40" class={grande ? "h-12 w-auto" : "h-9 w-auto"} aria-hidden="true">
-    <path
-      d="M16 1C7.7 1 1 7.6 1 15.8 1 27 16 39 16 39s15-12 15-23.2C31 7.6 24.3 1 16 1Z"
-      fill="#E5262B"
-      stroke="#fff"
-      stroke-width="2"></path>
-    <circle cx="16" cy="15.5" r="6.5" fill="#fff"></circle>
-  </svg>
-  <span class={`font-display leading-none font-extrabold tracking-tight ${grande ? "text-4xl" : "text-[1.7rem]"}`}>
-    <span class="text-white">Ache </span>
-    <span class="text-amarelo-400">Aqui</span>
-  </span>
-  <span class={`rounded-md bg-amarelo-400 font-display font-extrabold text-azul-900 ${grande ? "px-1.5 text-xl" : "px-1 text-sm"}`}>
-    RO
-  </span>
+<a href="/" class="inline-flex shrink-0 items-center" aria-label="Ache Aqui RO, página inicial">
+  {
+    simboloNoCelular && (
+      <img src="/marca/simbolo-fundo-azul.svg" alt="" width="227" height="267" class={`w-auto sm:hidden ${altura}`} />
+    )
+  }
+  <img
+    src="/marca/logo-principal-fundo-azul.svg"
+    alt=""
+    width="1671"
+    height="436"
+    class:list={["w-auto", altura, simboloNoCelular && "hidden sm:block"]}
+  />
 </a>

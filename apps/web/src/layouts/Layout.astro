@@ -32,6 +32,12 @@ const { titulo, descricao = DESCRICAO_PADRAO, previa } = Astro.props;
     <meta name="robots" content="noindex, nofollow" />
     <meta name="theme-color" content="#1747C9" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/marca/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    {/* Imagem da prévia do link no WhatsApp e nas redes sociais; precisa de endereço completo. */}
+    <meta property="og:image" content={new URL("/marca/og-image-1200x630.png", Astro.url).href} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     {
       previa && (
         <>

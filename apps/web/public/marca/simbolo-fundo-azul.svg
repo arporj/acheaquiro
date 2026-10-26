@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="15 5 227 267" width="227" height="267" role="img" aria-label="Ache Aqui, símbolo para fundo azul"><title>Ache Aqui, símbolo para fundo azul</title><defs><linearGradient id="hsimbolo" gradientUnits="userSpaceOnUse" x1="128" y1="118" x2="178" y2="168">
+<stop offset="0" stop-color="#FFFFFF"/><stop offset="0.42" stop-color="#FFFFFF"/>
+<stop offset="0.78" stop-color="#EE1C25"/><stop offset="1" stop-color="#EE1C25"/></linearGradient></defs>
+<path d="M116 106 L170 160 Q188 178 188 200 L188 214" fill="none" stroke="url(#hsimbolo)" stroke-width="28" stroke-linejoin="round"/>
+<polygon points="146,208 230,208 188,258" fill="#EE1C25" stroke="#EE1C25" stroke-width="8" stroke-linejoin="round"/>
+<circle cx="85" cy="75" r="50" fill="none" stroke="#FFFFFF" stroke-width="24"/>
+<path d="M56.0 67.2 A30 30 0 0 1 77.2 46.0" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/></svg>

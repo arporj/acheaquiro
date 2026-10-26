@@ -51,6 +51,10 @@ Calendário: pré-cadastro dos Fundadores de 09/11 a 26/11/2026, feito pela equi
 - Todos os botões de contato com a equipe (Quero anunciar, Quero ser Fundador, Quero ser representante, Quero patrocinar, Quero esta cota, Fale conosco) abrem o WhatsApp da equipe, +55 21 98852-0666 (WHATSAPP_EQUIPE em apps/web/src/lib/contato.ts), com uma mensagem pronta que diz de onde veio o contato (decisão de 22/10/2026).
 - Fale conosco (decisão de 24/10/2026), para quem quer só tirar uma dúvida: abre o mesmo WhatsApp com "Quero tirar uma dúvida" (MENSAGEM_DUVIDA). Fica no rodapé da produção e do site de apresentação; no site de apresentação, também num botão flutuante "Dúvidas? Fale conosco" em todas as páginas (no perfil, pelo celular, acima da barra de contato) e no fim da faixa amarela do topo.
 
+## Marca
+
+- Logo e ícones em apps/web/public/marca (decisão de 26/10/2026): logo-principal (para fundo branco), logo-principal-fundo-azul (a que o site usa no cabeçalho, no rodapé e na "em breve", nos três sites), logo-horizontal, simbolo-fundo-azul (só a lupa com a seta, no cabeçalho pelo celular, onde a logo completa não cabe ao lado dos botões), favicon.svg, icone-512 e og-image-1200x630 (prévia dos links). O favicon.ico e o apple-touch-icon.png (sem cantos transparentes, porque o iPhone pinta de preto o canto transparente) ficam na raiz de public, gerados do favicon.svg.
+
 ## Documentação
 
 - A especificação funcional fica em /docs. Antes de propor qualquer solução, leia a versão de número mais alto.
