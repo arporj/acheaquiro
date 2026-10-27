@@ -1,0 +1,222 @@
+---
+// Registro do pagamento do plano (item 4.15), em duas etapas: o que foi pago
+// e quando (o sistema calcula o valor, o período, o Fundador e a comissão) e
+// depois como foi pago. O servidor calcula tudo de novo no registro.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { ROTULO_SITUACAO } from "@/lib/anunciantesAdmin";
+import { calcular, hojeNaCidade, lerContexto, lerEscolha, registrarPagamento } from "@/lib/pagamentos";
+import { formatarCentavos } from "@/lib/precos";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const anuncianteId = Astro.url.searchParams.get("anunciante") ?? "";
+/** Comprovante de até 5 MB mais os campos de texto. */
+const TAMANHO_MAXIMO_PEDIDO = 5 * 1024 * 1024 + 64 * 1024;
+
+const contexto = await lerContexto(supabase, anuncianteId);
+if (!contexto.ok && contexto.erro.codigo === "NAO_ENCONTRADO") return new Response(null, { status: 404 });
+
+let erro = contexto.ok ? "" : contexto.erro.mensagem;
+let campos: Record<string, string> = {};
+let enviado: FormData | null = null;
+
+if (Astro.request.method === "POST" && contexto.ok) {
+  const tamanho = Number(Astro.request.headers.get("content-length") ?? "0");
+  if (!tamanho || tamanho > TAMANHO_MAXIMO_PEDIDO) {
+    erro = "Envio maior que o permitido (comprovante de até 5 MB).";
+    Astro.response.status = 400;
+  } else {
+    enviado = await Astro.request.formData();
+    const arquivo = enviado.get("comprovante");
+    const comprovante = arquivo instanceof File && arquivo.size > 0 ? new Uint8Array(await arquivo.arrayBuffer()) : null;
+    const r = await registrarPagamento(supabase, contexto.dados, enviado, comprovante, Astro.url.origin);
+    if (r.ok) return Astro.redirect(`/admin/pagamentos/${r.dados.id}?aviso=registrado`, 303);
+    erro = r.erro.mensagem;
+    campos = r.erro.campos ?? {};
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  }
+}
+
+const ctx = contexto.ok ? contexto.dados : null;
+const { valores, escolha } = ctx ? lerEscolha(enviado ?? Astro.url.searchParams, ctx) : { valores: null, escolha: null };
+const calculado = ctx && escolha?.ok ? await calcular(ctx, escolha.dados) : null;
+if (escolha && !escolha.ok) erro ||= escolha.erro.mensagem;
+if (calculado && !calculado.ok) erro ||= calculado.erro.mensagem;
+const c = calculado?.ok ? calculado.dados : null;
+const hoje = hojeNaCidade();
+const valorEnviado = (nome: string) => (enviado?.get(nome) as string | null) ?? "";
+const forma = valorEnviado("forma") || "pix";
+const caixa = "rounded-xl bg-fundo p-3";
+const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
+---
+
+<PaginaAdmin titulo="Registrar pagamento" descricao={ctx?.anunciante.nome}>
+  <p class="mt-2 text-sm"><a href="/admin/pagamentos" class="font-bold text-azul-600 hover:underline">← Pagamentos</a></p>
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  {
+    ctx && valores && (
+      <>
+        <section class={secao}>
+          <div class="grid gap-3 text-sm sm:grid-cols-3">
+            <div class={caixa}>
+              <p class="font-bold text-azul-900">Anunciante</p>
+              <a href={`/admin/anunciantes/${ctx.anunciante.id}`} class="font-bold text-azul-600 hover:underline">
+                {ctx.anunciante.nome}
+              </a>
+              <p>{ROTULO_SITUACAO[ctx.anunciante.status]}</p>
+            </div>
+            <div class={caixa}>
+              <p class="font-bold text-azul-900">Assinatura</p>
+              <p>{ctx.assinatura ? `Vence em ${formatarData(ctx.assinatura.venceEm)}` : "Primeiro pagamento"}</p>
+              {ctx.anunciante.fundadorDesde && <p>Fundador desde {formatarData(ctx.anunciante.fundadorDesde)}</p>}
+            </div>
+            <div class={caixa}>
+              <p class="font-bold text-azul-900">Representante</p>
+              <p>{ctx.representante ? `${ctx.representante.codigo}${ctx.representante.recebeComissao ? "" : " (sem comissão)"}` : "Sem representante"}</p>
+            </div>
+          </div>
+
+          <form method="get" class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] sm:items-end">
+            <input type="hidden" name="anunciante" value={ctx.anunciante.id} />
+            <div>
+              <label for="plano" class={classesRotulo}>Plano</label>
+              <select id="plano" name="plano" required class={classesCampo}>
+                {ctx.planos.map((p) => (
+                  <option value={p.id} selected={p.id === valores.planoId}>
+                    {p.nome} ({formatarCentavos(p.valorMensalCentavos)} por mês)
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label for="periodicidade" class={classesRotulo}>Período</label>
+              <select id="periodicidade" name="periodicidade" class={classesCampo}>
+                <option value="mensal" selected={valores.periodicidade === "mensal"}>Mensal</option>
+                <option value="anual" selected={valores.periodicidade === "anual"}>Anual</option>
+              </select>
+            </div>
+            <div>
+              <label for="pago_em" class={classesRotulo}>Pago em</label>
+              <input id="pago_em" type="date" name="pago_em" value={valores.pagoEm} max={hoje} required class={classesCampo} />
+            </div>
+            <button type="submit" class={classesBotao("contorno", "m")}>Calcular</button>
+          </form>
+        </section>
+
+        {c && (
+          <>
+            <section class={secao}>
+              <p class="text-sm font-bold text-azul-900">Valor a receber</p>
+              <p class="font-display text-3xl font-extrabold text-azul-900">{formatarCentavos(c.cobranca.valorDevidoCentavos)}</p>
+              {c.cobranca.descontoFundadorCentavos > 0 && (
+                <p class="text-sm text-slate-600">
+                  {formatarCentavos(c.cobranca.valorCheioCentavos)} com {formatarCentavos(c.cobranca.descontoFundadorCentavos)} de desconto de Fundador
+                </p>
+              )}
+              <ul class="mt-3 space-y-1 text-sm text-slate-700">
+                <li>
+                  Período pago: {formatarData(c.periodo.inicio)} a {formatarData(c.periodo.venceEm)}
+                  {c.periodo.inicio > valores.pagoEm && !c.periodo.renovacao && " (começa na abertura do site)"}
+                  {c.periodo.renovacao && " (renovação, sem mudar o dia do vencimento)"}
+                </li>
+                <li>{c.numero}º pagamento desta assinatura</li>
+                {c.fundador.tornou && <li class="font-bold text-zap-700">Vira Fundador com este pagamento.</li>}
+                {c.fundador.perdeu && (
+                  <li class="font-bold text-vermelho-700">
+                    Deixa de ser Fundador de vez com este pagamento ({valores.periodicidade === "mensal" ? "renovação no mensal" : "pago depois dos 7 dias"}).
+                  </li>
+                )}
+                <li>
+                  {c.comissao && ctx.representante
+                    ? `Comissão de ${ctx.representante.codigo}: ${formatarCentavos(c.comissao.valorCentavos)}, liberada em ${formatarData(c.comissaoLiberaEm!)}`
+                    : "Sem comissão neste pagamento"}
+                </li>
+              </ul>
+            </section>
+
+            <form method="post" enctype="multipart/form-data" class={secao} data-form-pagamento>
+              <input type="hidden" name="plano" value={valores.planoId} />
+              <input type="hidden" name="periodicidade" value={valores.periodicidade} />
+              <input type="hidden" name="pago_em" value={valores.pagoEm} />
+
+              <fieldset>
+                <legend class="text-sm font-bold text-azul-900">Forma de pagamento</legend>
+                <div class="mt-2 flex flex-wrap gap-4">
+                  {(["pix", "debito", "credito"] as const).map((f) => (
+                    <label class="flex items-center gap-2 font-semibold">
+                      <input type="radio" name="forma" value={f} checked={forma === f} data-forma class="size-4 accent-azul-600" />
+                      {f === "pix" ? "Pix" : f === "debito" ? "Débito na maquininha" : "Crédito na maquininha"}
+                    </label>
+                  ))}
+                </div>
+                <p class="mt-1 text-xs text-slate-500">
+                  No cartão, a maquininha mostra o acréscimo na hora e o vendedor avisa o anunciante. Aqui fica o valor do sistema.
+                </p>
+              </fieldset>
+
+              <div class="mt-3 grid gap-3 sm:grid-cols-2" data-so-cartao>
+                <div data-so-credito>
+                  <label for="parcelas" class={classesRotulo}>Parcelas</label>
+                  <select id="parcelas" name="parcelas" class={classesCampo}>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                      <option value={n} selected={String(n) === (valorEnviado("parcelas") || "1")}>
+                        {n === 1 ? "À vista" : `${n}x`}
+                      </option>
+                    ))}
+                  </select>
+                  {campos.parcelas && <p class={classesErroCampo}>{campos.parcelas}</p>}
+                </div>
+                <div>
+                  <label for="codigo_autorizacao" class={classesRotulo}>Código de autorização</label>
+                  <input id="codigo_autorizacao" name="codigo_autorizacao" maxlength="20" value={valorEnviado("codigo_autorizacao")} class={classesCampo} />
+                  <p class="mt-1 text-xs text-slate-500">Impresso no comprovante da maquininha (AUT).</p>
+                  {campos.codigoAutorizacao && <p class={classesErroCampo}>{campos.codigoAutorizacao}</p>}
+                </div>
+              </div>
+
+              <label for="escolher-comprovante" class={classesRotulo}>Comprovante (opcional)</label>
+              <input id="escolher-comprovante" type="file" accept="image/*,application/pdf" data-escolher-comprovante class={classesCampo} />
+              <input type="file" name="comprovante" data-comprovante-pronto hidden />
+              <p class="mt-1 text-xs text-slate-500">Foto, captura de tela ou PDF, até 5 MB. A foto é guardada sem a localização, numa área que só a administração abre.</p>
+              <p class="mt-1 text-xs font-bold text-vermelho-700" data-erro-comprovante hidden />
+
+              <label for="observacao" class={classesRotulo}>Observação (opcional)</label>
+              <input id="observacao" name="observacao" maxlength="300" value={valorEnviado("observacao")} class={classesCampo} />
+
+              <button type="submit" class={classesBotao("zap", "g", "mt-5 w-full")}>
+                <Icone nome="certo" class="size-5" />
+                Registrar pagamento de {formatarCentavos(c.cobranca.valorDevidoCentavos)}
+              </button>
+            </form>
+          </>
+        )}
+      </>
+    )
+  }
+</PaginaAdmin>
+
+<script>
+  import { ligarComprovante } from "@/lib/comprovante";
+
+  const form = document.querySelector<HTMLFormElement>("[data-form-pagamento]");
+  if (form) {
+    ligarComprovante(form);
+    const cartao = form.querySelector<HTMLElement>("[data-so-cartao]")!;
+    const credito = form.querySelector<HTMLElement>("[data-so-credito]")!;
+    const parcelas = form.querySelector<HTMLSelectElement>("#parcelas")!;
+    const atualizar = () => {
+      const forma = form.querySelector<HTMLInputElement>("[data-forma]:checked")?.value ?? "pix";
+      cartao.hidden = forma === "pix";
+      credito.hidden = forma !== "credito";
+      // Campo escondido não vai no envio: Pix sem código e débito sempre à vista.
+      for (const campo of cartao.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input, select")) campo.disabled = forma === "pix";
+      parcelas.disabled = forma !== "credito";
+    };
+    for (const radio of form.querySelectorAll("[data-forma]")) radio.addEventListener("change", atualizar);
+    atualizar();
+  }
+</script>

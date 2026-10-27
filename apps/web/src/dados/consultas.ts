@@ -185,6 +185,11 @@ export async function obterRegrasCobranca(): Promise<RegrasCobranca> {
   return (await catalogo()).regras;
 }
 
+/** Dia da abertura ao público (AAAA-MM-DD): o período pago antes dela começa nela (decisão de 27/10/2026). */
+export async function obterAberturaAoPublico(): Promise<string> {
+  return (await catalogo()).aberturaAoPublico;
+}
+
 export async function anunciantePorSlug(slug: string): Promise<Anunciante | undefined> {
   if (!catalogoDoBanco) return anunciantes.find((a) => a.slug === slug);
   const resultado = await lerAnunciantePublico(clientePublico(), CIDADE, slug, ENDERECO_ARQUIVOS);

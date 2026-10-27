@@ -7,3 +7,4 @@ export * from "./patrocinio";
 export * from "./pedidoPerfil";
 export * from "./anunciante";
 export * from "./representante";
+export * from "./pagamento";

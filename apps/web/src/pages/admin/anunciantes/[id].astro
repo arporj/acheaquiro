@@ -27,6 +27,9 @@ import {
 } from "@/lib/anunciantesAdmin";
 import { formatarTelefone } from "@/lib/contato";
 import { listarEquipe } from "@/lib/equipe";
+import { ROTULO_FORMA, SITUACOES_QUE_PAGAM, listarDoAnunciante } from "@/lib/pagamentos";
+import { formatarCentavos } from "@/lib/precos";
+import { formatarData } from "@/lib/texto";
 import { listarAtendimentos, registrarDoFormulario } from "@/lib/representante";
 
 const supabase = Astro.locals.supabase!;
@@ -87,11 +90,12 @@ if (Astro.request.method === "POST" && lido.ok) {
   }
 }
 
-const [opcoes, historico, equipe, atendimentos] = await Promise.all([
+const [opcoes, historico, equipe, atendimentos, pagamentos] = await Promise.all([
   lerOpcoes(supabase),
   lerHistorico(supabase, id),
   listarEquipe(supabase),
   listarAtendimentos(supabase, id),
+  listarDoAnunciante(supabase, id),
 ]);
 if (!lido.ok) erro ||= lido.erro.mensagem;
 const a = lido.ok ? lido.dados : null;
@@ -105,7 +109,7 @@ const ACOES: Record<AcaoSituacao, { botao: string; titulo: string; texto: string
   aprovar: {
     botao: "Aprovar",
     titulo: "Aprovar cadastro",
-    texto: "Com o plano em vigor ou o plano escolhido gratuito, o perfil vai para o ar. Com plano pago escolhido, fica aguardando o Pix.",
+    texto: "Com o plano em vigor ou o plano escolhido gratuito, o perfil vai para o ar. Com plano pago escolhido, fica aguardando o pagamento.",
     variante: "azul",
   },
   correcao: {
@@ -240,6 +244,35 @@ const caixa = "rounded-xl bg-fundo p-3";
               </div>
             )
           }
+        </section>
+
+        <section class="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="font-display text-lg font-bold text-azul-900">Pagamentos</h2>
+            {SITUACOES_QUE_PAGAM.includes(a.status) && (
+              <a href={`/admin/pagamentos/registrar?anunciante=${a.id}`} class={classesBotao("azul", "p")}>
+                <Icone nome="dinheiro" class="size-4" />
+                Registrar pagamento
+              </a>
+            )}
+          </div>
+          {!pagamentos.ok && <Aviso tipo="erro" class="mt-3">{pagamentos.erro.mensagem}</Aviso>}
+          {pagamentos.ok && pagamentos.dados.length === 0 && <p class="mt-2 text-sm text-slate-500">Nenhum pagamento registrado.</p>}
+          {pagamentos.ok && pagamentos.dados.length > 0 && (
+            <ul class="mt-2 divide-y divide-slate-100 text-sm">
+              {pagamentos.dados.map((p) => (
+                <li>
+                  <a href={`/admin/pagamentos/${p.id}`} class="flex flex-wrap items-center gap-x-3 py-2 hover:bg-azul-50">
+                    <span class="flex-1">
+                      {formatarData(p.pagoEm)} · {p.plano} {p.periodicidade} · {ROTULO_FORMA[p.forma]} · {p.conta}
+                    </span>
+                    {p.devolvido && <span class="text-xs font-extrabold text-vermelho-700">Devolvido</span>}
+                    <span class:list={["font-bold", p.devolvido && "text-slate-400 line-through"]}>{formatarCentavos(p.valorCentavos)}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         {opcoes.ok ? (

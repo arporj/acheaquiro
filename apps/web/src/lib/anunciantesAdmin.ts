@@ -519,7 +519,7 @@ async function salvarEndereco(
   return error ? mensagemDoBanco(error, "salvarEndereco") : null;
 }
 
-async function limparPerfilDoCache(origemDoSite: string, slug: string): Promise<void> {
+export async function limparPerfilDoCache(origemDoSite: string, slug: string): Promise<void> {
   try {
     await limparCache([`${origemDoSite}/perfil/${slug}`]);
   } catch (erro) {

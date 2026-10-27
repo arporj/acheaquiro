@@ -43,8 +43,9 @@ if (Astro.request.method === "POST" && cadastro) {
 }
 
 const conferir = cadastro?.status === "aguardando_anunciante";
+const aguardandoPagamento = cadastro?.status === "aguardando_pagamento";
 const [opcoes, representante] = await Promise.all([
-  conferir ? lerOpcoes(supabase, await obterRegrasCobranca()) : Promise.resolve(null),
+  conferir || aguardandoPagamento ? lerOpcoes(supabase, await obterRegrasCobranca()) : Promise.resolve(null),
   conferir && cadastro ? representanteDoCadastro(supabase, cadastro.id) : Promise.resolve(null),
 ]);
 if (opcoes && !opcoes.ok) erro ||= opcoes.erro.mensagem;
@@ -180,8 +181,23 @@ const privacidade = DOCUMENTOS.privacidade;
         <p class="font-display text-xl font-bold text-azul-900">{cadastro.nome}</p>
         <p class="mt-1">Situação: <strong>{ROTULO_SITUACAO[cadastro.status]}</strong></p>
         {cadastro.status === "em_analise" && <p class="mt-1 text-slate-600">A equipe está conferindo o seu cadastro e fala com você.</p>}
-        {cadastro.status === "aguardando_pagamento" && (
-          <p class="mt-1 text-slate-600">Cadastro aprovado. Falta o pagamento do plano, que a equipe combina com você.</p>
+        {aguardandoPagamento && (
+          <>
+            <p class="mt-1 text-slate-600">Cadastro aprovado. Falta o pagamento do plano para o perfil ir para o ar.</p>
+            {plano && (
+              <p class="mt-2">
+                <strong>{plano.nome}</strong>
+                {`, ${periodicidade}: ${valor.valor}`}
+                {valor.fundador && <span class="block text-sm font-bold text-zap-700">{valor.fundador}, pagando até o prazo dos Fundadores.</span>}
+              </p>
+            )}
+            <p class="mt-2">
+              <LinkContatoEquipe mensagem={mensagemEquipe("Quero pagar o meu plano")} class={classesBotao("zap", "m")}>
+                Pagar por Pix ou cartão
+              </LinkContatoEquipe>
+            </p>
+            <p class="mt-1 text-xs text-slate-500">A equipe passa a chave Pix pelo WhatsApp ou leva a maquininha. No cartão, a maquininha soma a taxa dela.</p>
+          </>
         )}
         {cadastro.motivo_correcao && cadastro.status !== "publicado" && <p class="mt-1 text-slate-600">Recado da equipe: {cadastro.motivo_correcao}</p>}
         {cadastro.status === "publicado" && (

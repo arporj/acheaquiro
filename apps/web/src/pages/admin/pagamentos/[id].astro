@@ -1,0 +1,138 @@
+---
+// Um pagamento na administração: valores, período, forma, conta, comprovante
+// (endereço temporário), comissão e a devolução do primeiro pagamento em até 7
+// dias, que cancela a comissão, o plano e o Fundador ganho com ele.
+import { Modal, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { ROTULO_FORMA, devolver, lerPagamento } from "@/lib/pagamentos";
+import { formatarCentavos } from "@/lib/precos";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const id = Astro.params.id ?? "";
+
+const AVISOS: Record<string, string> = {
+  registrado: "Pagamento registrado. O plano já está em vigor.",
+  devolvido: "Devolução registrada: a comissão foi cancelada e o plano saiu.",
+};
+const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
+let erro = "";
+
+const lido = await lerPagamento(supabase, id);
+if (!lido.ok && lido.erro.codigo === "NAO_ENCONTRADO") return new Response(null, { status: 404 });
+if (!lido.ok) erro = lido.erro.mensagem;
+
+if (Astro.request.method === "POST" && lido.ok) {
+  const r = await devolver(supabase, lido.dados, await Astro.request.formData(), Astro.url.origin);
+  if (r.ok) return Astro.redirect(`/admin/pagamentos/${id}?aviso=devolvido`, 303);
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const p = lido.ok ? lido.dados : null;
+const caixa = "rounded-xl bg-fundo p-3";
+---
+
+<PaginaAdmin titulo="Pagamento" descricao={p ? `${p.anunciante} · ${formatarCentavos(p.valorCentavos)}` : undefined}>
+  <p class="mt-2 text-sm"><a href="/admin/pagamentos?aba=mes" class="font-bold text-azul-600 hover:underline">← Pagamentos do mês</a></p>
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  {
+    p && (
+      <section class="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+        {p.devolvido && (
+          <p class="mb-3 rounded-xl bg-vermelho-50 px-3 py-2 text-sm font-semibold text-vermelho-700">
+            Devolvido em {formatarData(p.devolvidoEm!.slice(0, 10))}: {p.motivoDevolucao}
+          </p>
+        )}
+        <div class="grid gap-3 text-sm sm:grid-cols-2">
+          <div class={caixa}>
+            <p class="font-bold text-azul-900">Anunciante</p>
+            <a href={`/admin/anunciantes/${p.anuncianteId}`} class="font-bold text-azul-600 hover:underline">
+              {p.anunciante}
+            </a>
+            <p>
+              {p.plano} {p.periodicidade} · {p.numero}º pagamento
+            </p>
+            <p>
+              Período: {formatarData(p.periodoInicio)} a {formatarData(p.venceEm)}
+            </p>
+            {p.tornouFundador && <p class="font-bold text-zap-700">Virou Fundador com este pagamento</p>}
+          </div>
+          <div class={caixa}>
+            <p class="font-bold text-azul-900">Valor</p>
+            <p class="text-lg font-extrabold text-azul-900">{formatarCentavos(p.valorCentavos)}</p>
+            {p.descontoFundadorCentavos > 0 && (
+              <p>
+                {formatarCentavos(p.valorCheioCentavos)} com {formatarCentavos(p.descontoFundadorCentavos)} de desconto de Fundador
+              </p>
+            )}
+          </div>
+          <div class={caixa}>
+            <p class="font-bold text-azul-900">Forma e conta</p>
+            <p>
+              {ROTULO_FORMA[p.forma]}
+              {p.parcelas > 1 && ` em ${p.parcelas}x`}
+              {p.codigoAutorizacao && ` · autorização ${p.codigoAutorizacao}`}
+            </p>
+            <p>{p.conta}</p>
+            <p>
+              Pago em {formatarData(p.pagoEm)} · confirmado em {formatarData(p.confirmadoEm)}
+            </p>
+            {p.comprovante ? (
+              <a href={p.comprovante} target="_blank" rel="noopener noreferrer" class="mt-1 inline-block font-bold text-azul-600 hover:underline">
+                Abrir o comprovante
+              </a>
+            ) : (
+              <p class="text-slate-500">Sem comprovante</p>
+            )}
+            {p.observacao && <p class="mt-1 italic text-slate-600">{p.observacao}</p>}
+          </div>
+          <div class={caixa}>
+            <p class="font-bold text-azul-900">Comissão</p>
+            {p.comissao ? (
+              <p>
+                {p.comissao.representante}: {formatarCentavos(p.comissao.valorCentavos)}
+                {p.comissao.cancelada ? " · cancelada" : ` · liberada em ${formatarData(p.comissao.liberaEm)}`}
+              </p>
+            ) : (
+              <p>Sem comissão</p>
+            )}
+          </div>
+        </div>
+
+        {p.podeDevolver && (
+          <button type="button" data-abrir-modal="modal-devolver" class={classesBotao("perigo", "m", "mt-4")}>
+            Registrar devolução
+          </button>
+        )}
+      </section>
+    )
+  }
+
+  {
+    p?.podeDevolver && (
+      <Modal id="modal-devolver" titulo="Registrar devolução">
+        <form method="post">
+          <p class="text-sm text-slate-700">
+            Registre depois de devolver o dinheiro (Pix de volta ou estorno na maquininha). A comissão é cancelada, o plano sai
+            {p.tornouFundador && " e o anunciante deixa de ser Fundador"}: o comércio volta ao Gratuito e o autônomo sai do ar até um novo pagamento.
+          </p>
+          <label for="motivo" class={classesRotulo}>Motivo</label>
+          <textarea id="motivo" name="motivo" rows="3" required minlength="3" maxlength="300" class={classesCampo} />
+          <div class="mt-5 flex gap-2">
+            <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>
+              Cancelar
+            </button>
+            <button type="submit" class={classesBotao("perigo", "m", "flex-1")}>
+              Confirmar devolução
+            </button>
+          </div>
+        </form>
+      </Modal>
+    )
+  }
+</PaginaAdmin>

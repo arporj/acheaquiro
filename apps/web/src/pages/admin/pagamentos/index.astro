@@ -1,0 +1,112 @@
+---
+// Pagamentos (item 4.15): a fila dos que aguardam o pagamento do plano e os
+// pagamentos de cada mês, com o total de cada conta para conferir com o extrato.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo } from "@/components/conta/estilos";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { ROTULO_FORMA, lerMes, listarAguardando, listarDoMes } from "@/lib/pagamentos";
+import { formatarCentavos } from "@/lib/precos";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const aba = Astro.url.searchParams.get("aba") === "mes" ? "mes" : "aguardando";
+const mes = lerMes(Astro.url.searchParams.get("mes"));
+
+const [aguardando, doMes] = await Promise.all([listarAguardando(supabase), aba === "mes" ? listarDoMes(supabase, mes) : Promise.resolve(null)]);
+const erro = (!aguardando.ok && aguardando.erro.mensagem) || (doMes && !doMes.ok && doMes.erro.mensagem) || "";
+const fila = aguardando.ok ? aguardando.dados : [];
+const nomeMes = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${mes}-01T12:00:00Z`));
+const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-extrabold";
+const abaClasse =
+  "rounded-full px-3 py-1.5 text-sm font-bold text-azul-700 ring-1 ring-azul-100 hover:bg-white aria-[current=page]:bg-azul-600 aria-[current=page]:text-white aria-[current=page]:ring-azul-600";
+---
+
+<PaginaAdmin titulo="Pagamentos" descricao="Registro dos pagamentos do plano por Pix ou cartão na maquininha, com o valor do sistema (a taxa da maquininha não entra).">
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <nav class="mt-5 flex flex-wrap gap-1.5" aria-label="Pagamentos">
+    <a href="/admin/pagamentos" aria-current={aba === "aguardando" ? "page" : undefined} class={abaClasse}>
+      Aguardando pagamento <span class="ml-1 opacity-75">{fila.length}</span>
+    </a>
+    <a href="/admin/pagamentos?aba=mes" aria-current={aba === "mes" ? "page" : undefined} class={abaClasse}>Pagamentos do mês</a>
+  </nav>
+
+  {
+    aba === "aguardando" && (
+      <>
+        <p class="mt-4 text-sm text-slate-600">
+          Cadastros aprovados com plano pago escolhido e ainda sem pagamento. Os comércios importados que o comerciante assumiu já estão no ar, no plano
+          Gratuito, até o pagamento.
+        </p>
+        {fila.length === 0 && !erro && <p class="mt-2 rounded-2xl bg-white p-6 text-center text-slate-500 ring-1 ring-black/5">Ninguém aguardando pagamento.</p>}
+        <ul class="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+          {fila.map((a) => (
+            <li class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+              <span class="min-w-0 flex-1">
+                <a href={`/admin/anunciantes/${a.id}`} class="block truncate font-bold text-azul-900 hover:underline">
+                  {a.nome}
+                </a>
+                <span class="block truncate text-xs text-slate-500">
+                  {a.tipo === "profissional" ? "Autônomo" : "Comércio"} · {a.plano}
+                  {a.periodicidade && ` · ${a.periodicidade}`}
+                </span>
+              </span>
+              {a.noGratuito && <span class={`${etiqueta} bg-fundo text-slate-600`}>No ar no Gratuito</span>}
+              <a href={`/admin/pagamentos/registrar?anunciante=${a.id}`} class={classesBotao("azul", "p")}>
+                <Icone nome="dinheiro" class="size-4" />
+                Registrar pagamento
+              </a>
+            </li>
+          ))}
+        </ul>
+      </>
+    )
+  }
+
+  {
+    aba === "mes" && doMes?.ok && (
+      <>
+        <form method="get" class="mt-4 flex flex-wrap items-end gap-2">
+          <input type="hidden" name="aba" value="mes" />
+          <label class="text-sm font-bold text-azul-900">
+            Mês
+            <input type="month" name="mes" value={mes} class={`${classesCampo} mt-1 h-10`} />
+          </label>
+          <button type="submit" class={classesBotao("contorno", "p")}>Ver</button>
+        </form>
+
+        <section class="mt-4 grid gap-2 sm:grid-cols-2">
+          {doMes.dados.totais.length === 0 && <p class="text-sm text-slate-500">Nenhum pagamento em {nomeMes}.</p>}
+          {doMes.dados.totais.map((t) => (
+            <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+              <p class="text-sm font-bold text-azul-900">{t.conta}</p>
+              <p class="font-display text-2xl font-extrabold text-azul-900">{formatarCentavos(t.centavos)}</p>
+              <p class="text-xs text-slate-500">Registrado em {nomeMes}, sem os devolvidos e sem a taxa da maquininha</p>
+            </div>
+          ))}
+        </section>
+
+        {doMes.dados.pagamentos.length > 0 && (
+          <ul class="mt-4 divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+            {doMes.dados.pagamentos.map((p) => (
+              <li>
+                <a href={`/admin/pagamentos/${p.id}`} class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 hover:bg-azul-50">
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate font-bold text-azul-900">{p.anunciante}</span>
+                    <span class="block truncate text-xs text-slate-500">
+                      {formatarData(p.pagoEm)} · {p.plano} {p.periodicidade} · {ROTULO_FORMA[p.forma]}
+                      {p.parcelas > 1 && ` em ${p.parcelas}x`} · {p.conta}
+                    </span>
+                  </span>
+                  {p.devolvido && <span class={`${etiqueta} bg-vermelho-50 text-vermelho-700`}>Devolvido</span>}
+                  <span class:list={["font-bold", p.devolvido ? "text-slate-400 line-through" : "text-azul-900"]}>{formatarCentavos(p.valorCentavos)}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </>
+    )
+  }
+</PaginaAdmin>
