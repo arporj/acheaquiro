@@ -94,6 +94,7 @@ Calendário: pré-cadastro dos Fundadores de 09/11 a 26/11/2026, feito pela equi
 - Nenhuma regra de negócio duplicada. Antes de escrever código novo, procure algo reaproveitável e diga o que foi reaproveitado.
 - Multicidade desde o início: as tabelas de anunciantes, perfis, categorias, bairros, planos contratados e métricas levam a cidade como parte da chave de acesso. No MVP só Rio das Ostras fica visível.
 - Valores e limites dos planos e extras (preços, quantidade de fotos, categorias, encartes, produtos) ficam em tabela no banco, editável pela administração, nunca fixos no código. Eles ainda estão em discussão.
+- Catálogo e valores (27/10/2026): /admin/catalogo edita os planos (nome, valor, mensalidades no anual, limites, relatório), os extras (valor, quantidade, regras do Destaque Exclusivo, desconto de Fundador, anual, ligado) e a escala do desconto de Fundador (só enquanto não houver Fundador). O banco guarda o histórico dos preços (historico_precos). Mudança de preço (decisões R1 e R2): vale na hora para quem contrata; para quem já assina, o aumento vale no primeiro vencimento pelo menos 30 dias depois do aviso (Termos de Uso v1, item 7.1, e Código de Defesa do Consumidor), e a redução vale já na próxima renovação. Cada assinante recebe um e-mail com o próprio valor (mensal ou anual, com o desconto de Fundador do ano) e a data em que ele passa a valer. Regras em packages/domain/precos.ts; o plano e os avisos são gravados numa transação (salvar_plano). O plano Gratuito não vira pago, e o pago não vira gratuito.
 
 ## Autenticação e papéis
 

@@ -18,7 +18,7 @@ const WHATSAPP_EQUIPE = "5521988520666";
 
 interface Aviso {
   id: string;
-  tipo: "lembrete_7_dias" | "lembrete_vencimento" | "plano_vencido";
+  tipo: "lembrete_7_dias" | "lembrete_vencimento" | "plano_vencido" | "aviso_preco";
   para: string;
   tentativas: number;
   dados: {
@@ -29,6 +29,9 @@ interface Aviso {
     venceEm?: string;
     fundador?: boolean;
     eraFundador?: boolean;
+    /** Aviso de novo preço: o valor que este assinante vai pagar e a partir de qual vencimento. */
+    valorNovoCentavos?: number;
+    aPartirDe?: string;
   };
 }
 
@@ -40,6 +43,7 @@ const somarDias = (iso: string, dias: number) => {
   d.setUTCDate(d.getUTCDate() + dias);
   return d.toISOString().slice(0, 10);
 };
+const reais = (centavos: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(centavos / 100);
 const linkEquipe = (assunto: string) =>
   `https://wa.me/${WHATSAPP_EQUIPE}?text=${encodeURIComponent(`Olá! Vim pelo site do Ache Aqui RO. ${assunto}.`)}`;
 
@@ -55,6 +59,18 @@ function montar(aviso: Aviso, tolerancia: number): { assunto: string; paragrafos
     ? `Como Fundador, a renovação é anual e precisa ser paga até ${limite} para você manter o selo e o desconto.`
     : "";
 
+  if (aviso.tipo === "aviso_preco") {
+    const periodo = d.periodicidade === "anual" ? "por ano" : "por mês";
+    return {
+      assunto: "O valor do seu plano no Ache Aqui RO vai mudar",
+      paragrafos: [
+        `A partir do vencimento de ${data(d.aPartirDe)}, o plano ${plano} de ${d.nome} passa a custar ${reais(d.valorNovoCentavos ?? 0)} ${periodo}${d.fundador ? ", já com o seu desconto de Fundador" : ""}.`,
+        "Até lá, nada muda: os pagamentos que vencerem antes dessa data continuam com o valor de hoje.",
+        "Ficou com alguma dúvida? Fale com a equipe pelo WhatsApp.",
+      ],
+      botao: { texto: "Falar com a equipe", link: linkEquipe("Recebi o aviso do novo valor do meu plano") },
+    };
+  }
   if (aviso.tipo === "lembrete_7_dias") {
     return {
       assunto: `O seu plano no Ache Aqui RO vence em ${data(d.venceEm)}`,

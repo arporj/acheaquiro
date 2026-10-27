@@ -1,14 +1,9 @@
 // Cadastro de patrocinadores e das cotas (administração). Os limites são os
 // mesmos das checagens da tabela (migration 20261022170000_patrocinadores.sql).
 import { z } from "zod";
+import { reaisEmCentavos, textoLimpo } from "./comum";
 
 export const COTAS_PATROCINIO = ["master", "ouro", "apoio", "grupo", "categoria", "agenda"] as const;
-
-const textoLimpo = (minimo: number, maximo: number, nome: string) =>
-  z
-    .string({ error: `Informe ${nome}.` })
-    .transform((v) => v.trim().replace(/\s+/g, " "))
-    .pipe(z.string().min(minimo, `${nome[0]!.toUpperCase()}${nome.slice(1)}: pelo menos ${minimo} letras.`).max(maximo, `${nome[0]!.toUpperCase()}${nome.slice(1)}: no máximo ${maximo} letras.`));
 
 /** WhatsApp em qualquer formato ((22) 99999-0000, +55...) vira 55 + DDD + número. Vazio fica sem contato. */
 export const esquemaWhatsapp = z
@@ -55,13 +50,6 @@ export const esquemaPatrocinio = z
 
 export type DadosPatrocinio = z.output<typeof esquemaPatrocinio>;
 
-const centavos = (nome: string) =>
-  z
-    .string()
-    .transform((v) => Number(v.replace(/\./g, "").replace(",", ".")))
-    .pipe(z.number({ error: `${nome}: valor inválido.` }).positive(`${nome}: maior que zero.`).max(1_000_000, `${nome}: valor alto demais.`))
-    .transform((reais) => Math.round(reais * 100));
-
 export const esquemaCotaPatrocinio = z
   .object({
     nome: textoLimpo(2, 40, "o nome da cota"),
@@ -74,8 +62,8 @@ export const esquemaCotaPatrocinio = z
           .filter(Boolean),
       )
       .pipe(z.array(z.string().max(120, "Cada benefício: no máximo 120 letras.")).max(10, "No máximo 10 benefícios.")),
-    valorCentavos: centavos("Valor"),
-    valorFundadorCentavos: centavos("Valor de Fundador"),
+    valorCentavos: reaisEmCentavos("Valor"),
+    valorFundadorCentavos: reaisEmCentavos("Valor de Fundador"),
     vagas: z
       .string()
       .transform((v) => (v.trim() === "" ? null : Number(v)))

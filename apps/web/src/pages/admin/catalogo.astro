@@ -1,0 +1,377 @@
+---
+// Catálogo e valores (item 4 do plano, 27/10/2026): planos, extras e a escala
+// do desconto de Fundador. Preço novo vale na hora para quem contrata; para
+// quem já assina, o aumento vale no primeiro vencimento 30 dias ou mais depois
+// do aviso por e-mail, que cada assinante recebe com o próprio valor.
+import { DIAS_AVISO_PRECO } from "@acheaqui/domain";
+import { Modal, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { lerCatalogo, salvarEscala, salvarExtra, salvarPlano, type ExtraCatalogo } from "@/lib/catalogo";
+import { formatarCentavos } from "@/lib/precos";
+
+const supabase = Astro.locals.supabase!;
+const avisosNaFila = Number(Astro.url.searchParams.get("avisos") ?? "0");
+const AVISOS: Record<string, string> = {
+  plano:
+    avisosNaFila > 0
+      ? `Plano salvo. ${avisosNaFila} assinante(s) vão receber por e-mail o novo valor, que vale a partir do primeiro vencimento daqui a ${DIAS_AVISO_PRECO} dias ou mais.`
+      : "Plano salvo. Quem contratar a partir de agora já paga o valor novo.",
+  extra: "Extra salvo.",
+  escala: "Escala do desconto de Fundador salva.",
+};
+const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
+let erro = "";
+
+const lido = await lerCatalogo(supabase);
+if (!lido.ok) erro = lido.erro.mensagem;
+
+if (Astro.request.method === "POST" && lido.ok) {
+  const form = await Astro.request.formData();
+  const acao = form.get("acao");
+  const id = String(form.get("id") ?? "");
+  if (acao === "plano") {
+    const r = await salvarPlano(supabase, id, form, Astro.url.origin);
+    if (r.ok) return Astro.redirect(`/admin/catalogo?aviso=plano&avisos=${r.dados.avisos}`, 303);
+    erro = r.erro.mensagem;
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  } else if (acao === "extra") {
+    const r = await salvarExtra(supabase, id, form, Astro.url.origin);
+    if (r.ok) return Astro.redirect("/admin/catalogo?aviso=extra", 303);
+    erro = r.erro.mensagem;
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  } else if (acao === "escala") {
+    const r = await salvarEscala(supabase, form, lido.dados.temFundadores, Astro.url.origin);
+    if (r.ok) return Astro.redirect("/admin/catalogo?aviso=escala", 303);
+    erro = r.erro.mensagem;
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  } else {
+    erro = "Ação desconhecida.";
+    Astro.response.status = 400;
+  }
+}
+
+const catalogo = lido.ok ? lido.dados : null;
+const reais = (centavos: number) => (centavos / 100).toFixed(2).replace(".", ",");
+const numero = (valor: unknown) => (typeof valor === "number" ? valor : "");
+const ROTULO_RECURSO: Record<string, string> = {
+  fotos: "fotos",
+  categorias_adicionais: "categorias",
+  encartes_semana: "encartes por semana",
+  produtos: "produtos",
+  enderecos: "endereços",
+};
+const grupos = [
+  { titulo: "Planos dos autônomos", tipo: "profissional" as const },
+  { titulo: "Planos dos comércios", tipo: "comercio" as const },
+];
+const caixa = "rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5";
+const marcavel = "flex items-center gap-2 text-sm font-semibold";
+const escalaLinhas = Array.from({ length: 5 }, (_, i) => catalogo?.escala[i]);
+const resumoExtra = (e: ExtraCatalogo) =>
+  e.cobranca === "por_dia" ? `${formatarCentavos(Number(e.regras.diaria_centavos ?? 0))} por dia` : `${formatarCentavos(e.valorMensalCentavos)} por mês`;
+---
+
+<PaginaAdmin titulo="Catálogo e valores" descricao="Planos, extras e o desconto de Fundador. Toda mudança fica no registro de atividades.">
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <section class="mt-4 rounded-2xl bg-fundo p-4 text-sm text-slate-700">
+    <p class="font-bold text-azul-900">Como vale uma mudança de preço</p>
+    <ul class="mt-1 list-disc space-y-1 pl-5">
+      <li>Quem contratar a partir de agora já paga o valor novo, e as páginas do site mostram o valor novo em até 1 minuto.</li>
+      <li>
+        Quem já assina: o aumento só vale no primeiro vencimento daqui a {DIAS_AVISO_PRECO} dias ou mais, como dizem os Termos de Uso. Cada
+        assinante recebe um e-mail com o próprio valor (mensal ou anual, já com o desconto de Fundador) e a data em que ele passa a valer.
+      </li>
+      <li>Redução de preço vale já na próxima renovação, sem aviso.</li>
+    </ul>
+  </section>
+
+  {
+    catalogo &&
+      grupos.map((g) => (
+        <section class="mt-6">
+          <h2 class="font-display text-xl font-bold text-azul-900">{g.titulo}</h2>
+          <div class="mt-3 space-y-2">
+            {catalogo.planos
+              .filter((p) => p.tipo === g.tipo)
+              .map((p) => (
+                <details class={caixa}>
+                  <summary class="cursor-pointer font-bold text-azul-900">
+                    {p.nome}
+                    <span class="text-sm font-semibold text-slate-500">
+                      {" "}
+                      · {p.valorMensalCentavos === 0 ? "grátis" : `${formatarCentavos(p.valorMensalCentavos)} por mês`}
+                      {p.valorMensalCentavos > 0 && ` · anual: ${formatarCentavos(p.valorMensalCentavos * p.mesesCobradosNoAnual)}`}
+                      {p.assinaturasAtivas > 0 && ` · ${p.assinaturasAtivas} assinatura(s) ativa(s)`}
+                    </span>
+                  </summary>
+                  <form
+                    method="post"
+                    class="mt-3"
+                    data-confirmar={
+                      p.assinaturasAtivas > 0
+                        ? `Salvar o plano ${p.nome}? Se o valor subir, ${p.assinaturasAtivas} assinante(s) recebem por e-mail o novo valor deles.`
+                        : `Salvar o plano ${p.nome}?`
+                    }
+                  >
+                    <input type="hidden" name="acao" value="plano" />
+                    <input type="hidden" name="id" value={p.id} />
+                    <div class="grid gap-3 sm:grid-cols-3">
+                      <div>
+                        <label class={classesRotulo} for={`nome-${p.id}`}>Nome</label>
+                        <input id={`nome-${p.id}`} name="nome" required maxlength="40" value={p.nome} class={classesCampo} />
+                      </div>
+                      <div>
+                        <label class={classesRotulo} for={`valor-${p.id}`}>Valor por mês (R$)</label>
+                        <input
+                          id={`valor-${p.id}`}
+                          name="valor"
+                          inputmode="decimal"
+                          required
+                          value={reais(p.valorMensalCentavos)}
+                          readonly={p.valorMensalCentavos === 0}
+                          class={classesCampo}
+                        />
+                        {p.valorMensalCentavos === 0 && <p class="mt-1 text-xs text-slate-500">O plano Gratuito continua gratuito.</p>}
+                      </div>
+                      <div>
+                        <label class={classesRotulo} for={`meses-${p.id}`}>Mensalidades no anual</label>
+                        <input id={`meses-${p.id}`} name="meses_anual" type="number" min="1" max="12" required value={p.mesesCobradosNoAnual} class={classesCampo} />
+                      </div>
+                      <div>
+                        <label class={classesRotulo} for={`fotos-${p.id}`}>Fotos</label>
+                        <input id={`fotos-${p.id}`} name="limite_fotos" type="number" min="0" max="1000" required value={p.limiteFotos} class={classesCampo} />
+                      </div>
+                      <div>
+                        <label class={classesRotulo} for={`categorias-${p.id}`}>Categorias adicionais</label>
+                        <input
+                          id={`categorias-${p.id}`}
+                          name="limite_categorias"
+                          type="number"
+                          min="0"
+                          max="50"
+                          required
+                          value={p.limiteCategoriasAdicionais}
+                          class={classesCampo}
+                        />
+                      </div>
+                      <div>
+                        <label class={classesRotulo} for={`encartes-${p.id}`}>Encartes por semana</label>
+                        <input id={`encartes-${p.id}`} name="limite_encartes" type="number" min="0" max="50" required value={p.limiteEncartesSemana} class={classesCampo} />
+                      </div>
+                      <div>
+                        <label class={classesRotulo} for={`produtos-${p.id}`}>Produtos</label>
+                        <input id={`produtos-${p.id}`} name="limite_produtos" type="number" min="0" max="5000" required value={p.limiteProdutos} class={classesCampo} />
+                      </div>
+                      <div>
+                        <label class={classesRotulo} for={`enderecos-${p.id}`}>Endereços</label>
+                        <input id={`enderecos-${p.id}`} name="limite_enderecos" type="number" min="1" max="100" required value={p.limiteEnderecos} class={classesCampo} />
+                      </div>
+                      <label class={`${marcavel} sm:mt-7`}>
+                        <input type="checkbox" name="tem_relatorio" value="sim" checked={p.temRelatorio} />
+                        Relatório mensal
+                      </label>
+                    </div>
+                    <button type="submit" class={classesBotao("azul", "m", "mt-4")}>
+                      Salvar plano
+                    </button>
+                  </form>
+                </details>
+              ))}
+          </div>
+        </section>
+      ))
+  }
+
+  {
+    catalogo && (
+      <section class="mt-6">
+        <h2 class="font-display text-xl font-bold text-azul-900">Extras</h2>
+        <div class="mt-3 space-y-2">
+          {catalogo.extras.map((e) => (
+            <details class={caixa}>
+              <summary class="cursor-pointer font-bold text-azul-900">
+                {e.nome}
+                <span class="text-sm font-semibold text-slate-500">
+                  {" "}
+                  · {resumoExtra(e)}
+                  {!e.ativo && " · desligado"}
+                </span>
+              </summary>
+              <form method="post" class="mt-3" data-confirmar={`Salvar o extra ${e.nome}?`}>
+                <input type="hidden" name="acao" value="extra" />
+                <input type="hidden" name="id" value={e.id} />
+                <div class="grid gap-3 sm:grid-cols-3">
+                  <div class="sm:col-span-2">
+                    <label class={classesRotulo} for={`enome-${e.id}`}>Nome</label>
+                    <input id={`enome-${e.id}`} name="nome" required maxlength="60" value={e.nome} class={classesCampo} />
+                  </div>
+                  {e.cobranca === "mensal" && (
+                    <div>
+                      <label class={classesRotulo} for={`evalor-${e.id}`}>Valor por mês (R$)</label>
+                      <input id={`evalor-${e.id}`} name="valor" inputmode="decimal" required value={reais(e.valorMensalCentavos)} class={classesCampo} />
+                    </div>
+                  )}
+                  <div class="sm:col-span-3">
+                    <label class={classesRotulo} for={`edesc-${e.id}`}>Descrição (página Anuncie)</label>
+                    <textarea id={`edesc-${e.id}`} name="descricao" rows="2" maxlength="300" class={classesCampo}>{e.descricao}</textarea>
+                  </div>
+                  {e.recurso && (
+                    <div>
+                      <label class={classesRotulo} for={`equant-${e.id}`}>Quantidade ({ROTULO_RECURSO[e.recurso] ?? e.recurso})</label>
+                      <input id={`equant-${e.id}`} name="quantidade" type="number" min="1" max="1000" required value={e.quantidade ?? 1} class={classesCampo} />
+                    </div>
+                  )}
+                  {e.cobranca === "por_dia" && (
+                    <>
+                      <div>
+                        <label class={classesRotulo} for={`ediaria-${e.id}`}>Diária (R$)</label>
+                        <input id={`ediaria-${e.id}`} name="diaria" inputmode="decimal" required value={reais(Number(e.regras.diaria_centavos ?? 0))} class={classesCampo} />
+                      </div>
+                      <div>
+                        <label class={classesRotulo} for={`ebloco-${e.id}`}>Bloco de dias seguidos (R$)</label>
+                        <input
+                          id={`ebloco-${e.id}`}
+                          name="valor_bloco"
+                          inputmode="decimal"
+                          required
+                          value={reais(Number(e.regras.valor_bloco_centavos ?? e.valorMensalCentavos))}
+                          class={classesCampo}
+                        />
+                      </div>
+                      <div>
+                        <label class={classesRotulo} for={`edias-${e.id}`}>Dias do bloco</label>
+                        <input id={`edias-${e.id}`} name="dias_bloco" type="number" min="2" max="90" required value={numero(e.regras.dias_por_bloco)} class={classesCampo} />
+                      </div>
+                      <div>
+                        <label class={classesRotulo} for={`eminimo-${e.id}`}>A partir de quantos dias paga o bloco</label>
+                        <input
+                          id={`eminimo-${e.id}`}
+                          name="minimo_bloco"
+                          type="number"
+                          min="1"
+                          max="90"
+                          required
+                          value={numero(e.regras.minimo_dias_para_bloco)}
+                          class={classesCampo}
+                        />
+                      </div>
+                      <div>
+                        <label class={classesRotulo} for={`eantec-${e.id}`}>Antecedência mínima (dias)</label>
+                        <input
+                          id={`eantec-${e.id}`}
+                          name="antecedencia"
+                          type="number"
+                          min="0"
+                          max="30"
+                          required
+                          value={numero(e.regras.antecedencia_dias)}
+                          class={classesCampo}
+                        />
+                      </div>
+                    </>
+                  )}
+                  {e.cobranca === "mensal" && (
+                    <div>
+                      <label class={classesRotulo} for={`emeses-${e.id}`}>Mensalidades no anual</label>
+                      <input id={`emeses-${e.id}`} name="meses_anual" type="number" min="1" max="12" required value={e.mesesCobradosNoAnual} class={classesCampo} />
+                    </div>
+                  )}
+                </div>
+                <div class="mt-3 flex flex-wrap gap-4">
+                  {e.cobranca === "mensal" && (
+                    <label class={marcavel}>
+                      <input type="checkbox" name="permite_anual" value="sim" checked={e.permiteAnual} />
+                      Pode ser contratado no anual
+                    </label>
+                  )}
+                  <label class={marcavel}>
+                    <input type="checkbox" name="desconto_fundador" value="sim" checked={e.aceitaDescontoFundador} />
+                    Desconto de Fundador
+                  </label>
+                  <label class={marcavel}>
+                    <input type="checkbox" name="ativo" value="sim" checked={e.ativo} />
+                    Ligado (aparece no site)
+                  </label>
+                </div>
+                <button type="submit" class={classesBotao("azul", "m", "mt-4")}>
+                  Salvar extra
+                </button>
+              </form>
+            </details>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  {
+    catalogo && (
+      <section class="mt-6">
+        <h2 class="font-display text-xl font-bold text-azul-900">Desconto de Fundador</h2>
+        <p class="mt-1 text-sm text-slate-600">
+          Percentual por ano de assinatura. O último degrau fica sem "até o ano": vale dali em diante.
+          {catalogo.temFundadores && " Já há Fundadores: a escala não muda mais por aqui, porque mudaria o valor deles sem o aviso de 30 dias."}
+        </p>
+        <form method="post" class={`${caixa} mt-3`} data-confirmar="Salvar a escala do desconto de Fundador?">
+          <input type="hidden" name="acao" value="escala" />
+          <div class="space-y-2">
+            {escalaLinhas.map((d, i) => (
+              <div class="grid grid-cols-2 gap-3 sm:max-w-md">
+                <div>
+                  <label class={classesRotulo} for={`ate-${i}`}>Até o ano</label>
+                  <input
+                    id={`ate-${i}`}
+                    name={`ate_ano_${i}`}
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={d?.ateAno ?? ""}
+                    placeholder={d && d.ateAno === undefined ? "em diante" : ""}
+                    disabled={catalogo.temFundadores}
+                    class={classesCampo}
+                  />
+                </div>
+                <div>
+                  <label class={classesRotulo} for={`perc-${i}`}>Desconto (%)</label>
+                  <input
+                    id={`perc-${i}`}
+                    name={`percentual_${i}`}
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={d?.percentual ?? ""}
+                    disabled={catalogo.temFundadores}
+                    class={classesCampo}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          {!catalogo.temFundadores && (
+            <button type="submit" class={classesBotao("azul", "m", "mt-4")}>
+              Salvar escala
+            </button>
+          )}
+        </form>
+      </section>
+    )
+  }
+
+  <Modal id="modal-confirmar" titulo="Confirmar">
+    <p data-confirmar-texto class="text-slate-700"></p>
+    <div class="mt-5 flex gap-2">
+      <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>Cancelar</button>
+      <button type="button" data-confirmar-sim class={classesBotao("azul", "m", "flex-1")}>Salvar</button>
+    </div>
+  </Modal>
+</PaginaAdmin>
+
+<script>
+  import { ligarConfirmacoes } from "@/lib/formularioPatrocinio";
+
+  ligarConfirmacoes();
+</script>

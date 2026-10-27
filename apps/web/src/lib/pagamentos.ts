@@ -5,7 +5,15 @@
 // (packages/domain, testada); o banco grava tudo numa transação
 // (registrar_pagamento_plano, migration 20261027120000) e só aceita o
 // administrador.
-import { calcularPagamentoPlano, momentoLocal, podeDevolver, situacaoCobranca, somarDias, type PagamentoPlanoCalculado } from "@acheaqui/domain";
+import {
+  calcularPagamentoPlano,
+  momentoLocal,
+  podeDevolver,
+  situacaoCobranca,
+  somarDias,
+  type PagamentoPlanoCalculado,
+  type PrecoVigente,
+} from "@acheaqui/domain";
 import type { Resultado } from "@acheaqui/types";
 import {
   esquemaDevolucao,
@@ -161,6 +169,8 @@ export interface ContextoPagamento {
   /** Carteira do representante ativo que trouxe o anunciante, com o percentual das configurações (decisões N1 a N3). */
   carteira: { representanteId: string; codigo: string; percentual: number } | null;
   planos: PlanoPago[];
+  /** Histórico de preços de cada plano: na renovação, o aumento só vale com 30 dias de aviso. */
+  historicos: Record<string, PrecoVigente[]>;
 }
 
 /** Situações em que o cadastro recebe pagamento (a função do banco confere de novo). */
@@ -202,6 +212,20 @@ export async function lerContexto(supabase: SupabaseClient, anuncianteId: string
   if (reps.error) return mensagemDoBanco(reps.error, "lerContexto: representantes");
   if (planos.error) return mensagemDoBanco(planos.error, "lerContexto: planos");
   if (config.error) return mensagemDoBanco(config.error, "lerContexto: percentual da carteira");
+  const historico = await supabase
+    .from("historico_precos")
+    .select("plano_id, valor_mensal_centavos, meses_cobrados_no_anual, vigente_desde")
+    .in("plano_id", planos.data.map((p) => p.id))
+    .order("alterado_em");
+  if (historico.error) return mensagemDoBanco(historico.error, "lerContexto: histórico de preços");
+  const historicos: Record<string, PrecoVigente[]> = {};
+  for (const h of historico.data) {
+    (historicos[h.plano_id as string] ??= []).push({
+      valorMensalCentavos: h.valor_mensal_centavos,
+      mesesCobradosNoAnual: h.meses_cobrados_no_anual,
+      vigenteDesde: h.vigente_desde,
+    });
+  }
   const venda = reps.data.find((r) => r.id === vendaId);
   const dono = reps.data.find((r) => r.id === a.representante_id);
   const percentualCarteira = Number(config.data?.valor ?? 0);
@@ -230,6 +254,7 @@ export async function lerContexto(supabase: SupabaseClient, anuncianteId: string
           ? { representanteId: dono.id, codigo: dono.codigo, percentual: percentualCarteira }
           : null,
       planos: planos.data.map((p) => ({ id: p.id, nome: p.nome, valorMensalCentavos: p.valor_mensal_centavos, mesesCobradosNoAnual: p.meses_cobrados_no_anual })),
+      historicos,
     },
   };
 }
@@ -265,6 +290,7 @@ export async function calcular(contexto: ContextoPagamento, escolha: EscolhaPaga
   try {
     const calculado = calcularPagamentoPlano({
       plano,
+      historicoPlano: contexto.historicos[plano.id],
       periodicidade: escolha.periodicidade,
       pagoEm: escolha.pagoEm,
       confirmadoEm: hoje,

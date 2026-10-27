@@ -9,3 +9,5 @@ export * from "./anunciante";
 export * from "./representante";
 export * from "./pagamento";
 export * from "./configuracoes";
+export * from "./catalogo";
+export * from "./comum";
