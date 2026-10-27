@@ -39,6 +39,8 @@ const AVISOS: Record<string, string> = {
 };
 const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
 let erro = "";
+/** A tela principal mostra os rascunhos e os que estão no ar; o histórico, os encerrados. */
+const historico = Astro.url.searchParams.get("ver") === "encerrados";
 
 /**
  * Ações que mudam o que aparece em todas as páginas (faixa "Oferecimento" e o
@@ -119,7 +121,7 @@ if (Astro.request.method === "POST") {
     }
   }
   if (resultado.ok && AVISOS_QUE_LIMPAM_O_CACHE.has(chaveAviso)) await limparCacheDoSite(Astro.url.origin);
-  if (resultado.ok) return Astro.redirect(`/admin/patrocinadores?aviso=${chaveAviso}`, 303);
+  if (resultado.ok) return Astro.redirect(`/admin/patrocinadores?${historico ? "ver=encerrados&" : ""}aviso=${chaveAviso}`, 303);
   erro = resultado.erro.mensagem;
   Astro.response.status = resultado.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
 }
@@ -129,14 +131,17 @@ if (!cotasR.ok) erro ||= cotasR.erro.mensagem;
 if (!patrociniosR.ok) erro ||= patrociniosR.erro.mensagem;
 if (!catalogoR.ok) erro ||= catalogoR.erro.mensagem;
 const cotas = cotasR.ok ? cotasR.dados : [];
-const patrocinios = patrociniosR.ok ? patrociniosR.dados : [];
+const todos = patrociniosR.ok ? patrociniosR.dados : [];
+const encerrados = todos.filter((p) => p.situacao === "encerrado").sort((a, b) => (b.encerrado_em ?? "").localeCompare(a.encerrado_em ?? ""));
+const patrocinios = historico ? encerrados : todos.filter((p) => p.situacao !== "encerrado");
 const { grupos, categorias } = catalogoR.ok ? catalogoR.dados : { grupos: [], categorias: [] };
 
 const nomeCota = (c: CotaPatrocinio) => cotas.find((x) => x.cota === c)?.nome ?? c;
 const vagasDe = (c: CotaAdmin) => c.vagas ?? (c.cota === "grupo" ? grupos.length : categorias.length);
-const noArDa = (c: CotaPatrocinio) => patrocinios.filter((p) => p.cota === c && p.situacao === "no_ar").length;
+const noArDa = (c: CotaPatrocinio) => todos.filter((p) => p.cota === c && p.situacao === "no_ar").length;
 const reais = (centavos: number) => (centavos / 100).toFixed(2).replace(".", ",");
-const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+const diaLocal = (instante: Date | string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(instante));
+const hoje = diaLocal(new Date());
 
 const ROTULO_SITUACAO: Record<PatrocinioAdmin["situacao"], { texto: string; classe: string }> = {
   rascunho: { texto: "Rascunho", classe: "bg-amarelo-200 text-azul-900" },
@@ -150,34 +155,54 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
   {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
   {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
-  <section class="mt-5">
-    <h2 class="font-display text-xl font-bold text-azul-900">Vagas</h2>
-    <ul class="mt-3 grid gap-2 sm:grid-cols-3">
-      {
-        cotas.map((c) => (
-          <li class="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5">
-            <p class="text-sm font-bold text-azul-900">{c.nome}</p>
-            <p class="font-display text-2xl font-extrabold text-azul-900">
-              {noArDa(c.cota)} <span class="text-base font-bold text-slate-400">de {vagasDe(c)}</span>
-            </p>
-            <p class="text-xs text-slate-500">
-              Logo {c.largura_logo} × {c.altura_logo} px · {formatarCentavos(c.valor_fundador_centavos)} (Fundador) · {formatarCentavos(c.valor_centavos)}
-            </p>
-          </li>
-        ))
-      }
-    </ul>
-  </section>
+  {
+    !historico && (
+      <section class="mt-5">
+        <h2 class="font-display text-xl font-bold text-azul-900">Vagas</h2>
+        <ul class="mt-3 grid gap-2 sm:grid-cols-3">
+          {
+            cotas.map((c) => (
+              <li class="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5">
+                <p class="text-sm font-bold text-azul-900">{c.nome}</p>
+                <p class="font-display text-2xl font-extrabold text-azul-900">
+                  {noArDa(c.cota)} <span class="text-base font-bold text-slate-400">de {vagasDe(c)}</span>
+                </p>
+                <p class="text-xs text-slate-500">
+                  Logo {c.largura_logo} × {c.altura_logo} px · {formatarCentavos(c.valor_fundador_centavos)} (Fundador) · {formatarCentavos(c.valor_centavos)}
+                </p>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+    )
+  }
 
   <section class="mt-8">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h2 class="font-display text-xl font-bold text-azul-900">Patrocínios</h2>
-      <button type="button" data-abrir-modal="modal-novo" class={classesBotao("azul", "m")}>
-        <Icone nome="estrela" class="size-4" />
-        Novo patrocínio
-      </button>
-    </div>
-    {patrocinios.length === 0 && <p class="mt-3 rounded-2xl bg-white p-6 text-center text-slate-500 ring-1 ring-black/5">Nenhum patrocínio cadastrado.</p>}
+    {historico ? (
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="font-display text-xl font-bold text-azul-900">Patrocínios encerrados</h2>
+        <a href="/admin/patrocinadores" class="text-sm font-bold text-azul-600 hover:underline">← Voltar aos ativos</a>
+      </div>
+    ) : (
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="font-display text-xl font-bold text-azul-900">Patrocínios</h2>
+        <div class="flex flex-wrap items-center gap-3">
+          <a href="/admin/patrocinadores?ver=encerrados" class="text-sm font-bold text-azul-600 hover:underline">
+            Histórico de encerrados ({encerrados.length})
+          </a>
+          <button type="button" data-abrir-modal="modal-novo" class={classesBotao("azul", "m")}>
+            <Icone nome="estrela" class="size-4" />
+            Novo patrocínio
+          </button>
+        </div>
+      </div>
+    )}
+    {patrocinios.length === 0 && (
+      <p class="mt-3 rounded-2xl bg-white p-6 text-center text-slate-500 ring-1 ring-black/5">
+        {historico ? "Nenhum patrocínio encerrado." : "Nenhum patrocínio ativo ou em rascunho."}
+      </p>
+    )}
     <ul class="mt-3 space-y-3">
       {
         patrocinios.map((p) => {
@@ -200,6 +225,7 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
                 <p class="mt-1.5 flex flex-wrap gap-1.5">
                   <span class={`${etiqueta} ${ROTULO_SITUACAO[p.situacao].classe}`}>{ROTULO_SITUACAO[p.situacao].texto}</span>
                   {p.inicio && p.fim && <span class={`${etiqueta} bg-fundo text-slate-600`}>{formatarData(p.inicio)} a {formatarData(p.fim)}</span>}
+                  {p.encerrado_em && <span class={`${etiqueta} bg-fundo text-slate-600`}>Encerrado em {formatarData(diaLocal(p.encerrado_em))}</span>}
                   {p.dias_somados > 0 && <span class={`${etiqueta} bg-fundo text-slate-600`}>+{p.dias_somados} dias</span>}
                   {p.pagamento ? (
                     <span class={`${etiqueta} bg-zap-50 text-zap-700`}>Pago {formatarCentavos(p.pagamento.valor_centavos)}</span>
@@ -318,59 +344,63 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
     </ul>
   </section>
 
-  <section class="mt-8">
-    <h2 class="font-display text-xl font-bold text-azul-900">Cotas e valores</h2>
-    <p class="mt-1 text-sm text-slate-600">Aparecem na página Patrocine. Benefícios: um por linha.</p>
-    <div class="mt-3 space-y-2">
-      {
-        cotas.map((c) => (
-          <details class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
-            <summary class="cursor-pointer font-bold text-azul-900">
-              {c.nome} <span class="text-sm font-semibold text-slate-500">· {formatarCentavos(c.valor_centavos)}</span>
-            </summary>
-            <form method="post" class="mt-2">
-              <input type="hidden" name="acao" value="cota" />
-              <input type="hidden" name="cota" value={c.cota} />
-              <label class={classesRotulo} for={`cota-nome-${c.cota}`}>Nome</label>
-              <input id={`cota-nome-${c.cota}`} name="nome" required maxlength="40" class={classesCampo} value={c.nome} />
-              <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                <div>
-                  <label class={classesRotulo} for={`cota-valor-${c.cota}`}>Valor por 12 meses (R$)</label>
-                  <input id={`cota-valor-${c.cota}`} name="valor" required inputmode="decimal" class={classesCampo} value={reais(c.valor_centavos)} />
-                </div>
-                <div>
-                  <label class={classesRotulo} for={`cota-fundador-${c.cota}`}>Fundador (R$)</label>
-                  <input id={`cota-fundador-${c.cota}`} name="valor_fundador" required inputmode="decimal" class={classesCampo} value={reais(c.valor_fundador_centavos)} />
-                </div>
-                <div>
-                  <label class={classesRotulo} for={`cota-vagas-${c.cota}`}>Vagas</label>
-                  {c.vagas === null ? (
-                    <p class="mt-2 text-sm text-slate-500">1 por {c.cota === "grupo" ? "grupo" : "categoria"}</p>
-                  ) : (
-                    <input id={`cota-vagas-${c.cota}`} name="vagas" type="number" min="1" max="100" required class={classesCampo} value={c.vagas} />
-                  )}
-                </div>
-                <div>
-                  <label class={classesRotulo} for={`cota-largura-${c.cota}`}>Largura do logo (px)</label>
-                  <input id={`cota-largura-${c.cota}`} name="largura" type="number" min="100" max="2000" required class={classesCampo} value={c.largura_logo} />
-                </div>
-                <div>
-                  <label class={classesRotulo} for={`cota-altura-${c.cota}`}>Altura do logo (px)</label>
-                  <input id={`cota-altura-${c.cota}`} name="altura" type="number" min="100" max="2000" required class={classesCampo} value={c.altura_logo} />
-                </div>
-              </div>
-              <label class={classesRotulo} for={`cota-beneficios-${c.cota}`}>Benefícios</label>
-              <textarea id={`cota-beneficios-${c.cota}`} name="beneficios" rows="4" class={classesCampo}>{c.beneficios.join("\n")}</textarea>
-              <p class="mt-1 text-xs text-slate-500">Mudar o tamanho do logo vale para os próximos envios; os logos já enviados continuam como estão.</p>
-              <button type="submit" class={classesBotao("azul", "m", "mt-3")}>
-                Salvar cota
-              </button>
-            </form>
-          </details>
-        ))
-      }
-    </div>
-  </section>
+  {
+    !historico && (
+      <section class="mt-8">
+        <h2 class="font-display text-xl font-bold text-azul-900">Cotas e valores</h2>
+        <p class="mt-1 text-sm text-slate-600">Aparecem na página Patrocine. Benefícios: um por linha.</p>
+        <div class="mt-3 space-y-2">
+          {
+            cotas.map((c) => (
+              <details class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+                <summary class="cursor-pointer font-bold text-azul-900">
+                  {c.nome} <span class="text-sm font-semibold text-slate-500">· {formatarCentavos(c.valor_centavos)}</span>
+                </summary>
+                <form method="post" class="mt-2">
+                  <input type="hidden" name="acao" value="cota" />
+                  <input type="hidden" name="cota" value={c.cota} />
+                  <label class={classesRotulo} for={`cota-nome-${c.cota}`}>Nome</label>
+                  <input id={`cota-nome-${c.cota}`} name="nome" required maxlength="40" class={classesCampo} value={c.nome} />
+                  <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    <div>
+                      <label class={classesRotulo} for={`cota-valor-${c.cota}`}>Valor por 12 meses (R$)</label>
+                      <input id={`cota-valor-${c.cota}`} name="valor" required inputmode="decimal" class={classesCampo} value={reais(c.valor_centavos)} />
+                    </div>
+                    <div>
+                      <label class={classesRotulo} for={`cota-fundador-${c.cota}`}>Fundador (R$)</label>
+                      <input id={`cota-fundador-${c.cota}`} name="valor_fundador" required inputmode="decimal" class={classesCampo} value={reais(c.valor_fundador_centavos)} />
+                    </div>
+                    <div>
+                      <label class={classesRotulo} for={`cota-vagas-${c.cota}`}>Vagas</label>
+                      {c.vagas === null ? (
+                        <p class="mt-2 text-sm text-slate-500">1 por {c.cota === "grupo" ? "grupo" : "categoria"}</p>
+                      ) : (
+                        <input id={`cota-vagas-${c.cota}`} name="vagas" type="number" min="1" max="100" required class={classesCampo} value={c.vagas} />
+                      )}
+                    </div>
+                    <div>
+                      <label class={classesRotulo} for={`cota-largura-${c.cota}`}>Largura do logo (px)</label>
+                      <input id={`cota-largura-${c.cota}`} name="largura" type="number" min="100" max="2000" required class={classesCampo} value={c.largura_logo} />
+                    </div>
+                    <div>
+                      <label class={classesRotulo} for={`cota-altura-${c.cota}`}>Altura do logo (px)</label>
+                      <input id={`cota-altura-${c.cota}`} name="altura" type="number" min="100" max="2000" required class={classesCampo} value={c.altura_logo} />
+                    </div>
+                  </div>
+                  <label class={classesRotulo} for={`cota-beneficios-${c.cota}`}>Benefícios</label>
+                  <textarea id={`cota-beneficios-${c.cota}`} name="beneficios" rows="4" class={classesCampo}>{c.beneficios.join("\n")}</textarea>
+                  <p class="mt-1 text-xs text-slate-500">Mudar o tamanho do logo vale para os próximos envios; os logos já enviados continuam como estão.</p>
+                  <button type="submit" class={classesBotao("azul", "m", "mt-3")}>
+                    Salvar cota
+                  </button>
+                </form>
+              </details>
+            ))
+          }
+        </div>
+      </section>
+    )
+  }
 
   <Modal id="modal-novo" titulo="Novo patrocínio">
     <form method="post" enctype="multipart/form-data" data-form-patrocinio>

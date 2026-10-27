@@ -50,6 +50,8 @@ export interface PatrocinioAdmin {
   inicio: string | null;
   fim: string | null;
   dias_somados: number;
+  /** Momento do encerramento; o fim do contrato (fim) pode ser depois. */
+  encerrado_em: string | null;
   pagamento: { valor_centavos: number; preco_fundador: boolean; pago_em: string; observacao: string } | null;
   cliques: number;
 }
@@ -91,7 +93,7 @@ export async function listarPatrociniosAdmin(supabase: SupabaseClient): Promise<
   const { data, error } = await supabase
     .from("patrocinios")
     .select(
-      "id, cota, slug, nome, ramo, frase, whatsapp, site, logo_caminho, grupo, categoria_id, situacao, inicio, fim, dias_somados, " +
+      "id, cota, slug, nome, ramo, frase, whatsapp, site, logo_caminho, grupo, categoria_id, situacao, inicio, fim, dias_somados, encerrado_em, " +
         "categorias(nome_plural), pagamentos_patrocinio(valor_centavos, preco_fundador, pago_em, observacao), cliques_patrocinio(cliques)",
     )
     .order("situacao")
@@ -297,8 +299,14 @@ export async function somarDiasAoPrazo(supabase: SupabaseClient, id: string, dia
 }
 
 export async function encerrar(supabase: SupabaseClient, id: string): Promise<Resultado<null>> {
-  const { error } = await supabase.from("patrocinios").update({ situacao: "encerrado" }).eq("id", id).eq("situacao", "no_ar");
-  return error ? mensagemDoBanco(error, "encerrar") : ok(null);
+  const { data, error } = await supabase
+    .from("patrocinios")
+    .update({ situacao: "encerrado", encerrado_em: new Date().toISOString() })
+    .eq("id", id)
+    .eq("situacao", "no_ar")
+    .select("id");
+  if (error) return mensagemDoBanco(error, "encerrar");
+  return data.length > 0 ? ok(null) : falha("CONFLITO", "Este patrocínio não está no ar. Atualize a página.");
 }
 
 /** Apaga um rascunho (nunca foi ao ar) e o logo dele. */
