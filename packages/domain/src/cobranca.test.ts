@@ -4,11 +4,11 @@ import {
   aplicarPercentual,
   calcularCobrancaExtra,
   calcularCobrancaPlano,
-  dataDeVencimento,
   efeitoDoVencimento,
   perdeCondicaoFundador,
   percentualFundadorNoAno,
-  situacaoAssinatura,
+  situacaoCobranca,
+  vencimentoSeguinte,
   tornaFundador,
   validarEscalaFundador,
   type ValoresExtra,
@@ -138,19 +138,27 @@ describe("tornaFundador", () => {
 
 describe("vencimento", () => {
   it("mensal vence 1 mês depois e anual, 12 meses depois", () => {
-    expect(dataDeVencimento("2026-11-27", "mensal")).toBe("2026-12-27");
-    expect(dataDeVencimento("2026-11-27", "anual")).toBe("2027-11-27");
+    expect(vencimentoSeguinte("2026-11-27", "2026-11-27", "mensal")).toBe("2026-12-27");
+    expect(vencimentoSeguinte("2026-11-27", "2026-11-27", "anual")).toBe("2027-11-27");
   });
 
-  it("aguarda pagamento enquanto a equipe não confirma o Pix", () => {
-    expect(situacaoAssinatura({ pagamentoConfirmado: false, venceEm: "2026-12-27", hoje: "2026-11-27" })).toBe(
-      "aguardando_pagamento",
-    );
+  it("volta ao dia da âncora depois de um mês mais curto", () => {
+    expect(vencimentoSeguinte("2027-01-31", "2027-01-31", "mensal")).toBe("2027-02-28");
+    expect(vencimentoSeguinte("2027-01-31", "2027-02-28", "mensal")).toBe("2027-03-31");
+    expect(vencimentoSeguinte("2027-01-31", "2027-03-31", "anual")).toBe("2028-03-31");
+    expect(vencimentoSeguinte("2028-02-29", "2028-02-29", "anual")).toBe("2029-02-28");
   });
 
-  it("fica ativa até o fim do dia do vencimento e vence no dia seguinte", () => {
-    expect(situacaoAssinatura({ pagamentoConfirmado: true, venceEm: "2026-12-27", hoje: "2026-12-27" })).toBe("ativa");
-    expect(situacaoAssinatura({ pagamentoConfirmado: true, venceEm: "2026-12-27", hoje: "2026-12-28" })).toBe("vencida");
+  it("recusa vencimento antes da âncora", () => {
+    expect(() => vencimentoSeguinte("2027-01-31", "2027-01-30", "mensal")).toThrow(RangeError);
+  });
+
+  it("em dia até o fim do dia do vencimento, em atraso por 7 dias e depois vencida", () => {
+    const situacao = (hoje: string) => situacaoCobranca({ venceEm: "2026-12-27", hoje, toleranciaDias: 7 });
+    expect(situacao("2026-12-27")).toBe("em_dia");
+    expect(situacao("2026-12-28")).toBe("em_atraso");
+    expect(situacao("2027-01-03")).toBe("em_atraso");
+    expect(situacao("2027-01-04")).toBe("vencida");
   });
 
   it("esconde o autônomo e passa o comércio para o Gratuito", () => {

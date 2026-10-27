@@ -37,6 +37,18 @@ export function somarMeses(data: DataISO, meses: number): DataISO {
   return paraISO(valor);
 }
 
+/** Meses do calendário de uma data até outra (31/01 a 28/02 = 1), sem olhar o dia. */
+export function mesesEntre(de: DataISO, ate: DataISO): number {
+  const a = paraUTC(de);
+  const b = paraUTC(ate);
+  return (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + b.getUTCMonth() - a.getUTCMonth();
+}
+
+/** Dias de uma data até outra (negativo se a segunda vem antes). */
+export function diasEntre(de: DataISO, ate: DataISO): number {
+  return Math.round((paraUTC(ate).getTime() - paraUTC(de).getTime()) / 86_400_000);
+}
+
 export function diaDaSemana(data: DataISO): DiaSemana {
   return paraUTC(data).getUTCDay() as DiaSemana;
 }

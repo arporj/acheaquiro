@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { calcularComissao, type PagamentoComissionavel } from "./comissao";
+import {
+  aplicarDescontoRepresentante,
+  calcularComissao,
+  calcularComissaoUpgrade,
+  liberacaoDaComissao,
+  situacaoComissao,
+  type PagamentoComissionavel,
+  type UpgradeComissionavel,
+} from "./comissao";
 
 // Exemplo do item 4.12: o representante João traz a Padaria Boa Massa,
 // que contrata o plano Vitrine, de R$ 59,90 por mês.
@@ -58,9 +66,9 @@ describe("renovação do anual", () => {
   });
 });
 
-describe("extras (20% do valor pago na venda, uma vez)", () => {
+describe("extras com o atendimento do representante, junto com a assinatura ou depois (20%, uma vez)", () => {
   it("Super Destaque mensal vendido junto com a assinatura: 20% da 1ª mensalidade", () => {
-    expect(calcularComissao({ ...mensalidade, origem: "extra_na_assinatura", valorPagoCentavos: 8990 })).toEqual({
+    expect(calcularComissao({ ...mensalidade, origem: "extra", valorPagoCentavos: 8990 })).toEqual({
       baseCentavos: 8990,
       percentual: 20,
       valorCentavos: 1798,
@@ -68,23 +76,23 @@ describe("extras (20% do valor pago na venda, uma vez)", () => {
   });
 
   it("não paga nas mensalidades seguintes do extra", () => {
-    expect(valor({ origem: "extra_na_assinatura", valorPagoCentavos: 8990, numeroMensalidade: 2 })).toBeNull();
+    expect(valor({ origem: "extra", valorPagoCentavos: 8990, numeroMensalidade: 2 })).toBeNull();
   });
 
   it("Super Destaque anual: 20% do valor anual", () => {
-    expect(valor({ origem: "extra_na_assinatura", periodicidade: "anual", valorPagoCentavos: 89900 })).toBe(17980);
+    expect(valor({ origem: "extra", periodicidade: "anual", valorPagoCentavos: 89900 })).toBe(17980);
   });
 
   it("Destaque Exclusivo: 20% da compra de dias (7 dias, R$ 174,30)", () => {
-    expect(valor({ origem: "extra_na_assinatura", valorPagoCentavos: 17430 })).toBe(3486);
+    expect(valor({ origem: "extra", valorPagoCentavos: 17430 })).toBe(3486);
   });
 
   it("pacote com desconto de Fundador: 20% do valor pago (R$ 2,45 → R$ 0,49)", () => {
-    expect(valor({ origem: "extra_na_assinatura", valorPagoCentavos: 245 })).toBe(49);
+    expect(valor({ origem: "extra", valorPagoCentavos: 245 })).toBe(49);
   });
 
-  it("o extra contratado depois não gera comissão", () => {
-    expect(valor({ origem: "extra_avulso" })).toBeNull();
+  it("o extra contratado pelo anunciante sozinho não gera comissão", () => {
+    expect(valor({ origem: "extra", temRepresentante: false })).toBeNull();
   });
 });
 
@@ -106,5 +114,101 @@ describe("dados inválidos", () => {
     { periodicidade: "anual" as const, mesesCobradosNoAnual: 0 },
   ])("recusa %o", (dados) => {
     expect(() => calcularComissao({ ...mensalidade, ...dados })).toThrow(RangeError);
+  });
+});
+
+describe("patrocínio (20% do valor pago no contrato, de uma vez)", () => {
+  it("cota Ouro de R$ 1.800,00: R$ 360,00", () => {
+    expect(valor({ origem: "patrocinio", periodicidade: "anual", valorPagoCentavos: 180000 })).toBe(36000);
+  });
+
+  it("troca de cota no meio do contrato: 20% da diferença paga", () => {
+    expect(valor({ origem: "patrocinio", periodicidade: "anual", valorPagoCentavos: 120000 })).toBe(24000);
+  });
+
+  it("um novo pagamento do mesmo contrato não gera comissão", () => {
+    expect(valor({ origem: "patrocinio", numeroMensalidade: 2 })).toBeNull();
+  });
+});
+
+// Exemplo do item 4.12: Maria vende o Básico (R$ 19,90) e depois a mudança para o Vitrine (R$ 59,90).
+describe("mudança para um plano maior", () => {
+  const upgrade: UpgradeComissionavel = {
+    mensalidadeNovaCentavos: 5990,
+    maiorMensalidadeComissionadaCentavos: 1990,
+    periodicidade: "mensal",
+    numeroMensalidade: 1,
+    temRepresentante: true,
+    pagamentoConfirmado: true,
+  };
+  const valorUpgrade = (p: Partial<UpgradeComissionavel>) => calcularComissaoUpgrade({ ...upgrade, ...p })?.valorCentavos ?? null;
+
+  it("mensal: 100%, 20%, 10% e 5% da diferença de R$ 40,00, total de R$ 54,00", () => {
+    expect([1, 2, 3, 4, 5].map((numeroMensalidade) => valorUpgrade({ numeroMensalidade }))).toEqual([4000, 800, 400, 200, null]);
+  });
+
+  it("anual: 135% da diferença de uma vez, R$ 54,00, e nada na renovação", () => {
+    expect(calcularComissaoUpgrade({ ...upgrade, periodicidade: "anual" })).toEqual({ baseCentavos: 4000, percentual: 135, valorCentavos: 5400 });
+    expect(valorUpgrade({ periodicidade: "anual", numeroMensalidade: 2 })).toBeNull();
+  });
+
+  it("somado ao Básico, dá o mesmo que vender o Vitrine desde o início (R$ 80,87)", () => {
+    expect(calcularComissao({ ...mensalidade, periodicidade: "anual", valorPagoCentavos: 19900 })!.valorCentavos + 5400).toBe(8087);
+  });
+
+  it("conta a partir do maior plano já comissionado: descer e subir de novo não gera comissão", () => {
+    expect(valorUpgrade({ maiorMensalidadeComissionadaCentavos: 5990 })).toBeNull();
+    expect(valorUpgrade({ mensalidadeNovaCentavos: 3990, maiorMensalidadeComissionadaCentavos: 5990 })).toBeNull();
+  });
+
+  it("anunciante que entrou sem representante: a diferença é sobre zero", () => {
+    expect(valorUpgrade({ maiorMensalidadeComissionadaCentavos: 0 })).toBe(5990);
+  });
+
+  it("sem atendimento ou sem pagamento confirmado, nada", () => {
+    expect(valorUpgrade({ temRepresentante: false })).toBeNull();
+    expect(valorUpgrade({ pagamentoConfirmado: false })).toBeNull();
+  });
+
+  it("recusa valores inválidos", () => {
+    expect(() => valorUpgrade({ mensalidadeNovaCentavos: 10.5 })).toThrow(RangeError);
+    expect(() => valorUpgrade({ maiorMensalidadeComissionadaCentavos: -1 })).toThrow(RangeError);
+    expect(() => valorUpgrade({ numeroMensalidade: 0 })).toThrow(RangeError);
+  });
+});
+
+describe("desconto dado pelo representante", () => {
+  it("exemplo do item 4.12: R$ 20,00 de desconto num plano de R$ 100,00 com comissão de R$ 20,00", () => {
+    expect(aplicarDescontoRepresentante({ valorCentavos: 10000, comissaoCentavos: 2000, descontoCentavos: 2000 })).toEqual({
+      valorCobradoCentavos: 8000,
+      comissaoCentavos: 0,
+    });
+  });
+
+  it("desconto menor que a comissão: o representante recebe a diferença", () => {
+    expect(aplicarDescontoRepresentante({ valorCentavos: 5990, comissaoCentavos: 5990, descontoCentavos: 1000 })).toEqual({
+      valorCobradoCentavos: 4990,
+      comissaoCentavos: 4990,
+    });
+  });
+
+  it("recusa desconto maior que a comissão ou valores inválidos", () => {
+    expect(() => aplicarDescontoRepresentante({ valorCentavos: 10000, comissaoCentavos: 2000, descontoCentavos: 2001 })).toThrow(RangeError);
+    expect(() => aplicarDescontoRepresentante({ valorCentavos: 10000, comissaoCentavos: 2000, descontoCentavos: -1 })).toThrow(RangeError);
+    expect(() => aplicarDescontoRepresentante({ valorCentavos: 1.5, comissaoCentavos: 0, descontoCentavos: 0 })).toThrow(RangeError);
+  });
+});
+
+describe("espera de 7 dias", () => {
+  it("libera 7 dias depois da confirmação do pagamento", () => {
+    expect(liberacaoDaComissao("2026-11-10")).toBe("2026-11-17");
+  });
+
+  it("aguardando até a véspera, liberada no dia; paga e cancelada valem sobre a data", () => {
+    const base = { liberaEm: "2026-11-17", cancelada: false, paga: false };
+    expect(situacaoComissao({ ...base, hoje: "2026-11-16" })).toBe("aguardando");
+    expect(situacaoComissao({ ...base, hoje: "2026-11-17" })).toBe("liberada");
+    expect(situacaoComissao({ ...base, hoje: "2026-11-20", paga: true })).toBe("paga");
+    expect(situacaoComissao({ ...base, hoje: "2026-11-12", cancelada: true })).toBe("cancelada");
   });
 });

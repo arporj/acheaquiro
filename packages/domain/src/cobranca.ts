@@ -1,9 +1,16 @@
 // Valor da cobrança, desconto de Fundador e vencimento (itens 4.15, 4.16 e 6.1;
 // Especificação Técnica, seções 8.3 e 8.5). Valores sempre em centavos.
 import type { DegrauDescontoFundador, TipoAnunciante } from "@acheaqui/types";
-import { somarDias, somarMeses, type DataISO } from "./datas";
+import { mesesEntre, somarDias, somarMeses, type DataISO } from "./datas";
 
 export type Periodicidade = "mensal" | "anual";
+
+/**
+ * O anunciante pode desistir em até 7 dias depois do primeiro pagamento de uma
+ * contratação, com o dinheiro devolvido (decisão 11). A comissão espera o
+ * mesmo prazo (DIAS_ESPERA_COMISSAO).
+ */
+export const DIAS_PARA_DESISTIR = 7;
 
 export interface ValoresPlano {
   valorMensalCentavos: number;
@@ -144,21 +151,27 @@ export function tornaFundador(assinatura: {
   );
 }
 
-/** Data de vencimento: 1 mês ou 12 meses depois do início. */
-export function dataDeVencimento(inicio: DataISO, periodicidade: Periodicidade): DataISO {
-  return somarMeses(inicio, periodicidade === "anual" ? 12 : 1);
+/**
+ * Vencimento seguinte, sempre no dia em que a assinatura começou (a âncora),
+ * mesmo quando o anunciante paga antes (item 4.15). Os meses contam da âncora,
+ * e não do vencimento anterior: começando em 31/01, vence em 28/02 e depois
+ * em 31/03, e não em 28/03.
+ */
+export function vencimentoSeguinte(ancora: DataISO, vencimentoAtual: DataISO, periodicidade: Periodicidade): DataISO {
+  if (vencimentoAtual < ancora) throw new RangeError("O vencimento não pode ser antes do início da assinatura.");
+  return somarMeses(ancora, mesesEntre(ancora, vencimentoAtual) + (periodicidade === "anual" ? 12 : 1));
 }
 
-export type SituacaoAssinatura = "aguardando_pagamento" | "ativa" | "vencida";
+export type SituacaoCobranca = "em_dia" | "em_atraso" | "vencida";
 
-/** O plano vale até o fim do dia do vencimento. */
-export function situacaoAssinatura(assinatura: {
-  pagamentoConfirmado: boolean;
-  venceEm: DataISO;
-  hoje: DataISO;
-}): SituacaoAssinatura {
-  if (!assinatura.pagamentoConfirmado) return "aguardando_pagamento";
-  return assinatura.hoje <= assinatura.venceEm ? "ativa" : "vencida";
+/**
+ * O plano vale até o fim do dia do vencimento. Depois, o anunciante tem a
+ * tolerância (7 dias) para pagar: "em atraso", no card da administração.
+ * Passada a tolerância, "vencida" (efeitoDoVencimento).
+ */
+export function situacaoCobranca(assinatura: { venceEm: DataISO; hoje: DataISO; toleranciaDias: number }): SituacaoCobranca {
+  if (assinatura.hoje <= assinatura.venceEm) return "em_dia";
+  return assinatura.hoje <= somarDias(assinatura.venceEm, assinatura.toleranciaDias) ? "em_atraso" : "vencida";
 }
 
 /** Plano vencido sem pagamento: autônomo fica escondido; comércio vai para o Gratuito. */
