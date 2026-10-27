@@ -7,6 +7,7 @@ export * from "./limites";
 export * from "./cobranca";
 export * from "./comissao";
 export * from "./assinatura";
+export * from "./precos";
 export * from "./destaque";
 export * from "./horario";
 export * from "./patrocinio";

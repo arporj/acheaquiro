@@ -16,6 +16,7 @@ import {
 } from "./cobranca";
 import { calcularComissao, calcularComissaoCarteira, liberacaoDaComissao, type Comissao } from "./comissao";
 import { diasEntre, somarDias, type DataISO } from "./datas";
+import { precoDaRenovacao, type PrecoVigente } from "./precos";
 import type { DegrauDescontoFundador } from "@acheaqui/types";
 
 export interface AssinaturaAnterior {
@@ -70,7 +71,13 @@ export function podeDevolver(pagamento: { numero: number; pagoEm: DataISO; hoje:
 }
 
 export interface EntradaPagamentoPlano {
+  /** Preço de hoje: vale para quem contrata (e para quem volta depois da tolerância). */
   plano: ValoresPlano;
+  /**
+   * Histórico de preços do plano. Na renovação, um aumento só vale se foi
+   * avisado pelo menos 30 dias antes (precoDaRenovacao). Sem histórico, vale o preço de hoje.
+   */
+  historicoPlano?: readonly PrecoVigente[];
   periodicidade: Periodicidade;
   pagoEm: DataISO;
   /** Dia em que a equipe confirma o pagamento na administração: a comissão espera 7 dias a partir dele. */
@@ -121,8 +128,8 @@ export interface PagamentoPlanoCalculado {
 
 /** Tudo o que o registro de um pagamento do plano grava, calculado pelas regras do domínio. */
 export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): PagamentoPlanoCalculado {
-  const { plano, periodicidade, pagoEm, regras, assinatura } = entrada;
-  if (plano.valorMensalCentavos <= 0) throw new RangeError("Plano gratuito não tem pagamento.");
+  const { periodicidade, pagoEm, regras, assinatura } = entrada;
+  if (entrada.plano.valorMensalCentavos <= 0) throw new RangeError("Plano gratuito não tem pagamento.");
   if (entrada.confirmadoEm < pagoEm) throw new RangeError("O pagamento não pode ser confirmado antes de ser feito.");
 
   const periodo = periodoDoPagamento({
@@ -132,6 +139,10 @@ export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): Pagament
     toleranciaDias: regras.toleranciaVencimentoDias,
     anterior: assinatura,
   });
+  const plano =
+    periodo.renovacao && entrada.historicoPlano?.length
+      ? precoDaRenovacao({ historico: entrada.historicoPlano, inicioPeriodo: periodo.inicio, periodicidade, hoje: entrada.confirmadoEm })
+      : entrada.plano;
 
   // Fundador: quem já é continua só renovando no anual, sem interrupção.
   let fundadorDesde = entrada.fundadorDesde;
