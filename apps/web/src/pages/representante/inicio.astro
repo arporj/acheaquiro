@@ -50,7 +50,7 @@ const tipoPix = meu?.chavePix ? normalizarChavePix(meu.chavePix)?.tipo : undefin
           </p>
           <p class="mt-4 rounded-2xl bg-fundo px-4 py-3 font-bold break-all text-azul-900" data-link>{link}</p>
           <div class="mt-3 flex flex-wrap gap-2">
-            <button type="button" class={classesBotao("azul", "m")} data-copiar={link}>
+            <button type="button" class={classesBotao("azul", "m")} data-copiar={link} data-copiado-texto="Link copiado.">
               <Icone nome="link" class="size-4" />
               Copiar o link
             </button>
@@ -124,17 +124,7 @@ const tipoPix = meu?.chavePix ? normalizarChavePix(meu.chavePix)?.tipo : undefin
 </PaginaRepresentante>
 
 <script>
-  for (const botao of document.querySelectorAll<HTMLButtonElement>("[data-copiar]")) {
-    botao.addEventListener("click", async () => {
-      const aviso = document.querySelector<HTMLElement>("[data-copiado]");
-      try {
-        await navigator.clipboard.writeText(botao.dataset.copiar ?? "");
-        if (aviso) aviso.textContent = "Link copiado.";
-      } catch (erro) {
-        // Navegador sem permissão de copiar: a pessoa copia do quadro acima.
-        console.error("Copiar o link falhou", erro);
-        if (aviso) aviso.textContent = "Não deu para copiar. Toque e segure no link acima para copiar.";
-      }
-    });
-  }
+  import { ligarBotoesCopiar } from "@/lib/copiar";
+
+  ligarBotoesCopiar();
 </script>

@@ -1,0 +1,53 @@
+---
+// Representantes (item 4.8): o saldo de cada um (aguardando os 7 dias,
+// liberado para pagar e já pago). O cadastro e a desativação ficam em Equipe.
+import Aviso from "@/components/conta/Aviso.astro";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { listarRepresentantes } from "@/lib/comissoes";
+import { formatarCentavos } from "@/lib/precos";
+
+const supabase = Astro.locals.supabase!;
+const lista = await listarRepresentantes(supabase);
+const reps = lista.ok ? lista.dados : [];
+const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-extrabold";
+---
+
+<PaginaAdmin titulo="Representantes" descricao="Comissões e pagamentos dos representantes. O cadastro e a desativação ficam em Equipe.">
+  {!lista.ok && <Aviso tipo="erro">{lista.erro.mensagem}</Aviso>}
+  {lista.ok && reps.length === 0 && <p class="mt-5 rounded-2xl bg-white p-6 text-center text-slate-500 ring-1 ring-black/5">Nenhum representante cadastrado.</p>}
+  {
+    reps.length > 0 && (
+      <div class="mt-5 overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-fundo text-xs font-extrabold tracking-wide text-slate-500 uppercase">
+            <tr>
+              <th class="px-4 py-3">Representante</th>
+              <th class="px-4 py-3 text-right">Aguardando</th>
+              <th class="px-4 py-3 text-right">Liberado</th>
+              <th class="px-4 py-3 text-right">Já pago</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {reps.map((r) => (
+              <tr>
+                <td class="px-4 py-3">
+                  <a href={`/admin/representantes/${r.id}`} class="font-bold text-azul-600 hover:underline">
+                    {r.nome}
+                  </a>
+                  <span class="ml-1 text-xs text-slate-500">{r.codigo}</span>
+                  {!r.ativo && <span class={`${etiqueta} ml-2 bg-slate-200 text-slate-700`}>Saiu</span>}
+                  {!r.recebeComissao && <span class={`${etiqueta} ml-2 bg-fundo text-slate-600`}>Sem comissão</span>}
+                </td>
+                <td class="px-4 py-3 text-right whitespace-nowrap">{formatarCentavos(r.saldo.aguardandoCentavos)}</td>
+                <td class:list={["px-4 py-3 text-right font-bold whitespace-nowrap", r.saldo.liberadoCentavos > 0 ? "text-zap-700" : "text-slate-500"]}>
+                  {formatarCentavos(r.saldo.liberadoCentavos)}
+                </td>
+                <td class="px-4 py-3 text-right whitespace-nowrap">{formatarCentavos(r.saldo.pagoCentavos)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</PaginaAdmin>

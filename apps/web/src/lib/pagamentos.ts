@@ -8,13 +8,9 @@
 import { calcularPagamentoPlano, momentoLocal, podeDevolver, type PagamentoPlanoCalculado } from "@acheaqui/domain";
 import type { Resultado } from "@acheaqui/types";
 import {
-  ArquivoInvalido,
-  TAMANHO_MAXIMO_PDF,
   esquemaDevolucao,
   esquemaEscolhaPagamento,
   esquemaPagamento,
-  identificarArquivo,
-  limparMetadados,
   mensagensPorCampo,
   type EscolhaPagamento,
   type FormaRecebimento,
@@ -22,13 +18,13 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { obterAberturaAoPublico, obterRegrasCobranca } from "../dados/consultas";
 import { limparPerfilDoCache, type Situacao } from "./anunciantesAdmin";
+import { apagarComprovante, enderecoDoComprovante, guardarComprovante } from "./comprovantesGuardados";
 
 type CodigoFalha = "DADOS_INVALIDOS" | "CONFLITO" | "SEM_PERMISSAO" | "NAO_ENCONTRADO" | "ARQUIVO_INVALIDO" | "ERRO_INTERNO";
 type Falha = { ok: false; erro: { codigo: CodigoFalha; mensagem: string; campos?: Record<string, string> } };
 const falha = (codigo: CodigoFalha, mensagem: string, campos?: Record<string, string>): Falha => ({ ok: false, erro: { codigo, mensagem, campos } });
 const ERRO_INTERNO = falha("ERRO_INTERNO", "Não foi possível concluir agora. Tente de novo em instantes.");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const BUCKET = "comprovantes";
 
 /** Mensagem das travas do banco (P0001) pode ir para a tela; o resto vai só para o registro. */
 function mensagemDoBanco(erro: { code?: string; message: string }, contexto: string): Falha {
@@ -249,27 +245,6 @@ export async function calcular(contexto: ContextoPagamento, escolha: EscolhaPaga
 // Registro
 // ---------------------------------------------------------------------------
 
-const EXTENSAO = { webp: "webp", jpeg: "jpg", pdf: "pdf" } as const;
-const TIPO_CONTEUDO = { webp: "image/webp", jpeg: "image/jpeg", pdf: "application/pdf" } as const;
-
-/**
- * Comprovante opcional: foto (o navegador já converte para WebP, o que tira a
- * localização) ou PDF, até 5 MB. Aqui o tipo é conferido pelos primeiros bytes
- * e os metadados da foto são removidos de novo.
- */
-function prepararComprovante(bytes: Uint8Array): Resultado<{ bytes: Uint8Array; tipo: keyof typeof EXTENSAO }> {
-  if (bytes.length > TAMANHO_MAXIMO_PDF) return falha("ARQUIVO_INVALIDO", "O comprovante precisa ter até 5 MB.");
-  const tipo = identificarArquivo(bytes);
-  if (tipo === "pdf") return { ok: true, dados: { bytes, tipo } };
-  if (tipo !== "webp" && tipo !== "jpeg") return falha("ARQUIVO_INVALIDO", "Envie o comprovante como foto ou PDF.");
-  try {
-    return { ok: true, dados: { bytes: limparMetadados(bytes, tipo), tipo } };
-  } catch (e) {
-    if (e instanceof ArquivoInvalido) return falha("ARQUIVO_INVALIDO", e.message);
-    throw e;
-  }
-}
-
 export async function registrarPagamento(
   supabase: SupabaseClient,
   contexto: ContextoPagamento,
@@ -298,14 +273,9 @@ export async function registrarPagamento(
 
   let caminho = "";
   if (comprovante && comprovante.length > 0) {
-    const arquivo = prepararComprovante(comprovante);
-    if (!arquivo.ok) return arquivo;
-    caminho = `${contexto.anunciante.id}/${crypto.randomUUID()}.${EXTENSAO[arquivo.dados.tipo]}`;
-    const { error } = await supabase.storage.from(BUCKET).upload(caminho, arquivo.dados.bytes, { contentType: TIPO_CONTEUDO[arquivo.dados.tipo] });
-    if (error) {
-      console.error("registrarPagamento: envio do comprovante falhou", { mensagem: error.message });
-      return ERRO_INTERNO;
-    }
+    const guardado = await guardarComprovante(supabase, contexto.anunciante.id, comprovante);
+    if (!guardado.ok) return guardado;
+    caminho = guardado.dados;
   }
 
   const { data, error } = await supabase.rpc("registrar_pagamento_plano", {
@@ -339,10 +309,7 @@ export async function registrarPagamento(
     p_carteira_valor: c.comissaoCarteira?.valorCentavos ?? null,
   });
   if (error) {
-    if (caminho) {
-      const { error: erroApagar } = await supabase.storage.from(BUCKET).remove([caminho]);
-      if (erroApagar) console.error("registrarPagamento: comprovante órfão", { caminho, mensagem: erroApagar.message });
-    }
+    if (caminho) await apagarComprovante(supabase, caminho);
     return mensagemDoBanco(error, "registrarPagamento");
   }
   await limparPerfilDoCache(origemDoSite, contexto.anunciante.slug);
@@ -368,10 +335,12 @@ export interface PagamentoLista {
   conta: string;
   pagoEm: string;
   devolvido: boolean;
+  /** Devolvido por contestação no cartão (o dinheiro voltou pelo banco do anunciante). */
+  contestado: boolean;
 }
 
 const COLUNAS_LISTA =
-  "id, anunciante_id, periodicidade, numero, valor_centavos, forma, parcelas, pago_em, devolvido_em, " +
+  "id, anunciante_id, periodicidade, numero, valor_centavos, forma, parcelas, pago_em, devolvido_em, tipo_devolucao, " +
   "anunciante:anunciantes(nome), plano:planos(nome), conta:contas_recebimento(nome)";
 
 type LinhaLista = {
@@ -384,6 +353,7 @@ type LinhaLista = {
   parcelas: number;
   pago_em: string;
   devolvido_em: string | null;
+  tipo_devolucao: "devolucao" | "contestacao" | null;
   anunciante: { nome: string };
   plano: { nome: string };
   conta: { nome: string };
@@ -402,6 +372,7 @@ const paraLista = (l: LinhaLista): PagamentoLista => ({
   conta: l.conta.nome,
   pagoEm: l.pago_em,
   devolvido: l.devolvido_em !== null,
+  contestado: l.tipo_devolucao === "contestacao",
 });
 
 /** "AAAA-MM" do mês pedido; o mês atual se vier vazio ou inválido. */
@@ -449,6 +420,8 @@ export interface PagamentoDetalhe extends PagamentoLista {
   comprovante: string | null;
   comissao: { representante: string; origem: string; valorCentavos: number; liberaEm: string; cancelada: boolean } | null;
   podeDevolver: boolean;
+  /** Pagamento no cartão ainda não devolvido: o banco do anunciante pode estornar (contestação). */
+  podeContestar: boolean;
 }
 
 export async function lerPagamento(supabase: SupabaseClient, id: string): Promise<Resultado<PagamentoDetalhe>> {
@@ -478,12 +451,7 @@ export async function lerPagamento(supabase: SupabaseClient, id: string): Promis
     slug: { slug: string };
     comissoes: { origem: string; valor_centavos: number; libera_em: string; cancelada_em: string | null; representante: { codigo: string } }[];
   };
-  let comprovante: string | null = null;
-  if (l.comprovante_caminho) {
-    const assinado = await supabase.storage.from(BUCKET).createSignedUrl(l.comprovante_caminho, 300);
-    if (assinado.error) console.error("lerPagamento: endereço do comprovante falhou", { mensagem: assinado.error.message });
-    else comprovante = assinado.data.signedUrl;
-  }
+  const comprovante = await enderecoDoComprovante(supabase, l.comprovante_caminho);
   const comissao = l.comissoes[0];
   return {
     ok: true,
@@ -505,6 +473,7 @@ export async function lerPagamento(supabase: SupabaseClient, id: string): Promis
         ? { representante: comissao.representante.codigo, origem: comissao.origem, valorCentavos: comissao.valor_centavos, liberaEm: comissao.libera_em, cancelada: comissao.cancelada_em !== null }
         : null,
       podeDevolver: !l.devolvido_em && podeDevolver({ numero: l.numero, pagoEm: l.pago_em, hoje: hojeNaCidade() }),
+      podeContestar: !l.devolvido_em && l.forma !== "pix",
     },
   };
 }
@@ -516,6 +485,21 @@ export async function devolver(supabase: SupabaseClient, pagamento: PagamentoDet
   if (!pagamento.podeDevolver) return falha("CONFLITO", "Só o primeiro pagamento pode ser devolvido, em até 7 dias depois dele.");
   const { error } = await supabase.rpc("registrar_devolucao", { p_pagamento: pagamento.id, p_motivo: lido.data.motivo });
   if (error) return mensagemDoBanco(error, "devolver");
+  await limparPerfilDoCache(origemDoSite, pagamento.anuncianteSlug);
+  return { ok: true, dados: null };
+}
+
+/**
+ * Contestação no cartão (decisão P1): o plano sai como na devolução, a comissão
+ * ainda não paga é cancelada e a já paga vira um desconto no próximo pagamento
+ * ao representante (registrar_contestacao).
+ */
+export async function contestar(supabase: SupabaseClient, pagamento: PagamentoDetalhe, form: FormData, origemDoSite: string): Promise<Resultado<null>> {
+  const lido = esquemaDevolucao.safeParse({ motivo: typeof form.get("motivo") === "string" ? String(form.get("motivo")).slice(0, 400) : undefined });
+  if (!lido.success) return falha("DADOS_INVALIDOS", lido.error.issues[0]!.message);
+  if (!pagamento.podeContestar) return falha("CONFLITO", "Só pagamento no cartão, ainda não devolvido, tem contestação.");
+  const { error } = await supabase.rpc("registrar_contestacao", { p_pagamento: pagamento.id, p_motivo: lido.data.motivo });
+  if (error) return mensagemDoBanco(error, "contestar");
   await limparPerfilDoCache(origemDoSite, pagamento.anuncianteSlug);
   return { ok: true, dados: null };
 }

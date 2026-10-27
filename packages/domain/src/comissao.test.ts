@@ -6,6 +6,7 @@ import {
   calcularComissaoUpgrade,
   liberacaoDaComissao,
   percentualMensalAcumulado,
+  saldoDoRepresentante,
   situacaoComissao,
   type PagamentoComissionavel,
   type UpgradeComissionavel,
@@ -265,5 +266,33 @@ describe("carteira (decisões N1 a N3)", () => {
     expect(() => calcularComissaoCarteira({ valorPagoCentavos: 100, percentual: 5.5, faseDeVenda: false })).toThrow(RangeError);
     expect(() => calcularComissaoCarteira({ valorPagoCentavos: 100, percentual: 101, faseDeVenda: false })).toThrow(RangeError);
     expect(() => calcularComissaoCarteira({ valorPagoCentavos: -1, percentual: 5, faseDeVenda: false })).toThrow(RangeError);
+  });
+});
+
+describe("saldo do representante (pagamento do saldo inteiro, decisão P2)", () => {
+  const c = (id: string, valorCentavos: number, liberaEm: string, extra: { cancelada?: boolean; paga?: boolean } = {}) => ({
+    id,
+    valorCentavos,
+    liberaEm,
+    cancelada: extra.cancelada ?? false,
+    paga: extra.paga ?? false,
+  });
+
+  it("separa aguardando, liberado e pago; cancelada não conta", () => {
+    const saldo = saldoDoRepresentante(
+      [c("a", 5990, "2026-11-20"), c("b", 4043, "2026-11-10"), c("c", 1198, "2026-11-01", { paga: true }), c("d", 300, "2026-11-01", { cancelada: true })],
+      "2026-11-15",
+    );
+    expect(saldo).toEqual({ aguardandoCentavos: 5990, liberadoCentavos: 4043, pagoCentavos: 1198, aPagar: ["b"] });
+  });
+
+  it("o desconto de contestação entra no próximo pagamento", () => {
+    const saldo = saldoDoRepresentante([c("a", 4043, "2026-11-10"), c("b", -1000, "2026-11-12")], "2026-11-15");
+    expect(saldo.liberadoCentavos).toBe(3043);
+    expect(saldo.aPagar).toEqual(["a", "b"]);
+  });
+
+  it("desconto maior que o liberado deixa o saldo negativo, sem nada a pagar", () => {
+    expect(saldoDoRepresentante([c("b", -1000, "2026-11-12")], "2026-11-15").liberadoCentavos).toBe(-1000);
   });
 });

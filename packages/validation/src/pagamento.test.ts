@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { esquemaDevolucao, esquemaEscolhaPagamento, esquemaPagamento } from "./pagamento";
+import { esquemaDevolucao, esquemaEscolhaPagamento, esquemaPagamento, esquemaPagamentoRepresentante } from "./pagamento";
 
 const escolha = { planoId: "0b8f3a3e-4c1d-4d55-9a3e-2f6c1b7d9e01", periodicidade: "anual", pagoEm: "2026-11-10" };
 const pix = { ...escolha, forma: "pix", parcelas: "1", codigoAutorizacao: "", observacao: "" };
@@ -70,5 +70,12 @@ describe("esquemaDevolucao", () => {
     expect(mensagem(esquemaDevolucao.safeParse({ motivo: " " }))).toBe("Informe o motivo da devolução.");
     expect(mensagem(esquemaDevolucao.safeParse({}))).toBe("Informe o motivo da devolução.");
     expect(mensagem(esquemaDevolucao.safeParse({ motivo: "x".repeat(301) }))).toBe("Motivo: no máximo 300 letras.");
+  });
+});
+
+describe("esquemaPagamentoRepresentante", () => {
+  it("exige o dia e limpa a observação", () => {
+    expect(esquemaPagamentoRepresentante.parse({ pagoEm: "2026-11-20", observacao: "  Pix   enviado " })).toEqual({ pagoEm: "2026-11-20", observacao: "Pix enviado" });
+    expect(mensagem(esquemaPagamentoRepresentante.safeParse({ pagoEm: "" }))).toBe("Informe o dia do Pix ao representante.");
   });
 });

@@ -55,3 +55,9 @@ export type DadosPagamento = z.infer<typeof esquemaPagamento>;
 export const esquemaDevolucao = z.object({
   motivo: texto(300, "Motivo: no máximo 300 letras.").pipe(z.string().min(3, "Informe o motivo da devolução.")),
 });
+
+/** Pagamento do saldo liberado ao representante, por Pix (decisão P2: sempre o saldo inteiro). */
+export const esquemaPagamentoRepresentante = z.object({
+  pagoEm: z.iso.date("Informe o dia do Pix ao representante."),
+  observacao: texto(300, "Observação: no máximo 300 letras."),
+});

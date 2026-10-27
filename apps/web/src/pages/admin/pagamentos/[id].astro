@@ -1,12 +1,13 @@
 ---
 // Um pagamento na administração: valores, período, forma, conta, comprovante
-// (endereço temporário), comissão e a devolução do primeiro pagamento em até 7
-// dias, que cancela a comissão, o plano e o Fundador ganho com ele.
+// (endereço temporário), comissão, a devolução do primeiro pagamento em até 7
+// dias e a contestação no cartão. As duas tiram o plano e o Fundador ganho com
+// o pagamento; a comissão não paga é cancelada, e a já paga vira desconto.
 import { Modal, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
-import { ROTULO_FORMA, devolver, lerPagamento } from "@/lib/pagamentos";
+import { ROTULO_FORMA, contestar, devolver, lerPagamento } from "@/lib/pagamentos";
 import { formatarCentavos } from "@/lib/precos";
 import { formatarData } from "@/lib/texto";
 
@@ -16,6 +17,7 @@ const id = Astro.params.id ?? "";
 const AVISOS: Record<string, string> = {
   registrado: "Pagamento registrado. O plano já está em vigor.",
   devolvido: "Devolução registrada: a comissão foi cancelada e o plano saiu.",
+  contestado: "Contestação registrada: o plano saiu e a comissão foi cancelada ou vai ser descontada do próximo pagamento ao representante.",
 };
 const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
 let erro = "";
@@ -25,8 +27,10 @@ if (!lido.ok && lido.erro.codigo === "NAO_ENCONTRADO") return new Response(null,
 if (!lido.ok) erro = lido.erro.mensagem;
 
 if (Astro.request.method === "POST" && lido.ok) {
-  const r = await devolver(supabase, lido.dados, await Astro.request.formData(), Astro.url.origin);
-  if (r.ok) return Astro.redirect(`/admin/pagamentos/${id}?aviso=devolvido`, 303);
+  const form = await Astro.request.formData();
+  const contestacao = form.get("acao") === "contestar";
+  const r = contestacao ? await contestar(supabase, lido.dados, form, Astro.url.origin) : await devolver(supabase, lido.dados, form, Astro.url.origin);
+  if (r.ok) return Astro.redirect(`/admin/pagamentos/${id}?aviso=${contestacao ? "contestado" : "devolvido"}`, 303);
   erro = r.erro.mensagem;
   Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
 }
@@ -45,7 +49,7 @@ const caixa = "rounded-xl bg-fundo p-3";
       <section class="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
         {p.devolvido && (
           <p class="mb-3 rounded-xl bg-vermelho-50 px-3 py-2 text-sm font-semibold text-vermelho-700">
-            Devolvido em {formatarData(p.devolvidoEm!.slice(0, 10))}: {p.motivoDevolucao}
+            {p.contestado ? "Contestado no cartão" : "Devolvido"} em {formatarData(p.devolvidoEm!.slice(0, 10))}: {p.motivoDevolucao}
           </p>
         )}
         <div class="grid gap-3 text-sm sm:grid-cols-2">
@@ -104,11 +108,18 @@ const caixa = "rounded-xl bg-fundo p-3";
           </div>
         </div>
 
-        {p.podeDevolver && (
-          <button type="button" data-abrir-modal="modal-devolver" class={classesBotao("perigo", "m", "mt-4")}>
-            Registrar devolução
-          </button>
-        )}
+        <div class="mt-4 flex flex-wrap gap-2">
+          {p.podeDevolver && (
+            <button type="button" data-abrir-modal="modal-devolver" class={classesBotao("perigo", "m")}>
+              Registrar devolução
+            </button>
+          )}
+          {p.podeContestar && (
+            <button type="button" data-abrir-modal="modal-contestar" class={classesBotao("contorno", "m")}>
+              Registrar contestação no cartão
+            </button>
+          )}
+        </div>
       </section>
     )
   }
@@ -129,6 +140,31 @@ const caixa = "rounded-xl bg-fundo p-3";
             </button>
             <button type="submit" class={classesBotao("perigo", "m", "flex-1")}>
               Confirmar devolução
+            </button>
+          </div>
+        </form>
+      </Modal>
+    )
+  }
+
+  {
+    p?.podeContestar && (
+      <Modal id="modal-contestar" titulo="Contestação no cartão">
+        <form method="post">
+          <input type="hidden" name="acao" value="contestar" />
+          <p class="text-sm text-slate-700">
+            Use quando o banco do anunciante estornar a compra. O plano sai como na devolução
+            {p.tornouFundador && " e o anunciante deixa de ser Fundador"}. A comissão ainda não paga é cancelada; a já paga é descontada do próximo
+            pagamento ao representante.
+          </p>
+          <label for="motivo-contestacao" class={classesRotulo}>Motivo</label>
+          <textarea id="motivo-contestacao" name="motivo" rows="3" required minlength="3" maxlength="300" class={classesCampo} />
+          <div class="mt-5 flex gap-2">
+            <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>
+              Cancelar
+            </button>
+            <button type="submit" class={classesBotao("perigo", "m", "flex-1")}>
+              Confirmar contestação
             </button>
           </div>
         </form>

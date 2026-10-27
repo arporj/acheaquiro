@@ -194,3 +194,36 @@ export function situacaoComissao(comissao: { liberaEm: DataISO; hoje: DataISO; c
   if (comissao.paga) return "paga";
   return comissao.hoje >= comissao.liberaEm ? "liberada" : "aguardando";
 }
+
+export interface ComissaoLancada {
+  id: string;
+  /** Negativo no desconto de contestação. */
+  valorCentavos: number;
+  liberaEm: DataISO;
+  cancelada: boolean;
+  paga: boolean;
+}
+
+export interface SaldoRepresentante {
+  aguardandoCentavos: number;
+  /** Liberado e ainda não pago, já com os descontos de contestação. Pode ser negativo. */
+  liberadoCentavos: number;
+  pagoCentavos: number;
+  /** As comissões que entram no próximo pagamento: todas as liberadas, com os descontos (decisão P2: o saldo inteiro). */
+  aPagar: string[];
+}
+
+/** Saldo do representante: o que espera os 7 dias, o que está liberado para pagar e o que já foi pago. */
+export function saldoDoRepresentante(comissoes: readonly ComissaoLancada[], hoje: DataISO): SaldoRepresentante {
+  const saldo: SaldoRepresentante = { aguardandoCentavos: 0, liberadoCentavos: 0, pagoCentavos: 0, aPagar: [] };
+  for (const c of comissoes) {
+    const situacao = situacaoComissao({ liberaEm: c.liberaEm, hoje, cancelada: c.cancelada, paga: c.paga });
+    if (situacao === "aguardando") saldo.aguardandoCentavos += c.valorCentavos;
+    else if (situacao === "paga") saldo.pagoCentavos += c.valorCentavos;
+    else if (situacao === "liberada") {
+      saldo.liberadoCentavos += c.valorCentavos;
+      saldo.aPagar.push(c.id);
+    }
+  }
+  return saldo;
+}

@@ -7,6 +7,7 @@ import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
 import { limparCacheDoSite } from "@/lib/arquivos";
+import { listarRepresentantes } from "@/lib/comissoes";
 import { formatarCentavos } from "@/lib/precos";
 import {
   apagarRascunho,
@@ -93,6 +94,7 @@ if (Astro.request.method === "POST") {
           pagoEm: campo("pago_em"),
           precoFundador: campo("preco_fundador") === "sim",
           observacao: campo("observacao"),
+          representanteId: campo("representante"),
         });
         chaveAviso = "pagamento";
         break;
@@ -126,7 +128,16 @@ if (Astro.request.method === "POST") {
   Astro.response.status = resultado.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
 }
 
-const [cotasR, patrociniosR, catalogoR] = await Promise.all([listarCotasAdmin(supabase), listarPatrociniosAdmin(supabase), listarGruposECategorias(supabase)]);
+const [cotasR, patrociniosR, catalogoR, representantesR] = await Promise.all([
+  listarCotasAdmin(supabase),
+  listarPatrociniosAdmin(supabase),
+  listarGruposECategorias(supabase),
+  listarRepresentantes(supabase),
+]);
+if (!representantesR.ok) erro ||= representantesR.erro.mensagem;
+const representantes = representantesR.ok ? representantesR.dados : [];
+/** Quem pode ter atendido: os ativos que recebem comissão e o que já está no patrocínio, mesmo que tenha saído. */
+const representantesDo = (atual: string | null) => representantes.filter((r) => (r.ativo && r.recebeComissao) || r.id === atual);
 if (!cotasR.ok) erro ||= cotasR.erro.mensagem;
 if (!patrociniosR.ok) erro ||= patrociniosR.erro.mensagem;
 if (!catalogoR.ok) erro ||= catalogoR.erro.mensagem;
@@ -285,6 +296,17 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
                       <input type="checkbox" name="preco_fundador" value="sim" data-preco-fundador checked={p.pagamento?.preco_fundador ?? true} />
                       Preço de Patrocinador Fundador
                     </label>
+                    <label class={classesRotulo} for={`rep-${p.id}`}>Representante que atendeu</label>
+                    <select id={`rep-${p.id}`} name="representante" class={classesCampo}>
+                      <option value="">Ninguém (a empresa procurou a equipe)</option>
+                      {representantesDo(p.representante_id).map((r) => (
+                        <option value={r.id} selected={r.id === p.representante_id}>
+                          {r.nome}
+                          {!r.ativo && " (saiu)"}
+                        </option>
+                      ))}
+                    </select>
+                    <p class="mt-1 text-xs text-slate-500">Recebe 20% do valor pago, liberados 7 dias depois do registro.</p>
                     <label class={classesRotulo} for={`obs-${p.id}`}>Observação</label>
                     <input id={`obs-${p.id}`} name="observacao" maxlength="300" class={classesCampo} value={p.pagamento?.observacao ?? ""} />
                     <button type="submit" class={classesBotao("contorno", "m", "mt-2 w-full")}>

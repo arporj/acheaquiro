@@ -635,6 +635,20 @@ export async function marcarConferido(supabase: SupabaseClient, id: string): Pro
   return error ? mensagemDoBanco(error, "marcarConferido") : { ok: true, dados: null };
 }
 
+/** Marcação "não procurar mais" do comércio importado (quem marcou e quando); null se não há. */
+export async function lerNaoProcurar(supabase: SupabaseClient, id: string): Promise<Resultado<{ marcadoEm: string; marcadoPor: string } | null>> {
+  const { data, error } = await supabase.from("nao_procurar").select("marcado_em, marcado_por").eq("anunciante_id", id).maybeSingle();
+  if (error) return mensagemDoBanco(error, "lerNaoProcurar");
+  return { ok: true, dados: data ? { marcadoEm: data.marcado_em as string, marcadoPor: data.marcado_por as string } : null };
+}
+
+/** Só a equipe desfaz o "não procurar mais": o comércio volta para a prospecção de todos. */
+export async function desfazerNaoProcurar(supabase: SupabaseClient, id: string): Promise<Resultado<null>> {
+  if (!UUID.test(id)) return falha("NAO_ENCONTRADO", "Anunciante não encontrado.");
+  const { error } = await supabase.from("nao_procurar").delete().eq("anunciante_id", id);
+  return error ? mensagemDoBanco(error, "desfazerNaoProcurar") : { ok: true, dados: null };
+}
+
 export type AcaoSituacao = "aprovar" | "correcao" | "recusar" | "suspender" | "reativar";
 
 /** De quais situações cada ação parte. */

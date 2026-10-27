@@ -1,0 +1,114 @@
+---
+// Comissões do representante (item 4.12, parte 6): o que espera os 7 dias
+// (com a data em que será liberado), o que está liberado, o que já foi pago e
+// os pagamentos recebidos, com as regras da devolução e da contestação.
+import { DIAS_ESPERA_COMISSAO, situacaoComissao } from "@acheaqui/domain";
+import Aviso from "@/components/conta/Aviso.astro";
+import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
+import { ROTULO_ORIGEM, lerMinhasComissoes } from "@/lib/comissoes";
+import { hojeNaCidade } from "@/lib/pagamentos";
+import { formatarCentavos } from "@/lib/precos";
+import { lerMeuCadastro } from "@/lib/representante";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+
+const cadastro = await lerMeuCadastro(supabase, usuario.id);
+const lido = cadastro.ok ? await lerMinhasComissoes(supabase, cadastro.dados.id) : cadastro;
+const dados = lido.ok ? lido.dados : null;
+const hoje = hojeNaCidade();
+const ROTULO_SITUACAO = { aguardando: "Aguardando", liberada: "Liberada", paga: "Paga", cancelada: "Cancelada" } as const;
+const COR_SITUACAO = {
+  aguardando: "bg-amarelo-200 text-azul-900",
+  liberada: "bg-zap-600 text-white",
+  paga: "bg-fundo text-slate-600",
+  cancelada: "bg-slate-200 text-slate-500",
+} as const;
+const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-extrabold";
+const cartao = "rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5";
+---
+
+<PaginaRepresentante titulo="Comissões" descricao="O que você já ganhou, o que está esperando os 7 dias e o que já recebeu.">
+  {!lido.ok && <Aviso tipo="erro">{lido.erro.mensagem}</Aviso>}
+  {
+    dados && (
+      <>
+        <section class="mt-4 grid gap-3 sm:grid-cols-3">
+          <div class={cartao}>
+            <p class="text-sm font-bold text-azul-900">Aguardando os {DIAS_ESPERA_COMISSAO} dias</p>
+            <p class="font-display text-2xl font-extrabold text-azul-900">{formatarCentavos(dados.saldo.aguardandoCentavos)}</p>
+          </div>
+          <div class={cartao}>
+            <p class="text-sm font-bold text-azul-900">Liberado, a receber</p>
+            <p class="font-display text-2xl font-extrabold text-zap-700">{formatarCentavos(Math.max(0, dados.saldo.liberadoCentavos))}</p>
+            {dados.saldo.liberadoCentavos < 0 && (
+              <p class="text-xs text-slate-500">Há um desconto de contestação de {formatarCentavos(-dados.saldo.liberadoCentavos)} para as próximas comissões.</p>
+            )}
+          </div>
+          <div class={cartao}>
+            <p class="text-sm font-bold text-azul-900">Já recebido</p>
+            <p class="font-display text-2xl font-extrabold text-azul-900">{formatarCentavos(dados.saldo.pagoCentavos)}</p>
+          </div>
+        </section>
+
+        <section class="mt-4 rounded-2xl bg-fundo p-4 text-sm text-slate-700">
+          <p>
+            Cada comissão espera {DIAS_ESPERA_COMISSAO} dias depois do pagamento do anunciante, que é o prazo que ele tem para desistir. Se ele desistir e o
+            dinheiro for devolvido, a comissão daquele pagamento é cancelada.
+          </p>
+          <p class="mt-2">
+            Se um anunciante contestar uma compra no cartão depois de a comissão ter sido paga a você, o valor dela é descontado das suas próximas
+            comissões.
+          </p>
+          <p class="mt-2">A equipe paga as comissões liberadas por Pix, na chave que você informou no Início.</p>
+        </section>
+
+        <section class="mt-4">
+          <h2 class="font-display text-lg font-bold text-azul-900">Suas comissões</h2>
+          {dados.comissoes.length === 0 && (
+            <p class="mt-2 rounded-2xl bg-white p-5 text-slate-600 shadow-sm ring-1 ring-black/5">
+              Nenhuma comissão ainda. Ela aparece aqui quando um anunciante que você atendeu paga.
+            </p>
+          )}
+          {dados.comissoes.length > 0 && (
+            <ul class="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white text-sm shadow-sm ring-1 ring-black/5">
+              {dados.comissoes.map((c) => {
+                const situacao = situacaoComissao({ liberaEm: c.liberaEm, hoje, cancelada: c.cancelada, paga: c.paga });
+                return (
+                  <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
+                    <span class="min-w-0 flex-1">
+                      <span class="block font-bold text-azul-900">{c.descricao}</span>
+                      <span class="block text-xs text-slate-500">
+                        {ROTULO_ORIGEM[c.origem]} · {formatarData(c.criadaEm.slice(0, 10))}
+                        {situacao === "aguardando" && ` · liberada em ${formatarData(c.liberaEm)}`}
+                      </span>
+                    </span>
+                    <span class={`${etiqueta} ${COR_SITUACAO[situacao]}`}>{ROTULO_SITUACAO[situacao]}</span>
+                    <span class:list={["font-bold", situacao === "cancelada" ? "text-slate-400 line-through" : "text-azul-900"]}>
+                      {formatarCentavos(c.valorCentavos)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        {dados.pagamentos.length > 0 && (
+          <section class="mt-6">
+            <h2 class="font-display text-lg font-bold text-azul-900">Pagamentos recebidos</h2>
+            <ul class="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white text-sm shadow-sm ring-1 ring-black/5">
+              {dados.pagamentos.map((p) => (
+                <li class="flex items-center justify-between px-4 py-3">
+                  <span>{formatarData(p.pagoEm)}</span>
+                  <span class="font-bold text-azul-900">{formatarCentavos(p.valorCentavos)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </>
+    )
+  }
+</PaginaRepresentante>

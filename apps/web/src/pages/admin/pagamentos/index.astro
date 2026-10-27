@@ -99,7 +99,7 @@ const abaClasse =
                       {p.parcelas > 1 && ` em ${p.parcelas}x`} · {p.conta}
                     </span>
                   </span>
-                  {p.devolvido && <span class={`${etiqueta} bg-vermelho-50 text-vermelho-700`}>Devolvido</span>}
+                  {p.devolvido && <span class={`${etiqueta} bg-vermelho-50 text-vermelho-700`}>{p.contestado ? "Contestado" : "Devolvido"}</span>}
                   <span class:list={["font-bold", p.devolvido ? "text-slate-400 line-through" : "text-azul-900"]}>{formatarCentavos(p.valorCentavos)}</span>
                 </a>
               </li>

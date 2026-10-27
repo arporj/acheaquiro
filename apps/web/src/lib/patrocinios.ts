@@ -3,7 +3,7 @@
 // Tudo com a sessão do administrador, para a auditoria registrar quem fez; o
 // RLS só deixa o administrador com a segunda etapa alterar estas tabelas. As
 // regras ficam em packages/domain (patrocinio.ts) e o banco repete as travas.
-import { fimDoPatrocinio, impedimentoParaEntrarNoAr, type PatrocinioParaRegra } from "@acheaqui/domain";
+import { calcularComissao, fimDoPatrocinio, impedimentoParaEntrarNoAr, liberacaoDaComissao, momentoLocal, type PatrocinioParaRegra } from "@acheaqui/domain";
 import type { CotaPatrocinio, Resultado } from "@acheaqui/types";
 import {
   ArquivoInvalido,
@@ -52,6 +52,8 @@ export interface PatrocinioAdmin {
   dias_somados: number;
   /** Momento do encerramento; o fim do contrato (fim) pode ser depois. */
   encerrado_em: string | null;
+  /** Representante que atendeu o patrocinador; recebe 20% do pagamento (decisão de 23/10/2026). */
+  representante_id: string | null;
   pagamento: { valor_centavos: number; preco_fundador: boolean; pago_em: string; observacao: string } | null;
   cliques: number;
 }
@@ -93,7 +95,7 @@ export async function listarPatrociniosAdmin(supabase: SupabaseClient): Promise<
   const { data, error } = await supabase
     .from("patrocinios")
     .select(
-      "id, cota, slug, nome, ramo, frase, whatsapp, site, logo_caminho, grupo, categoria_id, situacao, inicio, fim, dias_somados, encerrado_em, " +
+      "id, cota, slug, nome, ramo, frase, whatsapp, site, logo_caminho, grupo, categoria_id, situacao, inicio, fim, dias_somados, encerrado_em, representante_id, " +
         "categorias(nome_plural), pagamentos_patrocinio(valor_centavos, preco_fundador, pago_em, observacao), cliques_patrocinio(cliques)",
     )
     .order("situacao")
@@ -321,17 +323,42 @@ export async function apagarRascunho(supabase: SupabaseClient, id: string): Prom
 export async function registrarPagamento(
   supabase: SupabaseClient,
   id: string,
-  campos: { valor: string; pagoEm: string; precoFundador: boolean; observacao: string },
+  campos: { valor: string; pagoEm: string; precoFundador: boolean; observacao: string; representanteId: string },
 ): Promise<Resultado<null>> {
   const valor = Math.round(Number(campos.valor.replace(/\./g, "").replace(",", ".")) * 100);
   if (!Number.isFinite(valor) || valor <= 0) return falha("DADOS_INVALIDOS", "Valor pago inválido.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(campos.pagoEm)) return falha("DADOS_INVALIDOS", "Informe o dia do pagamento.");
-  const { error } = await supabase.from("pagamentos_patrocinio").upsert({
-    patrocinio_id: id,
-    valor_centavos: valor,
-    pago_em: campos.pagoEm,
-    preco_fundador: campos.precoFundador,
-    observacao: campos.observacao.trim().slice(0, 300),
+  if (campos.representanteId && !/^[0-9a-f-]{36}$/.test(campos.representanteId)) return falha("DADOS_INVALIDOS", "Representante inválido.");
+
+  // Comissão de 20% do representante que atendeu (calcularComissao, em packages/domain).
+  let recebe = false;
+  if (campos.representanteId) {
+    const { data, error } = await supabase.from("representantes").select("recebe_comissao").eq("id", campos.representanteId).maybeSingle();
+    if (error) return mensagemDoBanco(error, "registrarPagamento: representante");
+    if (!data) return falha("DADOS_INVALIDOS", "Representante não encontrado.");
+    recebe = data.recebe_comissao;
+  }
+  const comissao = calcularComissao({
+    origem: "patrocinio",
+    periodicidade: "anual",
+    valorPagoCentavos: valor,
+    numeroMensalidade: 1,
+    mesesCobradosNoAnual: 12,
+    temRepresentante: recebe,
+    pagamentoConfirmado: true,
+  });
+  // Uma transação: pagamento, representante e comissão. Comissão já paga ao representante trava a mudança.
+  const { error } = await supabase.rpc("registrar_pagamento_patrocinio", {
+    p_patrocinio: id,
+    p_valor: valor,
+    p_pago_em: campos.pagoEm,
+    p_preco_fundador: campos.precoFundador,
+    p_observacao: campos.observacao.trim().slice(0, 300),
+    p_representante: campos.representanteId || null,
+    p_comissao_base: comissao?.baseCentavos ?? null,
+    p_comissao_percentual: comissao?.percentual ?? null,
+    p_comissao_valor: comissao?.valorCentavos ?? null,
+    p_comissao_libera_em: comissao ? liberacaoDaComissao(momentoLocal(new Date()).data) : null,
   });
   return error ? mensagemDoBanco(error, "registrarPagamento") : ok(null);
 }

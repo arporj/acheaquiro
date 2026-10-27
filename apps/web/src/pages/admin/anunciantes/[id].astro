@@ -12,10 +12,12 @@ import {
   ORIGENS_DA_ACAO,
   PEDE_MOTIVO,
   ROTULO_SITUACAO,
+  desfazerNaoProcurar,
   enviarConvite,
   lerAnunciante,
   lerFormulario,
   lerHistorico,
+  lerNaoProcurar,
   lerOpcoes,
   marcarConferido,
   mudarSituacao,
@@ -44,6 +46,7 @@ const AVISOS: Record<string, string> = {
   situacao: "Situação alterada.",
   atendimento: "Contato registrado.",
   conferido: "Marcado como conferido.",
+  procurar: "O comércio voltou para a prospecção dos representantes.",
 };
 const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
 let erro = "";
@@ -74,6 +77,11 @@ if (Astro.request.method === "POST" && lido.ok) {
     if (r.ok) return Astro.redirect(`/admin/anunciantes/${id}?aviso=conferido`, 303);
     erro = r.erro.mensagem;
     Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  } else if (acao === "desfazer-nao-procurar") {
+    const r = await desfazerNaoProcurar(supabase, id);
+    if (r.ok) return Astro.redirect(`/admin/anunciantes/${id}?aviso=procurar`, 303);
+    erro = r.erro.mensagem;
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
   } else if (acao === "atendimento") {
     const r = await registrarDoFormulario(supabase, form);
     if (r.ok) return Astro.redirect(`/admin/anunciantes/${id}?aviso=atendimento`, 303);
@@ -90,13 +98,15 @@ if (Astro.request.method === "POST" && lido.ok) {
   }
 }
 
-const [opcoes, historico, equipe, atendimentos, pagamentos] = await Promise.all([
+const [opcoes, historico, equipe, atendimentos, pagamentos, naoProcurar] = await Promise.all([
   lerOpcoes(supabase),
   lerHistorico(supabase, id),
   listarEquipe(supabase),
   listarAtendimentos(supabase, id),
   listarDoAnunciante(supabase, id),
+  lerNaoProcurar(supabase, id),
 ]);
+if (!naoProcurar.ok) erro ||= naoProcurar.erro.mensagem;
 if (!lido.ok) erro ||= lido.erro.mensagem;
 const a = lido.ok ? lido.dados : null;
 
@@ -171,6 +181,18 @@ const caixa = "rounded-xl bg-fundo p-3";
             <form method="post">
               <input type="hidden" name="acao" value="conferido" />
               <button type="submit" class={classesBotao("azul", "p")}>Conferido</button>
+            </form>
+          </div>
+        )}
+        {naoProcurar.ok && naoProcurar.dados && (
+          <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-fundo p-4 text-sm text-azul-900">
+            <p class="font-semibold">
+              Pediu para não ser mais procurado: marcado por {nomes.get(naoProcurar.dados.marcadoPor) ?? "um representante"} em{" "}
+              {dataHora(naoProcurar.dados.marcadoEm)}. O comércio está fora da prospecção.
+            </p>
+            <form method="post">
+              <input type="hidden" name="acao" value="desfazer-nao-procurar" />
+              <button type="submit" class={classesBotao("contorno", "p")}>Voltar para a prospecção</button>
             </form>
           </div>
         )}
@@ -266,7 +288,7 @@ const caixa = "rounded-xl bg-fundo p-3";
                     <span class="flex-1">
                       {formatarData(p.pagoEm)} · {p.plano} {p.periodicidade} · {ROTULO_FORMA[p.forma]} · {p.conta}
                     </span>
-                    {p.devolvido && <span class="text-xs font-extrabold text-vermelho-700">Devolvido</span>}
+                    {p.devolvido && <span class="text-xs font-extrabold text-vermelho-700">{p.contestado ? "Contestado" : "Devolvido"}</span>}
                     <span class:list={["font-bold", p.devolvido && "text-slate-400 line-through"]}>{formatarCentavos(p.valorCentavos)}</span>
                   </a>
                 </li>
