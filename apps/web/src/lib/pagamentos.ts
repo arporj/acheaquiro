@@ -115,7 +115,10 @@ export interface ContextoPagamento {
   assinatura: { ancora: string; venceEm: string; planoId: string; periodicidade: "mensal" | "anual" } | null;
   pagamentosValidos: number;
   algumAnual: boolean;
-  /** Quem atendeu a venda do plano: o da assinatura ou, no primeiro pagamento, o que trouxe o anunciante. */
+  /**
+   * Quem atendeu a venda do plano: o da assinatura ou, no primeiro pagamento, o
+   * que trouxe o anunciante. Recebe as parcelas mesmo depois de sair (decisão O1).
+   */
   representante: { id: string; codigo: string; recebeComissao: boolean } | null;
   /** Carteira do representante ativo que trouxe o anunciante, com o percentual das configurações (decisões N1 a N3). */
   carteira: { representanteId: string; codigo: string; percentual: number } | null;
@@ -183,7 +186,7 @@ export async function lerContexto(supabase: SupabaseClient, anuncianteId: string
         : null,
       pagamentosValidos: pagamentos.data.length,
       algumAnual: pagamentos.data.some((p) => p.periodicidade === "anual"),
-      representante: venda ? { id: venda.id, codigo: venda.codigo, recebeComissao: venda.recebe_comissao && venda.ativo } : null,
+      representante: venda ? { id: venda.id, codigo: venda.codigo, recebeComissao: venda.recebe_comissao } : null,
       carteira:
         dono && dono.ativo && dono.recebe_comissao && percentualCarteira > 0
           ? { representanteId: dono.id, codigo: dono.codigo, percentual: percentualCarteira }
