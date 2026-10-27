@@ -5,6 +5,9 @@ import { Icone, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
 import { ROTULO_SITUACAO } from "@/lib/anunciantesAdmin";
+import { situacaoCobranca, somarDias } from "@acheaqui/domain";
+import { obterRegrasCobranca } from "@/dados/consultas";
+import { hojeNaCidade } from "@/lib/pagamentos";
 import { lerMeuCadastro, listarMeusAnunciantes } from "@/lib/representante";
 import { formatarData } from "@/lib/texto";
 
@@ -14,6 +17,10 @@ const usuario = Astro.locals.usuario!;
 const cadastro = await lerMeuCadastro(supabase, usuario.id);
 const lista = cadastro.ok ? await listarMeusAnunciantes(supabase, cadastro.dados.id) : cadastro;
 const linhas = lista.ok ? lista.dados : [];
+const hoje = hojeNaCidade();
+const { toleranciaVencimentoDias: tolerancia } = await obterRegrasCobranca();
+/** Situação da cobrança: em atraso pede contato, e vencida já tirou o plano (situacaoCobranca, packages/domain). */
+const cobranca = (venceEm: string | undefined) => (venceEm ? situacaoCobranca({ venceEm, hoje, toleranciaDias: tolerancia }) : null);
 ---
 
 <PaginaRepresentante titulo="Meus anunciantes" descricao="Os anunciantes que você trouxe. Clique no nome para ver os detalhes e registrar contatos.">
@@ -40,6 +47,7 @@ const linhas = lista.ok ? lista.dados : [];
               <th class="px-4 py-3">Anunciante</th>
               <th class="px-4 py-3">Situação</th>
               <th class="px-4 py-3">Plano</th>
+              <th class="px-4 py-3">Vencimento</th>
               <th class="px-4 py-3">Desde</th>
             </tr>
           </thead>
@@ -57,6 +65,13 @@ const linhas = lista.ok ? lista.dados : [];
                 </td>
                 <td class="px-4 py-3">{ROTULO_SITUACAO[a.status]}</td>
                 <td class="px-4 py-3">{a.plano?.nome ?? (a.planoEscolhido ? `${a.planoEscolhido.nome} (escolhido)` : "—")}</td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  {a.assinatura ? formatarData(a.assinatura.vence_em) : "—"}
+                  {cobranca(a.assinatura?.vence_em) === "em_atraso" && (
+                    <span class="block text-xs font-extrabold text-vermelho-700">Em atraso: paga até {formatarData(somarDias(a.assinatura!.vence_em, tolerancia))}</span>
+                  )}
+                  {cobranca(a.assinatura?.vence_em) === "vencida" && <span class="block text-xs font-extrabold text-slate-500">Vencido</span>}
+                </td>
                 <td class="px-4 py-3 whitespace-nowrap">{formatarData(a.criado_em.slice(0, 10))}</td>
               </tr>
             ))}

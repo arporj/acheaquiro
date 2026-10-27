@@ -7,6 +7,7 @@ import { Icone, type NomeIcone } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
 import { listarEquipe } from "@/lib/equipe";
+import { listarEmAtraso } from "@/lib/pagamentos";
 
 const supabase = Astro.locals.supabase!;
 
@@ -19,7 +20,7 @@ async function contar(tabela: string, filtros: Record<string, string | string[]>
   return count ?? 0;
 }
 
-const [equipe, pedidos, publicados, importados, emAnalise, emAndamento, bairrosPendentes] = await Promise.all([
+const [equipe, pedidos, publicados, importados, emAnalise, emAndamento, bairrosPendentes, emAtraso] = await Promise.all([
   listarEquipe(supabase),
   contar("pedidos_perfil", { situacao: "aberto" }),
   contar("anunciantes", { status: "publicado" }),
@@ -27,7 +28,9 @@ const [equipe, pedidos, publicados, importados, emAnalise, emAndamento, bairrosP
   contar("anunciantes", { status: "em_analise" }),
   contar("anunciantes", { status: ["rascunho", "aguardando_anunciante"] }),
   supabase.from("apelidos_bairro").select("comercios").is("bairro_id", null).eq("ignorar", false),
+  listarEmAtraso(supabase),
 ]);
+if (!emAtraso.ok) console.error("admin: lista de atraso falhou", { mensagem: emAtraso.erro.mensagem });
 if (bairrosPendentes.error) {
   console.error("admin: bairros pendentes falhou", { codigo: bairrosPendentes.error.code, mensagem: bairrosPendentes.error.message });
 }
@@ -46,6 +49,13 @@ interface Cartao {
 }
 
 const pendencias: Cartao[] = [
+  {
+    rotulo: "Anunciantes em atraso",
+    valor: emAtraso.ok ? emAtraso.dados.length : 0,
+    icone: "dinheiro",
+    href: "/admin/pagamentos?aba=atraso",
+    detalhe: "venceu e ainda está no prazo para pagar",
+  },
   { rotulo: "Pedidos de perfil abertos", valor: pedidos, icone: "info", href: "/admin/pedidos" },
   {
     rotulo: "Bairros da importação pendentes",
@@ -113,7 +123,6 @@ const totalPendencias = pendencias.reduce((soma, c) => soma + c.valor, 0);
   }
 
   <p class="mt-6 text-sm text-slate-600">
-    As seções marcadas como "em breve" no menu entram nas próximas fases: anunciantes e cadastro assistido até 08/11; catálogo,
-    pagamentos, denúncias e agenda até a abertura.
+    As seções marcadas como "em breve" no menu entram nas próximas fases: catálogo, denúncias e agenda até a abertura.
   </p>
 </PaginaAdmin>

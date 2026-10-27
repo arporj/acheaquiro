@@ -1,0 +1,181 @@
+// Envio da fila de avisos por e-mail (public.avisos_email) pelo Brevo (plano
+// 2B, decisões Q1 a Q3 de 27/10/2026). Chamada a cada 15 minutos pelo pg_cron
+// (interno.chamar_envio_de_avisos). Manda até 280 por dia: os outros 20 dos
+// 300 do plano gratuito do Brevo ficam para os e-mails do login. Lembretes
+// saem antes dos outros avisos; o que passar do teto fica para o dia seguinte.
+// Chamar de novo não repete e-mail: cada aviso é reservado antes do envio.
+// Segredos: BREVO_API_KEY (Edge Functions → Secrets) e a chave de serviço, que
+// o Supabase entrega à função.
+import { createClient } from "npm:@supabase/supabase-js@2.118.0";
+
+const TETO_POR_DIA = 280;
+const POR_CHAMADA = 40;
+const MAXIMO_TENTATIVAS = 5;
+const REMETENTE = { name: "Ache Aqui RO", email: "nao-responda@acheaquiro.com.br" };
+const SITE = "https://acheaquiro.com.br";
+/** WhatsApp da equipe: o mesmo de WHATSAPP_EQUIPE em apps/web/src/lib/contato.ts. */
+const WHATSAPP_EQUIPE = "5521988520666";
+
+interface Aviso {
+  id: string;
+  tipo: "lembrete_7_dias" | "lembrete_vencimento" | "plano_vencido";
+  para: string;
+  tentativas: number;
+  dados: {
+    nome?: string;
+    tipo?: "profissional" | "comercio";
+    plano?: string;
+    periodicidade?: "mensal" | "anual";
+    venceEm?: string;
+    fundador?: boolean;
+    eraFundador?: boolean;
+  };
+}
+
+const escapar = (texto: string) =>
+  texto.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+const data = (iso: string | undefined) => (iso ? iso.split("-").reverse().join("/") : "");
+const somarDias = (iso: string, dias: number) => {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+};
+const linkEquipe = (assunto: string) =>
+  `https://wa.me/${WHATSAPP_EQUIPE}?text=${encodeURIComponent(`Olá! Vim pelo site do Ache Aqui RO. ${assunto}.`)}`;
+
+/** Assunto e parágrafos de cada aviso. */
+function montar(aviso: Aviso, tolerancia: number): { assunto: string; paragrafos: string[]; botao: { texto: string; link: string } } {
+  const d = aviso.dados;
+  const plano = `${d.plano ?? "seu plano"}${d.periodicidade ? ` (${d.periodicidade})` : ""}`;
+  const limite = d.venceEm ? data(somarDias(d.venceEm, tolerancia)) : "";
+  const efeito =
+    d.tipo === "comercio" ? "o seu comércio passa para o plano Gratuito" : "o seu perfil sai do ar, sem ser apagado, até o pagamento";
+  const pagar = { texto: "Pagar pelo WhatsApp", link: linkEquipe("Quero renovar o meu plano") };
+  const fundador = d.fundador
+    ? `Como Fundador, a renovação é anual e precisa ser paga até ${limite} para você manter o selo e o desconto.`
+    : "";
+
+  if (aviso.tipo === "lembrete_7_dias") {
+    return {
+      assunto: `O seu plano no Ache Aqui RO vence em ${data(d.venceEm)}`,
+      paragrafos: [
+        `O plano ${plano} de ${d.nome} vence em ${data(d.venceEm)}.`,
+        "Para continuar aparecendo como hoje, renove até o vencimento, por Pix ou cartão: é só falar com a equipe pelo WhatsApp.",
+        fundador,
+      ],
+      botao: pagar,
+    };
+  }
+  if (aviso.tipo === "lembrete_vencimento") {
+    return {
+      assunto: "O seu plano no Ache Aqui RO vence hoje",
+      paragrafos: [
+        `O plano ${plano} de ${d.nome} vence hoje, ${data(d.venceEm)}.`,
+        `Você tem até ${limite} para pagar. Depois disso, ${efeito}.`,
+        fundador,
+      ],
+      botao: pagar,
+    };
+  }
+  return {
+    assunto: d.tipo === "comercio" ? "O seu comércio passou para o plano Gratuito" : "O seu perfil saiu do ar no Ache Aqui RO",
+    paragrafos: [
+      `O plano ${plano} de ${d.nome} venceu em ${data(d.venceEm)} e não foi renovado. Por isso, ${efeito}.`,
+      d.eraFundador ? "Com isso, você também deixou de ser Fundador." : "",
+      "Para voltar ao plano, fale com a equipe pelo WhatsApp e pague por Pix ou cartão.",
+    ],
+    botao: { texto: "Falar com a equipe", link: linkEquipe("Quero voltar ao meu plano") },
+  };
+}
+
+function html(paragrafos: string[], botao: { texto: string; link: string }): string {
+  const corpo = paragrafos
+    .filter(Boolean)
+    .map((p) => `<p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#1e293b">${escapar(p)}</p>`)
+    .join("");
+  return `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:24px">
+<div style="background:#ffffff;border-radius:16px;padding:24px">
+<p style="margin:0 0 16px;font-size:20px;font-weight:bold;color:#0b3a8a">Ache Aqui RO</p>
+${corpo}
+<p style="margin:24px 0 0"><a href="${botao.link}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:999px">${escapar(botao.texto)}</a></p>
+</div>
+<p style="margin:16px 0 0;font-size:12px;color:#64748b">Você recebe este aviso porque anuncia no Ache Aqui RO (<a href="${SITE}" style="color:#64748b">acheaquiro.com.br</a>). Este endereço não recebe respostas.</p>
+</div></body></html>`;
+}
+
+Deno.serve(async () => {
+  const chave = Deno.env.get("BREVO_API_KEY");
+  if (!chave) {
+    console.error("enviar-avisos: BREVO_API_KEY não configurada");
+    return Response.json({ erro: "sem chave do Brevo" }, { status: 500 });
+  }
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+
+  // Teto do dia em Rio das Ostras (UTC-3): o dia começa às 03:00 UTC.
+  const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+  const { count: enviadosHoje, error: erroContagem } = await supabase
+    .from("avisos_email")
+    .select("id", { count: "exact", head: true })
+    .eq("situacao", "enviado")
+    .gte("enviado_em", `${hoje}T03:00:00Z`);
+  if (erroContagem) {
+    console.error("enviar-avisos: contagem falhou", { mensagem: erroContagem.message });
+    return Response.json({ erro: "contagem" }, { status: 500 });
+  }
+  const restante = Math.min(POR_CHAMADA, TETO_POR_DIA - (enviadosHoje ?? 0));
+  if (restante <= 0) return Response.json({ enviados: 0, motivo: "teto do dia" });
+
+  const [{ data: fila, error: erroFila }, { data: config }] = await Promise.all([
+    supabase.from("avisos_email").select("id, tipo, para, tentativas, dados").eq("situacao", "pendente").order("prioridade").order("criado_em").limit(restante),
+    supabase.from("configuracoes").select("valor").eq("chave", "tolerancia_vencimento_dias").limit(1).maybeSingle(),
+  ]);
+  if (erroFila) {
+    console.error("enviar-avisos: leitura da fila falhou", { mensagem: erroFila.message });
+    return Response.json({ erro: "fila" }, { status: 500 });
+  }
+  const tolerancia = Number(config?.valor ?? 7);
+
+  let enviados = 0;
+  let falhas = 0;
+  for (const aviso of (fila ?? []) as Aviso[]) {
+    // Reserva: outra chamada ao mesmo tempo não manda o mesmo aviso.
+    const tentativa = aviso.tentativas + 1;
+    const { data: reservado } = await supabase
+      .from("avisos_email")
+      .update({ tentativas: tentativa })
+      .eq("id", aviso.id)
+      .eq("situacao", "pendente")
+      .eq("tentativas", aviso.tentativas)
+      .select("id");
+    if (!reservado?.length) continue;
+
+    const { assunto, paragrafos, botao } = montar(aviso, tolerancia);
+    const resposta = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "api-key": chave, "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({
+        sender: REMETENTE,
+        to: [{ email: aviso.para }],
+        subject: assunto,
+        htmlContent: html(paragrafos, botao),
+        textContent: [...paragrafos.filter(Boolean), `${botao.texto}: ${botao.link}`].join("\n\n"),
+        tags: ["aviso-vencimento"],
+      }),
+    });
+    if (resposta.ok) {
+      enviados++;
+      await supabase.from("avisos_email").update({ situacao: "enviado", enviado_em: new Date().toISOString(), erro: null }).eq("id", aviso.id);
+    } else {
+      falhas++;
+      // Só o código da resposta: o corpo pode repetir o e-mail do anunciante.
+      const erro = `Brevo respondeu ${resposta.status}`;
+      console.error("enviar-avisos: envio falhou", { aviso: aviso.id, status: resposta.status });
+      await supabase
+        .from("avisos_email")
+        .update({ erro, situacao: tentativa >= MAXIMO_TENTATIVAS ? "falhou" : "pendente" })
+        .eq("id", aviso.id);
+    }
+  }
+  return Response.json({ enviados, falhas });
+});

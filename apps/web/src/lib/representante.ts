@@ -194,6 +194,8 @@ export interface MeuAnunciante {
   importado_id: string | null;
   plano: { nome: string } | null;
   planoEscolhido: { nome: string } | null;
+  /** Vencimento do plano pago, para o representante ver quem está em atraso. */
+  assinatura: { vence_em: string } | null;
 }
 
 /** Os anunciantes que o representante trouxe (o RLS também mostra os publicados de todos; o filtro fica aqui). */
@@ -201,7 +203,8 @@ export async function listarMeusAnunciantes(supabase: SupabaseClient, representa
   const { data, error } = await supabase
     .from("anunciantes")
     .select(
-      "id, nome, slug, tipo, status, origem, criado_em, importado_id, plano:planos!anunciantes_plano_id_fkey(nome), planoEscolhido:planos!anunciantes_plano_escolhido_id_fkey(nome)",
+      "id, nome, slug, tipo, status, origem, criado_em, importado_id, plano:planos!anunciantes_plano_id_fkey(nome), planoEscolhido:planos!anunciantes_plano_escolhido_id_fkey(nome), " +
+        "assinatura:assinaturas(vence_em)",
     )
     .eq("representante_id", representanteId)
     .order("criado_em", { ascending: false })

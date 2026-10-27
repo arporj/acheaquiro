@@ -5,7 +5,7 @@
 // (packages/domain, testada); o banco grava tudo numa transação
 // (registrar_pagamento_plano, migration 20261027120000) e só aceita o
 // administrador.
-import { calcularPagamentoPlano, momentoLocal, podeDevolver, type PagamentoPlanoCalculado } from "@acheaqui/domain";
+import { calcularPagamentoPlano, momentoLocal, podeDevolver, situacaoCobranca, somarDias, type PagamentoPlanoCalculado } from "@acheaqui/domain";
 import type { Resultado } from "@acheaqui/types";
 import {
   esquemaDevolucao,
@@ -83,6 +83,48 @@ export async function listarAguardando(supabase: SupabaseClient): Promise<Result
       plano: l.escolhido.nome,
       noGratuito: l.plano_id !== null && l.plano_id !== l.plano_escolhido_id,
     })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Em atraso: venceu e ainda está dentro da tolerância para pagar (card do painel)
+// ---------------------------------------------------------------------------
+
+export interface EmAtraso {
+  anuncianteId: string;
+  nome: string;
+  tipo: "profissional" | "comercio";
+  plano: string;
+  periodicidade: "mensal" | "anual";
+  venceEm: string;
+  /** Último dia para pagar sem o plano sair. */
+  pagarAte: string;
+}
+
+export async function listarEmAtraso(supabase: SupabaseClient): Promise<Resultado<EmAtraso[]>> {
+  const hoje = hojeNaCidade();
+  const { toleranciaVencimentoDias: tolerancia } = await obterRegrasCobranca();
+  const { data, error } = await supabase
+    .from("assinaturas")
+    .select("anunciante_id, periodicidade, vence_em, anunciante:anunciantes(nome, tipo), plano:planos(nome)")
+    .lt("vence_em", hoje)
+    .gte("vence_em", somarDias(hoje, -tolerancia))
+    .order("vence_em");
+  if (error) return mensagemDoBanco(error, "listarEmAtraso");
+  type Linha = { anunciante_id: string; periodicidade: EmAtraso["periodicidade"]; vence_em: string; anunciante: { nome: string; tipo: EmAtraso["tipo"] }; plano: { nome: string } };
+  return {
+    ok: true,
+    dados: (data as unknown as Linha[])
+      .filter((l) => situacaoCobranca({ venceEm: l.vence_em, hoje, toleranciaDias: tolerancia }) === "em_atraso")
+      .map((l) => ({
+        anuncianteId: l.anunciante_id,
+        nome: l.anunciante.nome,
+        tipo: l.anunciante.tipo,
+        plano: l.plano.nome,
+        periodicidade: l.periodicidade,
+        venceEm: l.vence_em,
+        pagarAte: somarDias(l.vence_em, tolerancia),
+      })),
   };
 }
 

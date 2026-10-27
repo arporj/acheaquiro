@@ -1,21 +1,29 @@
 ---
-// Pagamentos (item 4.15): a fila dos que aguardam o pagamento do plano e os
-// pagamentos de cada mês, com o total de cada conta para conferir com o extrato.
+// Pagamentos (item 4.15): a fila dos que aguardam o pagamento do plano, os que
+// estão em atraso (venceu e ainda estão no prazo para pagar) e os pagamentos de
+// cada mês, com o total de cada conta para conferir com o extrato.
 import { Icone, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo } from "@/components/conta/estilos";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
-import { ROTULO_FORMA, lerMes, listarAguardando, listarDoMes } from "@/lib/pagamentos";
+import { ROTULO_FORMA, lerMes, listarAguardando, listarDoMes, listarEmAtraso } from "@/lib/pagamentos";
 import { formatarCentavos } from "@/lib/precos";
 import { formatarData } from "@/lib/texto";
 
 const supabase = Astro.locals.supabase!;
-const aba = Astro.url.searchParams.get("aba") === "mes" ? "mes" : "aguardando";
+const pedida = Astro.url.searchParams.get("aba");
+const aba = pedida === "mes" || pedida === "atraso" ? pedida : "aguardando";
 const mes = lerMes(Astro.url.searchParams.get("mes"));
 
-const [aguardando, doMes] = await Promise.all([listarAguardando(supabase), aba === "mes" ? listarDoMes(supabase, mes) : Promise.resolve(null)]);
-const erro = (!aguardando.ok && aguardando.erro.mensagem) || (doMes && !doMes.ok && doMes.erro.mensagem) || "";
+const [aguardando, emAtraso, doMes] = await Promise.all([
+  listarAguardando(supabase),
+  listarEmAtraso(supabase),
+  aba === "mes" ? listarDoMes(supabase, mes) : Promise.resolve(null),
+]);
+const erro =
+  (!aguardando.ok && aguardando.erro.mensagem) || (!emAtraso.ok && emAtraso.erro.mensagem) || (doMes && !doMes.ok && doMes.erro.mensagem) || "";
 const fila = aguardando.ok ? aguardando.dados : [];
+const atrasados = emAtraso.ok ? emAtraso.dados : [];
 const nomeMes = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${mes}-01T12:00:00Z`));
 const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-extrabold";
 const abaClasse =
@@ -29,8 +37,42 @@ const abaClasse =
     <a href="/admin/pagamentos" aria-current={aba === "aguardando" ? "page" : undefined} class={abaClasse}>
       Aguardando pagamento <span class="ml-1 opacity-75">{fila.length}</span>
     </a>
+    <a href="/admin/pagamentos?aba=atraso" aria-current={aba === "atraso" ? "page" : undefined} class={abaClasse}>
+      Em atraso <span class="ml-1 opacity-75">{atrasados.length}</span>
+    </a>
     <a href="/admin/pagamentos?aba=mes" aria-current={aba === "mes" ? "page" : undefined} class={abaClasse}>Pagamentos do mês</a>
   </nav>
+
+  {
+    aba === "atraso" && (
+      <>
+        <p class="mt-4 text-sm text-slate-600">
+          Venceu e ainda está no prazo para pagar. Passado o prazo, o autônomo sai do ar, o comércio vai para o Gratuito e o Fundador perde a condição. Os
+          anunciantes recebem lembretes por e-mail 7 dias antes, no dia do vencimento e quando o plano sai.
+        </p>
+        {atrasados.length === 0 && !erro && <p class="mt-2 rounded-2xl bg-white p-6 text-center text-slate-500 ring-1 ring-black/5">Ninguém em atraso.</p>}
+        <ul class="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+          {atrasados.map((a) => (
+            <li class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+              <span class="min-w-0 flex-1">
+                <a href={`/admin/anunciantes/${a.anuncianteId}`} class="block truncate font-bold text-azul-900 hover:underline">
+                  {a.nome}
+                </a>
+                <span class="block truncate text-xs text-slate-500">
+                  {a.tipo === "profissional" ? "Autônomo" : "Comércio"} · {a.plano} {a.periodicidade} · venceu em {formatarData(a.venceEm)}
+                </span>
+              </span>
+              <span class={`${etiqueta} bg-vermelho-50 text-vermelho-700`}>Paga até {formatarData(a.pagarAte)}</span>
+              <a href={`/admin/pagamentos/registrar?anunciante=${a.anuncianteId}`} class={classesBotao("azul", "p")}>
+                <Icone nome="dinheiro" class="size-4" />
+                Registrar pagamento
+              </a>
+            </li>
+          ))}
+        </ul>
+      </>
+    )
+  }
 
   {
     aba === "aguardando" && (
