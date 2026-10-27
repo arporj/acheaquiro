@@ -119,6 +119,17 @@ describe("calcularPagamentoPlano", () => {
     expect(r.comissao?.valorCentavos).toBe(599);
   });
 
+  it("mensal e depois anual: o anual completa os 135% (decisão M1)", () => {
+    const r = calcular({
+      pagoEm: "2026-12-20",
+      confirmadoEm: "2026-12-20",
+      assinatura: { ancora: "2026-11-27", venceEm: "2026-12-27", pagamentosAnteriores: 1, algumAnual: false },
+    });
+    expect(r.numero).toBe(2);
+    expect(r.cobranca.valorDevidoCentavos).toBe(59900);
+    expect(r.comissao?.valorCentavos).toBe(2097);
+  });
+
   it("renovação do Fundador no 2º ano: 50%, sem comissão; no 4º ano: 25%", () => {
     const renovar = (venceEm: string, pagoEm: string) =>
       calcular({

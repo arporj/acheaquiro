@@ -4,6 +4,7 @@ import {
   calcularComissao,
   calcularComissaoUpgrade,
   liberacaoDaComissao,
+  percentualMensalAcumulado,
   situacaoComissao,
   type PagamentoComissionavel,
   type UpgradeComissionavel,
@@ -210,5 +211,31 @@ describe("espera de 7 dias", () => {
     expect(situacaoComissao({ ...base, hoje: "2026-11-17" })).toBe("liberada");
     expect(situacaoComissao({ ...base, hoje: "2026-11-20", paga: true })).toBe("paga");
     expect(situacaoComissao({ ...base, hoje: "2026-11-12", cancelada: true })).toBe("cancelada");
+  });
+});
+
+describe("troca do mensal para o anual (decisão M1)", () => {
+  const anual = (mensalidadesComissionadasAntes: number, numeroMensalidade = mensalidadesComissionadasAntes + 1) =>
+    valor({ periodicidade: "anual", valorPagoCentavos: 59900, numeroMensalidade, mensalidadesComissionadasAntes });
+
+  it("depois de 1 mensalidade (100%), o anual completa os 35%: R$ 20,97, total de R$ 80,87", () => {
+    expect(anual(1)).toBe(2097);
+    expect(5990 + anual(1)!).toBe(8087);
+  });
+
+  it("depois de 2 mensalidades (120%), completa 15%; depois de 4, nada", () => {
+    expect(anual(2)).toBe(899);
+    expect(anual(4)).toBeNull();
+    expect(anual(7)).toBeNull();
+  });
+
+  it("renovação do anual (sem mensal antes) continua sem comissão", () => {
+    expect(anual(0, 2)).toBeNull();
+  });
+
+  it("percentual acumulado do mensal: 0, 100, 120, 130, 135 e 135", () => {
+    expect([0, 1, 2, 3, 4, 5].map(percentualMensalAcumulado)).toEqual([0, 100, 120, 130, 135, 135]);
+    expect(() => percentualMensalAcumulado(-1)).toThrow(RangeError);
+    expect(() => percentualMensalAcumulado(1.5)).toThrow(RangeError);
   });
 });

@@ -40,6 +40,12 @@ export interface PagamentoComissionavel {
   /** No anual: quantas mensalidades o anual custa (hoje, 10). */
   mesesCobradosNoAnual: number;
   /**
+   * No anual: quantas mensalidades do plano mensal já geraram comissão antes
+   * desta troca para o anual. O representante recebe o que falta dos 135%
+   * (decisão M1, 27/10/2026). Zero (ou ausente) quando não houve mensal antes.
+   */
+  mensalidadesComissionadasAntes?: number;
+  /**
    * A venda teve o atendimento de um representante que recebe comissão. Venda
    * feita pelo anunciante sozinho, ou pelo sócio, não gera comissão.
    */
@@ -60,12 +66,18 @@ function validarInteiros(base: number, numero: number) {
   }
 }
 
-/** 135% de uma mensalidade, de uma vez: a base é o valor anual, dividido pelos meses cobrados. */
-function comissaoAnual(baseAnual: number, meses: number): Comissao {
+/** Percentual de uma mensalidade (135% no total) pago de uma vez: a base é o valor anual, dividido pelos meses cobrados. */
+function comissaoAnual(baseAnual: number, meses: number, percentual = PERCENTUAL_COMISSAO_ANUAL): Comissao {
   if (!Number.isInteger(meses) || meses < 1) throw new RangeError("Meses cobrados no anual inválidos.");
-  // 135% de (valor anual ÷ meses), arredondando metade para cima, só com inteiros.
-  const valorCentavos = Math.floor((baseAnual * PERCENTUAL_COMISSAO_ANUAL + 50 * meses) / (100 * meses));
-  return { baseCentavos: baseAnual, percentual: PERCENTUAL_COMISSAO_ANUAL / meses, valorCentavos };
+  // percentual de (valor anual ÷ meses), arredondando metade para cima, só com inteiros.
+  const valorCentavos = Math.floor((baseAnual * percentual + 50 * meses) / (100 * meses));
+  return { baseCentavos: baseAnual, percentual: percentual / meses, valorCentavos };
+}
+
+/** Quanto de uma mensalidade já foi pago em comissão depois de n mensalidades do mensal: 100, 120, 130 e 135. */
+export function percentualMensalAcumulado(mensalidades: number): number {
+  if (!Number.isInteger(mensalidades) || mensalidades < 0) throw new RangeError("Número de mensalidades inválido.");
+  return PERCENTUAIS_COMISSAO_MENSAL.slice(0, mensalidades).reduce((soma, p) => soma + p, 0);
 }
 
 /** 100%, 20%, 10% e 5% das 4 primeiras mensalidades; null da 5ª em diante. */
@@ -88,9 +100,12 @@ export function calcularComissao(pagamento: PagamentoComissionavel): Comissao | 
   }
 
   if (pagamento.periodicidade === "anual") {
-    const anual = comissaoAnual(base, pagamento.mesesCobradosNoAnual);
+    const mensalidadesAntes = pagamento.mensalidadesComissionadasAntes ?? 0;
     // Os 135% são pagos uma vez: a renovação do anual não gera nova comissão.
-    return numeroMensalidade > 1 ? null : anual;
+    if (numeroMensalidade > 1 && mensalidadesAntes === 0) return null;
+    // Quem passa do mensal para o anual completa os 135% (decisão M1).
+    const restante = PERCENTUAL_COMISSAO_ANUAL - percentualMensalAcumulado(mensalidadesAntes);
+    return restante > 0 ? comissaoAnual(base, pagamento.mesesCobradosNoAnual, restante) : null;
   }
   return comissaoMensal(base, numeroMensalidade);
 }

@@ -159,6 +159,7 @@ export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): Pagament
   // Depois de uma interrupção, a assinatura recomeça, mas a comissão não: o
   // representante recebe os 135% uma vez por anunciante. Quem já pagou um
   // anual já gerou os 135% de uma vez: passar para o mensal não gera parcelas.
+  // Quem passa do mensal para o anual completa os 135% (decisão M1).
   const numero = (assinatura?.pagamentosAnteriores ?? 0) + 1;
   const comissao = calcularComissao({
     origem: "plano",
@@ -166,6 +167,7 @@ export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): Pagament
     valorPagoCentavos: cobranca.valorDevidoCentavos,
     numeroMensalidade: numero,
     mesesCobradosNoAnual: plano.mesesCobradosNoAnual,
+    mensalidadesComissionadasAntes: assinatura?.algumAnual ? 0 : (assinatura?.pagamentosAnteriores ?? 0),
     temRepresentante: entrada.representanteRecebeComissao && !assinatura?.algumAnual,
     pagamentoConfirmado: true,
   });
