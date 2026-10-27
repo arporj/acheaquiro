@@ -95,3 +95,21 @@ export function exemploComissao(plano: Plano, regras: RegrasCobranca): ExemploCo
     anualFundador: comissao("anual", true),
   };
 }
+
+/**
+ * Valor do plano escolhido no cadastro assistido, em texto: "R$ 29,90 por mês",
+ * "R$ 299,00 por ano" (com o valor de Fundador do 1º ano, até o prazo) ou
+ * "Grátis". O script do FormularioAnunciante refaz o mesmo texto no navegador.
+ */
+export function textoValorPlano(
+  valores: { mensal: number; anual: number; anualFundador: number | null } | undefined,
+  periodicidade: Periodicidade,
+): { valor: string; fundador: string } {
+  if (!valores) return { valor: "", fundador: "" };
+  if (valores.mensal === 0) return { valor: "Grátis", fundador: "" };
+  if (periodicidade === "mensal") return { valor: `${formatarCentavos(valores.mensal)} por mês`, fundador: "" };
+  return {
+    valor: `${formatarCentavos(valores.anual)} por ano`,
+    fundador: valores.anualFundador === null ? "" : `Fundador: ${formatarCentavos(valores.anualFundador)} no 1º ano`,
+  };
+}

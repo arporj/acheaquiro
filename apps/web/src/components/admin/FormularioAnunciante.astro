@@ -5,7 +5,7 @@
 // comércio ficam desligados quando não servem, para não serem enviados.
 import { classesBotao } from "@acheaqui/ui";
 import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
-import { formatarCentavos } from "@/lib/precos";
+import { textoValorPlano } from "@/lib/precos";
 import type { Opcoes, ValoresFormulario } from "@/lib/anunciantesAdmin";
 
 interface Props {
@@ -37,17 +37,8 @@ const tituloSecao = "font-display text-lg font-bold text-azul-900";
 const textarea = "mt-1 w-full rounded-2xl border-2 border-azul-100 p-3 focus:border-azul-500 focus:outline-none";
 const erro = (campo: string) => erros[campo];
 
-/** Valor do plano na periodicidade escolhida (o script ao fim refaz o texto quando algo muda). */
-function textoDoValor(plano: Opcoes["planos"][number] | undefined, periodicidade: "mensal" | "anual") {
-  if (!plano) return { valor: "", fundador: "" };
-  if (plano.valores.mensal === 0) return { valor: "Grátis", fundador: "" };
-  if (periodicidade === "mensal") return { valor: `${formatarCentavos(plano.valores.mensal)} por mês`, fundador: "" };
-  return {
-    valor: `${formatarCentavos(plano.valores.anual)} por ano`,
-    fundador: plano.valores.anualFundador === null ? "" : `Fundador: ${formatarCentavos(plano.valores.anualFundador)} no 1º ano`,
-  };
-}
-const textoValor = textoDoValor(opcoes.planos.find((p) => p.id === v.planoEscolhidoId), v.periodicidade);
+// O script ao fim refaz o texto quando o plano ou a periodicidade mudam.
+const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEscolhidoId)?.valores, v.periodicidade);
 ---
 
 <form method="post" data-formulario-anunciante data-tipo-fixo={tipoFixo} novalidate>
@@ -338,7 +329,7 @@ const textoValor = textoDoValor(opcoes.planos.find((p) => p.id === v.planoEscolh
       for (const campo of el.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea")) campo.disabled = !ligado;
     };
 
-    // Mesmo texto de textoDoValor (no servidor), com os valores calculados lá.
+    // Mesmo texto de textoValorPlano (no servidor), com os valores calculados lá.
     const reais = (centavos: number) => (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     const mostrarValor = () => {
       const op = form.querySelector<HTMLSelectElement>('select[name="planoEscolhidoId"]')?.selectedOptions[0];

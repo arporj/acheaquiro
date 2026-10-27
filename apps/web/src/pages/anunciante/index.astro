@@ -1,9 +1,218 @@
 ---
-// Área do anunciante (item 4.7).
-import AreaInicial from "@/components/conta/AreaInicial.astro";
+// Área do anunciante (item 4.7). Por enquanto, a situação do cadastro e o
+// aceite do cadastro assistido (27/10/2026): o anunciante convidado confere o
+// que foi cadastrado, aceita os Termos e a Política e envia para análise. O
+// comércio importado da Receita vai para o ar na hora, no lugar do importado
+// (interno.trocar_importado), e a equipe confere depois.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import LinkContatoEquipe from "@/components/institucional/LinkContatoEquipe.astro";
+import { obterRegrasCobranca } from "@/dados/consultas";
+import { enviarParaAnalise, lerMeuCadastro, representanteDoCadastro } from "@/lib/anunciante";
+import { ROTULO_SITUACAO, lerOpcoes } from "@/lib/anunciantesAdmin";
+import { formatarTelefone, mensagemEquipe } from "@/lib/contato";
+import { DOCUMENTOS, enderecoDocumento } from "@/lib/documentosLegais";
+import { textoValorPlano } from "@/lib/precos";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+
+const AVISOS: Record<string, string> = {
+  enviado: "Cadastro enviado. A equipe confere os dados e fala com você.",
+  "no-ar": "Pronto: seu perfil está no ar. A equipe confere os dados nos próximos dias.",
+};
+const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
+let erro = "";
+
+const lido = await lerMeuCadastro(supabase, usuario.id);
+const cadastro = lido.ok ? lido.dados : null;
+if (!lido.ok) erro = lido.erro.mensagem;
+
+if (Astro.request.method === "POST" && cadastro) {
+  const form = await Astro.request.formData();
+  if (form.get("aceite") !== "sim") {
+    erro = "Marque que leu e aceita os Termos de Uso e a Política de Privacidade para enviar o cadastro.";
+    Astro.response.status = 400;
+  } else {
+    const enviado = await enviarParaAnalise(supabase, usuario.id, cadastro);
+    if (enviado.ok) return Astro.redirect(`/anunciante?aviso=${cadastro.importado_id ? "no-ar" : "enviado"}`, 303);
+    erro = enviado.erro.mensagem;
+    Astro.response.status = enviado.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  }
+}
+
+const conferir = cadastro?.status === "aguardando_anunciante";
+const [opcoes, representante] = await Promise.all([
+  conferir ? lerOpcoes(supabase, await obterRegrasCobranca()) : Promise.resolve(null),
+  conferir && cadastro ? representanteDoCadastro(supabase, cadastro.id) : Promise.resolve(null),
+]);
+if (opcoes && !opcoes.ok) erro ||= opcoes.erro.mensagem;
+if (representante && !representante.ok) erro ||= representante.erro.mensagem;
+
+// Nomes para o resumo do cadastro.
+const o = opcoes?.ok ? opcoes.dados : null;
+const nomeCategoria = (id: string) => o?.categorias.find((c) => c.id === id)?.nome ?? "";
+const nomeBairro = (id: string) => o?.bairros.find((b) => b.id === id)?.nome ?? "";
+const plano = o?.planos.find((p) => p.id === cadastro?.plano_escolhido_id);
+const periodicidade = cadastro?.periodicidade_escolhida ?? "mensal";
+const valor = textoValorPlano(plano?.valores, periodicidade);
+const FORMAS = { pix: "Pix", cartao: "Cartão", dinheiro: "Dinheiro" } as const;
+const listaBairros = (finalidade: "atendimento" | "entrega") =>
+  (cadastro?.bairros ?? []).filter((b) => b.finalidade === finalidade).map((b) => nomeBairro(b.bairro_id)).join(", ");
+const endereco = cadastro?.enderecos.find((e) => e.principal) ?? cadastro?.enderecos[0];
+
+const linhas: { rotulo: string; valor: string }[] = cadastro
+  ? [
+      { rotulo: "Nome", valor: cadastro.nome },
+      { rotulo: "Tipo", valor: cadastro.tipo === "profissional" ? "Autônomo" : "Comércio" },
+      { rotulo: "Categoria", valor: nomeCategoria(cadastro.categoria_principal_id) },
+      {
+        rotulo: "Outras categorias",
+        valor: cadastro.categorias.map((c) => nomeCategoria(c.categoria_id)).filter((n) => n && n !== nomeCategoria(cadastro.categoria_principal_id)).join(", "),
+      },
+      { rotulo: "Descrição", valor: cadastro.descricao },
+      { rotulo: "WhatsApp", valor: cadastro.whatsapp ? formatarTelefone(cadastro.whatsapp) : "" },
+      { rotulo: "Telefone", valor: cadastro.telefone ? formatarTelefone(cadastro.telefone) : "" },
+      { rotulo: "Instagram", valor: cadastro.instagram ? `@${cadastro.instagram}` : "" },
+      { rotulo: "Site", valor: cadastro.site_proprio ?? "" },
+      { rotulo: "Formas de pagamento", valor: cadastro.formas_pagamento.map((f) => FORMAS[f]).join(", ") },
+      { rotulo: "Registro no conselho", valor: cadastro.registro_conselho ?? "" },
+      {
+        rotulo: "Endereço",
+        valor: endereco ? `${endereco.logradouro}, ${endereco.numero}${endereco.complemento ? ` (${endereco.complemento})` : ""} · ${nomeBairro(endereco.bairro_id)}` : "",
+      },
+      ...(cadastro.tipo === "profissional"
+        ? [{ rotulo: "Onde atende", valor: cadastro.atende_toda_cidade ? "Toda a cidade" : listaBairros("atendimento") }]
+        : [{ rotulo: "Entrega", valor: !cadastro.faz_entrega ? "Não faz entrega" : cadastro.entrega_toda_cidade ? "Toda a cidade" : listaBairros("entrega") }]),
+    ].filter((l) => l.valor)
+  : [];
+
+const secao = "mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
+const tituloSecao = "font-display text-lg font-bold text-azul-900";
+const termos = DOCUMENTOS.termos;
+const privacidade = DOCUMENTOS.privacidade;
 ---
 
-<AreaInicial
-  titulo="Área do anunciante"
-  emBreve={["Editar o perfil, fotos, encartes e produtos", "Plano atual e pagamento por Pix", "Números do mês"]}
-/>
+<PaginaAcesso titulo={conferir ? "Confira o seu cadastro" : "Área do anunciante"} logado largura="larga">
+  <p class="mt-1 text-slate-600">Você entrou como <strong class="text-tinta">{usuario.email}</strong>.</p>
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  {
+    conferir && cadastro && o && (
+      <>
+        <p class="mt-4 text-slate-700">
+          {representante?.ok && representante.dados
+            ? `${representante.dados}, representante do Ache Aqui RO, fez o seu cadastro.`
+            : "A equipe do Ache Aqui RO fez o seu cadastro."}{" "}
+          Confira os dados abaixo. Se estiver tudo certo, aceite os Termos de Uso e a Política de Privacidade e envie.
+          {cadastro.importado_id
+            ? " Ao enviar, o seu perfil vai para o ar na hora, no lugar do que mostrava só os dados da Receita."
+            : " A equipe confere o cadastro antes de o perfil ir para o ar."}
+        </p>
+        {cadastro.motivo_correcao && (
+          <p class="mt-4 rounded-xl bg-azul-50 px-3 py-2 text-sm font-semibold text-azul-900">Correção pedida pela equipe: {cadastro.motivo_correcao}</p>
+        )}
+
+        <section class={secao}>
+          <h2 class={tituloSecao}>Perfil</h2>
+          <dl class="mt-3 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[12rem_1fr]">
+            {linhas.map((l) => (
+              <>
+                <dt class="font-bold text-azul-900">{l.rotulo}</dt>
+                <dd class="whitespace-pre-line text-slate-700">{l.valor}</dd>
+              </>
+            ))}
+          </dl>
+        </section>
+
+        <section class={secao}>
+          <h2 class={tituloSecao}>Plano</h2>
+          {plano ? (
+            <>
+              <p class="mt-2">
+                <strong>{plano.nome}</strong>
+                {valor.valor !== "Grátis" && `, ${periodicidade === "anual" ? "anual" : "mensal"}`}: {valor.valor}
+              </p>
+              {valor.fundador && <p class="mt-1 text-sm font-bold text-zap-700">{valor.fundador}, pagando até o prazo dos Fundadores.</p>}
+              {valor.valor !== "Grátis" && (
+                <p class="mt-1 text-sm text-slate-600">O pagamento é combinado com a equipe depois que o cadastro for aprovado, por Pix ou cartão.</p>
+              )}
+            </>
+          ) : (
+            <p class="mt-2 text-slate-600">Plano ainda não escolhido. Fale com a equipe.</p>
+          )}
+        </section>
+
+        <form method="post" class={secao}>
+          <label class="flex items-start gap-3 font-semibold">
+            <input type="checkbox" name="aceite" value="sim" required class="mt-1 size-5 shrink-0 accent-azul-600" />
+            <span>
+              Conferi os dados e li e aceito os{" "}
+              <a href={enderecoDocumento("termos")} target="_blank" class="text-azul-600 underline">
+                {termos.titulo} (versão {termos.vigente})
+              </a>{" "}
+              e a{" "}
+              <a href={enderecoDocumento("privacidade")} target="_blank" class="text-azul-600 underline">
+                {privacidade.titulo} (versão {privacidade.vigente})
+              </a>
+              .
+            </span>
+          </label>
+          <div class="mt-5 flex flex-wrap items-center gap-3">
+            <button type="submit" class={classesBotao("azul", "g")}>
+              <Icone nome="certo" class="size-5" />
+              Enviar o cadastro
+            </button>
+            <LinkContatoEquipe mensagem={mensagemEquipe("Quero corrigir o meu cadastro")} class="font-bold text-azul-600 hover:underline">
+              Algo errado? Fale com a equipe
+            </LinkContatoEquipe>
+          </div>
+        </form>
+      </>
+    )
+  }
+
+  {
+    cadastro && !conferir && (
+      <div class="mt-6 rounded-2xl bg-fundo p-5">
+        <p class="font-display text-xl font-bold text-azul-900">{cadastro.nome}</p>
+        <p class="mt-1">Situação: <strong>{ROTULO_SITUACAO[cadastro.status]}</strong></p>
+        {cadastro.status === "em_analise" && <p class="mt-1 text-slate-600">A equipe está conferindo o seu cadastro e fala com você.</p>}
+        {cadastro.status === "aguardando_pagamento" && (
+          <p class="mt-1 text-slate-600">Cadastro aprovado. Falta o pagamento do plano, que a equipe combina com você.</p>
+        )}
+        {cadastro.motivo_correcao && cadastro.status !== "publicado" && <p class="mt-1 text-slate-600">Recado da equipe: {cadastro.motivo_correcao}</p>}
+        {cadastro.status === "publicado" && (
+          <a href={`/perfil/${cadastro.slug}`} target="_blank" class="mt-2 inline-block font-bold text-azul-600 hover:underline">
+            Ver o meu perfil
+          </a>
+        )}
+        <p class="mt-3">
+          <LinkContatoEquipe mensagem={mensagemEquipe("Sou anunciante e preciso de ajuda")} class="font-bold text-azul-600 hover:underline">
+            Fale com a equipe
+          </LinkContatoEquipe>
+        </p>
+      </div>
+    )
+  }
+
+  {lido.ok && !cadastro && <p class="mt-6 text-slate-600">A sua conta ainda não tem um cadastro de anunciante. Fale com a equipe para anunciar.</p>}
+
+  {
+    !conferir && (
+      <div class="mt-6 rounded-2xl bg-fundo p-5">
+        <h2 class="font-display text-xl font-bold text-azul-900">Em construção</h2>
+        <ul class="mt-3 space-y-2">
+          {["Editar o perfil, fotos, encartes e produtos", "Plano atual e pagamento por Pix", "Números do mês"].map((item) => (
+            <li class="flex gap-2 text-slate-700">
+              <Icone nome="relogio" class="mt-0.5 size-5 shrink-0 text-azul-600" />
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+</PaginaAcesso>
