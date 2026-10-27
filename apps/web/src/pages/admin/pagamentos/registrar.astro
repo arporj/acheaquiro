@@ -132,8 +132,10 @@ const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
                 )}
                 <li>
                   {c.comissao && ctx.representante
-                    ? `Comissão de ${ctx.representante.codigo}: ${formatarCentavos(c.comissao.valorCentavos)}, liberada em ${formatarData(c.comissaoLiberaEm!)}`
-                    : "Sem comissão neste pagamento"}
+                    ? `Comissão de venda de ${ctx.representante.codigo}: ${formatarCentavos(c.comissao.valorCentavos)}, liberada em ${formatarData(c.comissaoLiberaEm!)}`
+                    : c.comissaoCarteira && ctx.carteira
+                      ? `Carteira de ${ctx.carteira.codigo} (${c.comissaoCarteira.percentual}%): ${formatarCentavos(c.comissaoCarteira.valorCentavos)}, liberada em ${formatarData(c.comissaoLiberaEm!)}`
+                      : "Sem comissão neste pagamento"}
                 </li>
               </ul>
             </section>

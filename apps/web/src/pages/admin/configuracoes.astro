@@ -1,0 +1,80 @@
+---
+// Configurações gerais (decisão N4, 27/10/2026): datas e prazos da cobrança e
+// o percentual da carteira do representante. As alterações ficam no registro
+// de atividades.
+import { classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { lerConfiguracoesGerais, salvarConfiguracoesGerais } from "@/lib/configuracoes";
+
+const supabase = Astro.locals.supabase!;
+const aviso = Astro.url.searchParams.has("salvo") ? "Configurações salvas. O site passa a usar os novos valores em até 1 minuto." : "";
+let erro = "";
+let campos: Record<string, string> = {};
+let enviado: FormData | null = null;
+
+if (Astro.request.method === "POST") {
+  enviado = await Astro.request.formData();
+  const r = await salvarConfiguracoesGerais(supabase, enviado, Astro.url.origin);
+  if (r.ok) return Astro.redirect("/admin/configuracoes?salvo", 303);
+  erro = r.erro.mensagem;
+  campos = r.erro.campos ?? {};
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const lido = await lerConfiguracoesGerais(supabase);
+if (!lido.ok) erro ||= lido.erro.mensagem;
+const valor = (campo: string) => (enviado?.get(campo) as string | null) ?? (lido.ok ? lido.dados[campo as keyof typeof lido.dados] : "");
+const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
+const dica = "mt-1 text-xs text-slate-500";
+---
+
+<PaginaAdmin titulo="Configurações gerais" descricao="Datas e prazos da cobrança e a carteira dos representantes.">
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <form method="post" class={secao}>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label for="aberturaAoPublico" class={classesRotulo}>Abertura ao público</label>
+        <input id="aberturaAoPublico" name="aberturaAoPublico" type="date" required value={valor("aberturaAoPublico")} class={classesCampo} />
+        <p class={dica}>
+          Início da cobrança: o período pago antes dela começa neste dia. Vale para os pagamentos registrados depois da mudança; os já registrados não mudam.
+        </p>
+        {campos.aberturaAoPublico && <p class={classesErroCampo}>{campos.aberturaAoPublico}</p>}
+      </div>
+      <div>
+        <label for="prazoFundador" class={classesRotulo}>Último dia para virar Fundador</label>
+        <input id="prazoFundador" name="prazoFundador" type="date" required value={valor("prazoFundador")} class={classesCampo} />
+        <p class={dica}>Quem paga o anual até este dia vira Fundador. Aparece nas páginas Fundadores, Anuncie e Patrocine.</p>
+        {campos.prazoFundador && <p class={classesErroCampo}>{campos.prazoFundador}</p>}
+      </div>
+      <div>
+        <label for="toleranciaVencimentoDias" class={classesRotulo}>Dias para pagar depois do vencimento</label>
+        <input
+          id="toleranciaVencimentoDias"
+          name="toleranciaVencimentoDias"
+          type="number"
+          min="1"
+          max="30"
+          required
+          value={valor("toleranciaVencimentoDias")}
+          class={classesCampo}
+        />
+        <p class={dica}>Depois disso, o autônomo sai do ar, o comércio vai para o Gratuito e o Fundador perde a condição.</p>
+        {campos.toleranciaVencimentoDias && <p class={classesErroCampo}>{campos.toleranciaVencimentoDias}</p>}
+      </div>
+      <div>
+        <label for="percentualCarteira" class={classesRotulo}>Carteira do representante (%)</label>
+        <input id="percentualCarteira" name="percentualCarteira" type="number" min="0" max="30" required value={valor("percentualCarteira")} class={classesCampo} />
+        <p class={dica}>Sobre os pagamentos dos anunciantes que ele trouxe, depois da comissão de venda, enquanto ele estiver ativo. Vale para os próximos pagamentos.</p>
+        {campos.percentualCarteira && <p class={classesErroCampo}>{campos.percentualCarteira}</p>}
+      </div>
+    </div>
+    <p class="mt-4 rounded-xl bg-amarelo-200 px-3 py-2 text-sm font-semibold text-azul-900">
+      O aviso "abre em 27/11" do endereço acheaquiro.com.br não lê estas configurações: se a abertura mudar, peça a troca do aviso também.
+    </p>
+    <button type="submit" class={classesBotao("azul", "m", "mt-4")}>Salvar</button>
+  </form>
+</PaginaAdmin>

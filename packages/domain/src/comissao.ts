@@ -164,6 +164,23 @@ export function aplicarDescontoRepresentante(entrada: {
   return { valorCobradoCentavos: valorCentavos - descontoCentavos, comissaoCentavos: comissaoCentavos - descontoCentavos };
 }
 
+/**
+ * Carteira do representante (decisões N1 a N3, 27/10/2026): sobre todo pagamento
+ * do anunciante que ele trouxe e que já não está na fase de venda (depois dos
+ * 135% do plano, da 2ª mensalidade em diante de um extra vendido com
+ * atendimento, ou desde o 1º pagamento do extra contratado sozinho), o representante
+ * recebe um percentual (5%, nas configurações), enquanto estiver ativo. Quando
+ * ele sai, a carteira acaba e o anunciante fica sem representante.
+ */
+export function calcularComissaoCarteira(pagamento: { valorPagoCentavos: number; percentual: number; faseDeVenda: boolean }): Comissao | null {
+  const { valorPagoCentavos: base, percentual } = pagamento;
+  if (!Number.isInteger(percentual) || percentual < 0 || percentual > 100) throw new RangeError("Percentual da carteira precisa ser inteiro, de 0 a 100.");
+  validarInteiros(base, 1);
+  if (pagamento.faseDeVenda || percentual === 0) return null;
+  const valorCentavos = aplicarPercentual(base, percentual);
+  return valorCentavos > 0 ? { baseCentavos: base, percentual, valorCentavos } : null;
+}
+
 /** Dia em que a comissão é liberada: 7 dias depois da confirmação do pagamento. */
 export function liberacaoDaComissao(confirmadoEm: DataISO): DataISO {
   return somarDias(confirmadoEm, DIAS_ESPERA_COMISSAO);

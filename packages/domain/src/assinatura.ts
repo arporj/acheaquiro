@@ -14,7 +14,7 @@ import {
   type Periodicidade,
   type ValoresPlano,
 } from "./cobranca";
-import { calcularComissao, liberacaoDaComissao, type Comissao } from "./comissao";
+import { calcularComissao, calcularComissaoCarteira, liberacaoDaComissao, type Comissao } from "./comissao";
 import { diasEntre, somarDias, type DataISO } from "./datas";
 import type { DegrauDescontoFundador } from "@acheaqui/types";
 
@@ -90,6 +90,11 @@ export interface EntradaPagamentoPlano {
   fundadorDesde: DataISO | null;
   /** O representante que atendeu a venda recebe comissão (o sócio, por enquanto, não). */
   representanteRecebeComissao: boolean;
+  /**
+   * Carteira do representante que trouxe o anunciante, se ele está ativo e
+   * recebe comissão: o percentual (5%) vem das configurações. null sem carteira.
+   */
+  carteira: { percentual: number } | null;
 }
 
 export interface PagamentoPlanoCalculado {
@@ -106,7 +111,11 @@ export interface PagamentoPlanoCalculado {
     /** Deixou de ser Fundador com este pagamento (renovou no mensal ou depois da tolerância). */
     perdeu: boolean;
   };
+  /** Comissão de venda, para o representante que atendeu a venda do plano. */
   comissao: Comissao | null;
+  /** Comissão de carteira, para o representante que trouxe o anunciante, nos pagamentos fora da fase de venda. */
+  comissaoCarteira: Comissao | null;
+  /** As duas esperam os mesmos 7 dias. */
   comissaoLiberaEm: DataISO | null;
 }
 
@@ -161,16 +170,27 @@ export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): Pagament
   // anual já gerou os 135% de uma vez: passar para o mensal não gera parcelas.
   // Quem passa do mensal para o anual completa os 135% (decisão M1).
   const numero = (assinatura?.pagamentosAnteriores ?? 0) + 1;
-  const comissao = calcularComissao({
-    origem: "plano",
-    periodicidade,
-    valorPagoCentavos: cobranca.valorDevidoCentavos,
-    numeroMensalidade: numero,
-    mesesCobradosNoAnual: plano.mesesCobradosNoAnual,
-    mensalidadesComissionadasAntes: assinatura?.algumAnual ? 0 : (assinatura?.pagamentosAnteriores ?? 0),
-    temRepresentante: entrada.representanteRecebeComissao && !assinatura?.algumAnual,
-    pagamentoConfirmado: true,
-  });
+  const venda = (temRepresentante: boolean) =>
+    calcularComissao({
+      origem: "plano",
+      periodicidade,
+      valorPagoCentavos: cobranca.valorDevidoCentavos,
+      numeroMensalidade: numero,
+      mesesCobradosNoAnual: plano.mesesCobradosNoAnual,
+      mensalidadesComissionadasAntes: assinatura?.algumAnual ? 0 : (assinatura?.pagamentosAnteriores ?? 0),
+      temRepresentante: temRepresentante && !assinatura?.algumAnual,
+      pagamentoConfirmado: true,
+    });
+  const comissao = venda(entrada.representanteRecebeComissao);
+  // A carteira começa quando acaba a fase de venda (os 135%), recebendo ou não
+  // quem vendeu: um pagamento nunca gera as duas.
+  const comissaoCarteira = entrada.carteira
+    ? calcularComissaoCarteira({
+        valorPagoCentavos: cobranca.valorDevidoCentavos,
+        percentual: entrada.carteira.percentual,
+        faseDeVenda: venda(true) !== null,
+      })
+    : null;
 
   return {
     periodo,
@@ -178,7 +198,8 @@ export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): Pagament
     cobranca,
     fundador: { fundador: fundadorDesde !== null, fundadorDesde, tornou, perdeu },
     comissao,
-    comissaoLiberaEm: comissao ? liberacaoDaComissao(entrada.confirmadoEm) : null,
+    comissaoCarteira,
+    comissaoLiberaEm: comissao || comissaoCarteira ? liberacaoDaComissao(entrada.confirmadoEm) : null,
   };
 }
 

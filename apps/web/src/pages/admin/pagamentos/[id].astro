@@ -95,7 +95,7 @@ const caixa = "rounded-xl bg-fundo p-3";
             <p class="font-bold text-azul-900">Comissão</p>
             {p.comissao ? (
               <p>
-                {p.comissao.representante}: {formatarCentavos(p.comissao.valorCentavos)}
+                {p.comissao.origem === "carteira" ? "Carteira" : "Venda"} de {p.comissao.representante}: {formatarCentavos(p.comissao.valorCentavos)}
                 {p.comissao.cancelada ? " · cancelada" : ` · liberada em ${formatarData(p.comissao.liberaEm)}`}
               </p>
             ) : (

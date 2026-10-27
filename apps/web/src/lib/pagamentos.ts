@@ -117,6 +117,8 @@ export interface ContextoPagamento {
   algumAnual: boolean;
   /** Quem atendeu a venda do plano: o da assinatura ou, no primeiro pagamento, o que trouxe o anunciante. */
   representante: { id: string; codigo: string; recebeComissao: boolean } | null;
+  /** Carteira do representante ativo que trouxe o anunciante, com o percentual das configurações (decisões N1 a N3). */
+  carteira: { representanteId: string; codigo: string; percentual: number } | null;
   planos: PlanoPago[];
 }
 
@@ -140,11 +142,12 @@ export async function lerContexto(supabase: SupabaseClient, anuncianteId: string
   if (pagamentos.error) return mensagemDoBanco(pagamentos.error, "lerContexto: pagamentos");
   const a = anun.data;
 
-  const representanteId = (assinatura.data?.representante_id as string | null) ?? (a.representante_id as string | null);
-  const [rep, planos] = await Promise.all([
-    representanteId
-      ? supabase.from("representantes").select("id, codigo, recebe_comissao").eq("id", representanteId).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
+  const vendaId = (assinatura.data?.representante_id as string | null) ?? (a.representante_id as string | null);
+  const ids = [vendaId, a.representante_id as string | null].filter((x): x is string => !!x);
+  const [reps, planos, config] = await Promise.all([
+    ids.length > 0
+      ? supabase.from("representantes").select("id, codigo, recebe_comissao, ativo").in("id", ids)
+      : Promise.resolve({ data: [] as { id: string; codigo: string; recebe_comissao: boolean; ativo: boolean }[], error: null }),
     supabase
       .from("planos")
       .select("id, nome, valor_mensal_centavos, meses_cobrados_no_anual")
@@ -153,9 +156,14 @@ export async function lerContexto(supabase: SupabaseClient, anuncianteId: string
       .eq("ativo", true)
       .gt("valor_mensal_centavos", 0)
       .order("nivel"),
+    supabase.from("configuracoes").select("valor").eq("cidade_id", a.cidade_id).eq("chave", "percentual_carteira").maybeSingle(),
   ]);
-  if (rep.error) return mensagemDoBanco(rep.error, "lerContexto: representante");
+  if (reps.error) return mensagemDoBanco(reps.error, "lerContexto: representantes");
   if (planos.error) return mensagemDoBanco(planos.error, "lerContexto: planos");
+  if (config.error) return mensagemDoBanco(config.error, "lerContexto: percentual da carteira");
+  const venda = reps.data.find((r) => r.id === vendaId);
+  const dono = reps.data.find((r) => r.id === a.representante_id);
+  const percentualCarteira = Number(config.data?.valor ?? 0);
 
   return {
     ok: true,
@@ -175,7 +183,11 @@ export async function lerContexto(supabase: SupabaseClient, anuncianteId: string
         : null,
       pagamentosValidos: pagamentos.data.length,
       algumAnual: pagamentos.data.some((p) => p.periodicidade === "anual"),
-      representante: rep.data ? { id: rep.data.id, codigo: rep.data.codigo, recebeComissao: rep.data.recebe_comissao } : null,
+      representante: venda ? { id: venda.id, codigo: venda.codigo, recebeComissao: venda.recebe_comissao && venda.ativo } : null,
+      carteira:
+        dono && dono.ativo && dono.recebe_comissao && percentualCarteira > 0
+          ? { representanteId: dono.id, codigo: dono.codigo, percentual: percentualCarteira }
+          : null,
       planos: planos.data.map((p) => ({ id: p.id, nome: p.nome, valorMensalCentavos: p.valor_mensal_centavos, mesesCobradosNoAnual: p.meses_cobrados_no_anual })),
     },
   };
@@ -221,6 +233,7 @@ export async function calcular(contexto: ContextoPagamento, escolha: EscolhaPaga
         : null,
       fundadorDesde: contexto.anunciante.fundadorDesde,
       representanteRecebeComissao: contexto.representante?.recebeComissao ?? false,
+      carteira: contexto.carteira ? { percentual: contexto.carteira.percentual } : null,
     });
     return { ok: true, dados: { ...calculado, plano } };
   } catch (e) {
@@ -317,6 +330,10 @@ export async function registrarPagamento(
     p_comissao_percentual: c.comissao?.percentual ?? null,
     p_comissao_valor: c.comissao?.valorCentavos ?? null,
     p_comissao_libera_em: c.comissaoLiberaEm,
+    p_carteira_representante: c.comissaoCarteira ? contexto.carteira!.representanteId : null,
+    p_carteira_base: c.comissaoCarteira?.baseCentavos ?? null,
+    p_carteira_percentual: c.comissaoCarteira?.percentual ?? null,
+    p_carteira_valor: c.comissaoCarteira?.valorCentavos ?? null,
   });
   if (error) {
     if (caminho) {
@@ -427,7 +444,7 @@ export interface PagamentoDetalhe extends PagamentoLista {
   motivoDevolucao: string | null;
   /** Endereço temporário (5 minutos) do comprovante, só para a administração. */
   comprovante: string | null;
-  comissao: { representante: string; valorCentavos: number; liberaEm: string; cancelada: boolean } | null;
+  comissao: { representante: string; origem: string; valorCentavos: number; liberaEm: string; cancelada: boolean } | null;
   podeDevolver: boolean;
 }
 
@@ -438,7 +455,7 @@ export async function lerPagamento(supabase: SupabaseClient, id: string): Promis
     .select(
       `${COLUNAS_LISTA}, periodo_inicio, vence_em, valor_cheio_centavos, desconto_fundador_centavos, codigo_autorizacao, confirmado_em, ` +
         "observacao, tornou_fundador, motivo_devolucao, comprovante_caminho, slug:anunciantes(slug), " +
-        "comissoes(valor_centavos, libera_em, cancelada_em, representante:representantes(codigo))",
+        "comissoes(origem, valor_centavos, libera_em, cancelada_em, representante:representantes(codigo))",
     )
     .eq("id", id)
     .maybeSingle();
@@ -456,7 +473,7 @@ export async function lerPagamento(supabase: SupabaseClient, id: string): Promis
     motivo_devolucao: string | null;
     comprovante_caminho: string | null;
     slug: { slug: string };
-    comissoes: { valor_centavos: number; libera_em: string; cancelada_em: string | null; representante: { codigo: string } }[];
+    comissoes: { origem: string; valor_centavos: number; libera_em: string; cancelada_em: string | null; representante: { codigo: string } }[];
   };
   let comprovante: string | null = null;
   if (l.comprovante_caminho) {
@@ -482,7 +499,7 @@ export async function lerPagamento(supabase: SupabaseClient, id: string): Promis
       motivoDevolucao: l.motivo_devolucao,
       comprovante,
       comissao: comissao
-        ? { representante: comissao.representante.codigo, valorCentavos: comissao.valor_centavos, liberaEm: comissao.libera_em, cancelada: comissao.cancelada_em !== null }
+        ? { representante: comissao.representante.codigo, origem: comissao.origem, valorCentavos: comissao.valor_centavos, liberaEm: comissao.libera_em, cancelada: comissao.cancelada_em !== null }
         : null,
       podeDevolver: !l.devolvido_em && podeDevolver({ numero: l.numero, pagoEm: l.pago_em, hoje: hojeNaCidade() }),
     },

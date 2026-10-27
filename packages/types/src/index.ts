@@ -101,6 +101,8 @@ export interface RegrasCobranca {
   prazoFundador: string;
   /** Dias depois do vencimento até o Fundador perder a condição. */
   toleranciaVencimentoDias: number;
+  /** Carteira do representante: percentual sobre os pagamentos depois da comissão de venda (decisões N1 a N3, 27/10/2026). */
+  percentualCarteira: number;
 }
 
 export interface Foto {

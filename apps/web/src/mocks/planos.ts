@@ -132,4 +132,5 @@ export const regrasCobranca: RegrasCobranca = {
   escalaDescontoFundador: [{ ateAno: 3, percentual: 50 }, { percentual: 25 }],
   prazoFundador: "2026-11-26",
   toleranciaVencimentoDias: 7,
+  percentualCarteira: 5,
 };

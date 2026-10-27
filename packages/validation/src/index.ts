@@ -8,3 +8,4 @@ export * from "./pedidoPerfil";
 export * from "./anunciante";
 export * from "./representante";
 export * from "./pagamento";
+export * from "./configuracoes";

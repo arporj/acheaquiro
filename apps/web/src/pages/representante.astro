@@ -50,12 +50,17 @@ const regrasComissao: { icone: NomeIcone; titulo: string; texto: string }[] = [
   {
     icone: "relogio",
     titulo: "No plano mensal",
-    texto: `Você recebe aos poucos, conforme o anunciante paga: ${primeira}% da 1ª mensalidade, ${segunda}% da 2ª, ${terceira}% da 3ª e ${quarta}% da 4ª. Da 5ª em diante, não há comissão.`,
+    texto: `Você recebe aos poucos, conforme o anunciante paga: ${primeira}% da 1ª mensalidade, ${segunda}% da 2ª, ${terceira}% da 3ª e ${quarta}% da 4ª. Da 5ª em diante, entra a sua carteira.`,
   },
   {
     icone: "dinheiro",
     titulo: "No plano anual",
-    texto: `Você recebe ${PERCENTUAL_COMISSAO_ANUAL}% de uma mensalidade do plano, de uma vez, quando o anunciante paga o primeiro ano. A renovação não gera nova comissão.`,
+    texto: `Você recebe ${PERCENTUAL_COMISSAO_ANUAL}% de uma mensalidade do plano, de uma vez, quando o anunciante paga o primeiro ano. Se ele começou no mensal, o anual completa os ${PERCENTUAL_COMISSAO_ANUAL}%. As renovações entram na sua carteira.`,
+  },
+  {
+    icone: "usuarios",
+    titulo: "Sua carteira",
+    texto: `Depois da comissão de venda, você recebe ${regras.percentualCarteira}% de tudo o que os anunciantes que você trouxe pagarem no site, enquanto você for representante: renovações, mensalidades e extras. Se você deixar de ser representante, a carteira acaba e esses anunciantes ficam sem representante.`,
   },
   {
     icone: "etiqueta",
@@ -66,7 +71,7 @@ const regrasComissao: { icone: NomeIcone; titulo: string; texto: string }[] = [
     icone: "sacola",
     titulo: "Extras",
     texto:
-      `Vendidos por você, junto com a assinatura ou depois, rendem ${PERCENTUAL_COMISSAO_EXTRAS}% do valor pago pelo extra nessa venda, de uma vez. Extras que o anunciante contrata sozinho, sem atendimento, não geram comissão.`,
+      `Vendidos por você, junto com a assinatura ou depois, rendem ${PERCENTUAL_COMISSAO_EXTRAS}% do valor pago pelo extra nessa venda, de uma vez; depois, entram na sua carteira. Extras que o anunciante contrata sozinho também entram na carteira.`,
   },
   {
     icone: "grafico",

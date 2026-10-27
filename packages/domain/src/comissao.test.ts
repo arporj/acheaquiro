@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   aplicarDescontoRepresentante,
   calcularComissao,
+  calcularComissaoCarteira,
   calcularComissaoUpgrade,
   liberacaoDaComissao,
   percentualMensalAcumulado,
@@ -237,5 +238,32 @@ describe("troca do mensal para o anual (decisão M1)", () => {
     expect([0, 1, 2, 3, 4, 5].map(percentualMensalAcumulado)).toEqual([0, 100, 120, 130, 135, 135]);
     expect(() => percentualMensalAcumulado(-1)).toThrow(RangeError);
     expect(() => percentualMensalAcumulado(1.5)).toThrow(RangeError);
+  });
+});
+
+describe("carteira (decisões N1 a N3)", () => {
+  it("5% sobre o pagamento fora da fase de venda, arredondando metade para cima", () => {
+    expect(calcularComissaoCarteira({ valorPagoCentavos: 5990, percentual: 5, faseDeVenda: false })).toEqual({
+      baseCentavos: 5990,
+      percentual: 5,
+      valorCentavos: 300,
+    });
+  });
+
+  it("extra: 20% na venda (1º mês) e 5% de carteira depois", () => {
+    expect(valor({ origem: "extra", valorPagoCentavos: 8990 })).toBe(1798);
+    expect(calcularComissaoCarteira({ valorPagoCentavos: 8990, percentual: 5, faseDeVenda: true })).toBeNull();
+    expect(calcularComissaoCarteira({ valorPagoCentavos: 8990, percentual: 5, faseDeVenda: false })?.valorCentavos).toBe(450);
+  });
+
+  it("sem carteira com percentual zero ou valor que arredonda para zero", () => {
+    expect(calcularComissaoCarteira({ valorPagoCentavos: 5990, percentual: 0, faseDeVenda: false })).toBeNull();
+    expect(calcularComissaoCarteira({ valorPagoCentavos: 9, percentual: 5, faseDeVenda: false })).toBeNull();
+  });
+
+  it("recusa percentual ou valor inválidos", () => {
+    expect(() => calcularComissaoCarteira({ valorPagoCentavos: 100, percentual: 5.5, faseDeVenda: false })).toThrow(RangeError);
+    expect(() => calcularComissaoCarteira({ valorPagoCentavos: 100, percentual: 101, faseDeVenda: false })).toThrow(RangeError);
+    expect(() => calcularComissaoCarteira({ valorPagoCentavos: -1, percentual: 5, faseDeVenda: false })).toThrow(RangeError);
   });
 });

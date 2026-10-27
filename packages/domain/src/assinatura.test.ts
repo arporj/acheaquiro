@@ -79,6 +79,7 @@ describe("calcularPagamentoPlano", () => {
     assinatura: null,
     fundadorDesde: null,
     representanteRecebeComissao: true,
+    carteira: { percentual: 5 },
   };
   const calcular = (p: Partial<EntradaPagamentoPlano>) => calcularPagamentoPlano({ ...entrada, ...p });
 
@@ -89,6 +90,7 @@ describe("calcularPagamentoPlano", () => {
       cobranca: { valorCheioCentavos: 59900, descontoFundadorCentavos: 29950, valorDevidoCentavos: 29950 },
       fundador: { fundador: true, fundadorDesde: "2026-11-27", tornou: true, perdeu: false },
       comissao: { baseCentavos: 29950, percentual: 13.5, valorCentavos: 4043 },
+      comissaoCarteira: null,
       comissaoLiberaEm: "2026-11-18",
     });
   });
@@ -174,8 +176,52 @@ describe("calcularPagamentoPlano", () => {
     expect(calcular({ pagoEm: "2027-01-10", confirmadoEm: "2027-01-10", fundadorDesde: "2026-11-27" }).fundador.perdeu).toBe(true);
   });
 
+  describe("carteira de 5% depois da fase de venda (decisões N1 a N3)", () => {
+    const depois = (p: Partial<EntradaPagamentoPlano>) =>
+      calcular({ pagoEm: "2027-03-20", confirmadoEm: "2027-03-20", periodicidade: "mensal", ...p });
+
+    it("5ª mensalidade: sem comissão de venda e 5% de carteira (R$ 3,00), liberada em 7 dias", () => {
+      const r = depois({ assinatura: { ancora: "2026-11-27", venceEm: "2027-03-27", pagamentosAnteriores: 4, algumAnual: false } });
+      expect(r.comissao).toBeNull();
+      expect(r.comissaoCarteira).toEqual({ baseCentavos: 5990, percentual: 5, valorCentavos: 300 });
+      expect(r.comissaoLiberaEm).toBe("2027-03-27");
+    });
+
+    it("2ª a 4ª mensalidade ficam só com a comissão de venda", () => {
+      const r = depois({ assinatura: { ancora: "2026-11-27", venceEm: "2027-03-27", pagamentosAnteriores: 3, algumAnual: false } });
+      expect(r.comissao?.valorCentavos).toBe(300);
+      expect(r.comissaoCarteira).toBeNull();
+    });
+
+    it("renovação do anual do Fundador: 5% do valor pago (R$ 14,98)", () => {
+      const r = calcular({
+        pagoEm: "2027-11-20",
+        confirmadoEm: "2027-11-20",
+        fundadorDesde: "2026-11-27",
+        assinatura: { ancora: "2026-11-27", venceEm: "2027-11-27", pagamentosAnteriores: 1, algumAnual: true },
+      });
+      expect(r.comissao).toBeNull();
+      expect(r.comissaoCarteira?.valorCentavos).toBe(1498);
+    });
+
+    it("a fase de venda bloqueia a carteira mesmo quando quem vendeu não recebe (sócio)", () => {
+      const r = depois({
+        representanteRecebeComissao: false,
+        assinatura: { ancora: "2026-11-27", venceEm: "2027-03-27", pagamentosAnteriores: 1, algumAnual: false },
+      });
+      expect(r.comissao).toBeNull();
+      expect(r.comissaoCarteira).toBeNull();
+      expect(r.comissaoLiberaEm).toBeNull();
+    });
+
+    it("sem carteira (representante saiu ou anunciante sem representante): nada", () => {
+      const r = depois({ carteira: null, assinatura: { ancora: "2026-11-27", venceEm: "2027-03-27", pagamentosAnteriores: 4, algumAnual: false } });
+      expect(r.comissaoCarteira).toBeNull();
+    });
+  });
+
   it("sócio ou venda sem representante: sem comissão", () => {
-    const r = calcular({ representanteRecebeComissao: false });
+    const r = calcular({ representanteRecebeComissao: false, carteira: null });
     expect(r.comissao).toBeNull();
     expect(r.comissaoLiberaEm).toBeNull();
   });
