@@ -91,7 +91,7 @@ export interface ValoresProposta {
   proximo: { venceEm: DataISO; valorCentavos: number; descontoCentavos: number; cobradoCentavos: number } | null;
   /** Renovações pelo preço cheio, sem o desconto do representante. */
   renovacaoCentavos: number;
-  /** Comissão da 1ª parcela, antes do desconto: o desconto vai até ela e deixa algum valor a pagar. */
+  /** Comissão da 1ª parcela, antes do desconto: o desconto vai até ela (pode zerar o pagamento, decisão T2 de 28/10/2026). */
   comissaoCentavos: number;
   descontoMaximoCentavos: number;
   /** Pagamento em que sai a 1ª parcela da comissão (e o desconto). */
@@ -128,7 +128,7 @@ export async function calcularProposta(
       };
       const primeiro = calcularPagamentoPlano(base);
       const comissao = primeiro.comissao?.valorCentavos ?? 0;
-      const maximo = Math.max(0, Math.min(comissao, primeiro.cobranca.valorDevidoCentavos - 1));
+      const maximo = comissao;
       if (descontoCentavos > maximo) return falha("DADOS_INVALIDOS", descontoAcima(maximo));
       const renovacao = calcularPagamentoPlano({
         ...base,
@@ -205,8 +205,7 @@ export async function calcularProposta(
     const comissaoProximo = proximoBruto.parcelasUpgrade[0]?.comissao?.valorCentavos ?? 0;
     const comissaoEm = comissaoAgora > 0 ? "agora" : comissaoProximo > 0 ? "proximo" : null;
     const comissao = comissaoEm === "agora" ? comissaoAgora : comissaoProximo;
-    const valorDoPagamento = comissaoEm === "agora" ? agoraBruto.valorCentavos : proximoBruto.cobranca.valorDevidoCentavos;
-    const maximo = comissaoEm ? Math.max(0, Math.min(comissao, valorDoPagamento - 1)) : 0;
+    const maximo = comissaoEm ? comissao : 0;
     if (descontoCentavos > maximo) return falha("DADOS_INVALIDOS", descontoAcima(maximo));
     const descontoAgora = comissaoEm === "agora" ? descontoCentavos : 0;
     const descontoProximo = comissaoEm === "proximo" ? descontoCentavos : 0;
@@ -233,7 +232,7 @@ export async function calcularProposta(
 
 const descontoAcima = (maximo: number) =>
   maximo > 0
-    ? `O desconto vai até ${(maximo / 100).toFixed(2).replace(".", ",")} reais: a comissão do pagamento em que ele sai, deixando algum valor a pagar.`
+    ? `O desconto vai até ${(maximo / 100).toFixed(2).replace(".", ",")} reais: a comissão do pagamento em que ele sai.`
     : "Esta proposta não tem comissão para dar desconto.";
 
 /** Cria a proposta: o servidor confere o desconto pelas regras; o banco copia o preço e põe o e-mail na fila. */

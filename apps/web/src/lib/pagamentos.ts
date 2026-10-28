@@ -748,7 +748,6 @@ export async function calcularUpgrade(
       faixa: faixa ? { id: "nova", diferencaMensalCentavos: diferenca, parcelasPagas: 0, concluida: false, descontoCentavos: faixa.descontoCentavos } : null,
       carteira: contexto.carteira ? { percentual: contexto.carteira.percentual } : null,
     });
-    if (calculado.valorCobradoCentavos <= 0) return falha("DADOS_INVALIDOS", "O desconto não pode zerar o pagamento.");
     return {
       ok: true,
       dados: { ...calculado, planoAtual: atual, planoNovo: novo, periodicidade: s.periodicidade, periodo: { inicio, venceEm: s.venceEm }, faixa },
