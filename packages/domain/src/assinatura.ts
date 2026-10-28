@@ -14,9 +14,10 @@ import {
   type Periodicidade,
   type ValoresPlano,
 } from "./cobranca";
-import { calcularComissao, calcularComissaoCarteira, liberacaoDaComissao, type Comissao } from "./comissao";
+import { aplicarDescontoRepresentante, calcularComissao, calcularComissaoCarteira, liberacaoDaComissao, type Comissao } from "./comissao";
 import { diasEntre, somarDias, type DataISO } from "./datas";
 import { precoDaRenovacao, type PrecoVigente } from "./precos";
+import { parcelasDoPagamento, type FaixaUpgrade, type ParcelaDaFaixa } from "./upgrade";
 import type { DegrauDescontoFundador } from "@acheaqui/types";
 
 export interface AssinaturaAnterior {
@@ -102,6 +103,16 @@ export interface EntradaPagamentoPlano {
    * recebe comissão: o percentual (5%) vem das configurações. null sem carteira.
    */
   carteira: { percentual: number } | null;
+  /**
+   * Plano vendido pelo representante da venda, quando o pagamento é de outro
+   * plano: as parcelas dele ficam sobre o valor desse plano, e a diferença é
+   * de quem vendeu o upgrade (decisão S8, 28/10/2026). null no mesmo plano.
+   */
+  planoVendido?: ValoresPlano | null;
+  /** Upgrades vendidos com atendimento, na ordem da venda: as parcelas saem quando cabem (decisão S7). */
+  faixasUpgrade?: readonly FaixaUpgrade[];
+  /** Desconto do representante na venda, só no 1º pagamento e até a comissão dele (decisão de 23/10/2026). */
+  descontoVendaCentavos?: number;
 }
 
 export interface PagamentoPlanoCalculado {
@@ -118,8 +129,14 @@ export interface PagamentoPlanoCalculado {
     /** Deixou de ser Fundador com este pagamento (renovou no mensal ou depois da tolerância). */
     perdeu: boolean;
   };
-  /** Comissão de venda, para o representante que atendeu a venda do plano. */
+  /** Comissão de venda, para o representante que atendeu a venda do plano, já sem o desconto que ele deu. */
   comissao: Comissao | null;
+  /** Parcelas dos upgrades neste pagamento (as comissões já sem o desconto da 1ª parcela). */
+  parcelasUpgrade: ParcelaDaFaixa[];
+  /** Descontos dados pelos representantes neste pagamento. */
+  descontoRepresentanteCentavos: number;
+  /** O que o anunciante paga: o valor devido menos o desconto do representante. */
+  valorCobradoCentavos: number;
   /** Comissão de carteira, para o representante que trouxe o anunciante, nos pagamentos fora da fase de venda. */
   comissaoCarteira: Comissao | null;
   /** As duas esperam os mesmos 7 dias. */
@@ -181,25 +198,46 @@ export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): Pagament
   // anual já gerou os 135% de uma vez: passar para o mensal não gera parcelas.
   // Quem passa do mensal para o anual completa os 135% (decisão M1).
   const numero = (assinatura?.pagamentosAnteriores ?? 0) + 1;
+  // Decisão S8: com o plano mudado, as parcelas da venda ficam no valor do plano vendido.
+  const baseVenda = entrada.planoVendido
+    ? Math.min(
+        cobranca.valorDevidoCentavos,
+        calcularCobrancaPlano(entrada.planoVendido, periodicidade, { fundador: fundadorDesde !== null, percentualFundador }).valorDevidoCentavos,
+      )
+    : cobranca.valorDevidoCentavos;
   const venda = (temRepresentante: boolean) =>
     calcularComissao({
       origem: "plano",
       periodicidade,
-      valorPagoCentavos: cobranca.valorDevidoCentavos,
+      valorPagoCentavos: baseVenda,
       numeroMensalidade: numero,
       mesesCobradosNoAnual: plano.mesesCobradosNoAnual,
       mensalidadesComissionadasAntes: assinatura?.algumAnual ? 0 : (assinatura?.pagamentosAnteriores ?? 0),
       temRepresentante: temRepresentante && !assinatura?.algumAnual,
       pagamentoConfirmado: true,
     });
-  const comissao = venda(entrada.representanteRecebeComissao);
-  // A carteira começa quando acaba a fase de venda (os 135%), recebendo ou não
-  // quem vendeu: um pagamento nunca gera as duas.
+  const comissaoBruta = venda(entrada.representanteRecebeComissao);
+  const descontoVenda = entrada.descontoVendaCentavos ?? 0;
+  if (descontoVenda !== 0 && (!comissaoBruta || numero !== 1)) {
+    throw new RangeError("O desconto do representante só vale no 1º pagamento de uma venda com comissão.");
+  }
+  const comissao = liquida(comissaoBruta, descontoVenda);
+  // As parcelas dos upgrades vêm depois da venda, no que sobra do pagamento.
+  const { parcelas } = parcelasDoPagamento({
+    valorCentavos: cobranca.valorDevidoCentavos - (comissaoBruta?.valorCentavos ?? 0),
+    faixas: entrada.faixasUpgrade ?? [],
+    periodicidade,
+    percentualFundador,
+  });
+  const parcelasUpgrade = parcelas.map((p) => ({ ...p, comissao: liquida(p.comissao, p.descontoCentavos) }));
+  const descontoRepresentanteCentavos = descontoVenda + parcelas.reduce((soma, p) => soma + p.descontoCentavos, 0);
+  // A carteira começa quando acaba a fase de venda (os 135% do plano e dos
+  // upgrades), recebendo ou não quem vendeu: um pagamento nunca gera as duas.
   const comissaoCarteira = entrada.carteira
     ? calcularComissaoCarteira({
-        valorPagoCentavos: cobranca.valorDevidoCentavos,
+        valorPagoCentavos: cobranca.valorDevidoCentavos - descontoRepresentanteCentavos,
         percentual: entrada.carteira.percentual,
-        faseDeVenda: venda(true) !== null,
+        faseDeVenda: venda(true) !== null || parcelas.some((p) => p.comissao !== null),
       })
     : null;
 
@@ -209,9 +247,20 @@ export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): Pagament
     cobranca,
     fundador: { fundador: fundadorDesde !== null, fundadorDesde, tornou, perdeu },
     comissao,
+    parcelasUpgrade,
+    descontoRepresentanteCentavos,
+    valorCobradoCentavos: cobranca.valorDevidoCentavos - descontoRepresentanteCentavos,
     comissaoCarteira,
-    comissaoLiberaEm: comissao || comissaoCarteira ? liberacaoDaComissao(entrada.confirmadoEm) : null,
+    comissaoLiberaEm:
+      comissao || comissaoCarteira || parcelasUpgrade.some((p) => p.comissao) ? liberacaoDaComissao(entrada.confirmadoEm) : null,
   };
+}
+
+/** Comissão menos o desconto dado pelo representante; null quando não sobra nada. */
+function liquida(comissao: Comissao | null, descontoCentavos: number): Comissao | null {
+  if (!comissao) return null;
+  const { comissaoCentavos } = aplicarDescontoRepresentante({ valorCentavos: comissao.valorCentavos, comissaoCentavos: comissao.valorCentavos, descontoCentavos });
+  return comissaoCentavos > 0 ? { ...comissao, valorCentavos: comissaoCentavos } : null;
 }
 
 /**
@@ -236,4 +285,69 @@ export function valorProporcionalUpgrade(entrada: {
   if (total <= 0 || faltam < 0 || faltam > total) throw new RangeError("A mudança precisa cair dentro do período pago.");
   // Arredonda metade para cima, só com inteiros.
   return Math.floor(((novo - atual) * faltam * 2 + total) / (2 * total));
+}
+
+export interface EntradaPagamentoUpgrade {
+  planoAtual: ValoresPlano;
+  planoNovo: ValoresPlano;
+  periodicidade: Periodicidade;
+  /** Período já pago, que continua: o vencimento não muda. */
+  periodo: { inicio: DataISO; venceEm: DataISO };
+  pagoEm: DataISO;
+  confirmadoEm: DataISO;
+  /** Desconto de Fundador do período (0 sem Fundador). */
+  percentualFundador: number;
+  /** Faixa nova do representante que vendeu o upgrade, com o desconto da proposta; null sem comissão. */
+  faixa: FaixaUpgrade | null;
+  carteira: { percentual: number } | null;
+}
+
+export interface PagamentoUpgradeCalculado {
+  /** Diferença proporcional devida, antes do desconto do representante. */
+  valorCentavos: number;
+  /** A parcela da faixa, se coube neste pagamento (comissão já sem o desconto). */
+  parcela: ParcelaDaFaixa | null;
+  descontoRepresentanteCentavos: number;
+  valorCobradoCentavos: number;
+  comissaoCarteira: Comissao | null;
+  comissaoLiberaEm: DataISO | null;
+}
+
+/**
+ * Pagamento da mudança para um plano maior no meio do período: a diferença
+ * proporcional (valorProporcionalUpgrade), a 1ª parcela da faixa quando cabe
+ * (decisão S7) e, sem parcela de venda, a carteira (decisão S5: a diferença
+ * paga entra na carteira como qualquer pagamento).
+ */
+export function calcularPagamentoUpgrade(entrada: EntradaPagamentoUpgrade): PagamentoUpgradeCalculado {
+  const { periodicidade, percentualFundador } = entrada;
+  if (entrada.confirmadoEm < entrada.pagoEm) throw new RangeError("O pagamento não pode ser confirmado antes de ser feito.");
+  const desconto = { fundador: percentualFundador > 0, percentualFundador };
+  const valorCentavos = valorProporcionalUpgrade({
+    valorPeriodoAtualCentavos: calcularCobrancaPlano(entrada.planoAtual, periodicidade, desconto).valorDevidoCentavos,
+    valorPeriodoNovoCentavos: calcularCobrancaPlano(entrada.planoNovo, periodicidade, desconto).valorDevidoCentavos,
+    inicio: entrada.periodo.inicio,
+    venceEm: entrada.periodo.venceEm,
+    hoje: entrada.pagoEm,
+  });
+  if (valorCentavos <= 0) throw new RangeError("No dia do vencimento não há diferença a pagar: registre a renovação já no plano novo.");
+  const { parcelas } = parcelasDoPagamento({ valorCentavos, faixas: entrada.faixa ? [entrada.faixa] : [], periodicidade, percentualFundador });
+  const bruta = parcelas[0] ?? null;
+  const parcela = bruta ? { ...bruta, comissao: liquida(bruta.comissao, bruta.descontoCentavos) } : null;
+  const descontoRepresentanteCentavos = bruta?.descontoCentavos ?? 0;
+  const comissaoCarteira = entrada.carteira
+    ? calcularComissaoCarteira({
+        valorPagoCentavos: valorCentavos - descontoRepresentanteCentavos,
+        percentual: entrada.carteira.percentual,
+        faseDeVenda: bruta?.comissao != null,
+      })
+    : null;
+  return {
+    valorCentavos,
+    parcela,
+    descontoRepresentanteCentavos,
+    valorCobradoCentavos: valorCentavos - descontoRepresentanteCentavos,
+    comissaoCarteira,
+    comissaoLiberaEm: parcela?.comissao || comissaoCarteira ? liberacaoDaComissao(entrada.confirmadoEm) : null,
+  };
 }

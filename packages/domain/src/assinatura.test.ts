@@ -90,6 +90,9 @@ describe("calcularPagamentoPlano", () => {
       cobranca: { valorCheioCentavos: 59900, descontoFundadorCentavos: 29950, valorDevidoCentavos: 29950 },
       fundador: { fundador: true, fundadorDesde: "2026-11-27", tornou: true, perdeu: false },
       comissao: { baseCentavos: 29950, percentual: 13.5, valorCentavos: 4043 },
+      parcelasUpgrade: [],
+      descontoRepresentanteCentavos: 0,
+      valorCobradoCentavos: 29950,
       comissaoCarteira: null,
       comissaoLiberaEm: "2026-11-18",
     });

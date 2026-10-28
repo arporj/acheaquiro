@@ -6,12 +6,19 @@
 // (registrar_pagamento_plano, migration 20261027120000) e só aceita o
 // administrador.
 import {
+  anoComoFundador,
   calcularPagamentoPlano,
+  calcularPagamentoUpgrade,
+  diferencaParaComissao,
   momentoLocal,
+  percentualFundadorNoAno,
   podeDevolver,
   situacaoCobranca,
   somarDias,
+  type FaixaUpgrade,
   type PagamentoPlanoCalculado,
+  type PagamentoUpgradeCalculado,
+  type ParcelaDaFaixa,
   type PrecoVigente,
 } from "@acheaqui/domain";
 import type { Resultado } from "@acheaqui/types";
@@ -27,6 +34,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { obterAberturaAoPublico, obterRegrasCobranca } from "../dados/consultas";
 import { limparPerfilDoCache, type Situacao } from "./anunciantesAdmin";
 import { apagarComprovante, enderecoDoComprovante, guardarComprovante } from "./comprovantesGuardados";
+import { lerProposta, planoDaProposta, type Proposta } from "./propostas";
 
 type CodigoFalha = "DADOS_INVALIDOS" | "CONFLITO" | "SEM_PERMISSAO" | "NAO_ENCONTRADO" | "ARQUIVO_INVALIDO" | "ERRO_INTERNO";
 type Falha = { ok: false; erro: { codigo: CodigoFalha; mensagem: string; campos?: Record<string, string> } };
@@ -171,29 +179,62 @@ export interface ContextoPagamento {
   planos: PlanoPago[];
   /** Histórico de preços de cada plano: na renovação, o aumento só vale com 30 dias de aviso. */
   historicos: Record<string, PrecoVigente[]>;
+  /** Plano da venda: as parcelas dela ficam no valor dele quando o plano muda (decisão S8). */
+  planoVendidoId: string | null;
+  /** Redução agendada para a próxima renovação (decisão S2). */
+  planoSeguinteId: string | null;
+  /** Upgrades vendidos com parcelas a pagar, na ordem da venda (decisão S7). */
+  faixas: (FaixaUpgrade & { representanteId: string })[];
+  /** Proposta de assinatura aceita que este pagamento quita: fixa plano, período, representante e desconto. */
+  proposta: Proposta | null;
 }
 
 /** Situações em que o cadastro recebe pagamento (a função do banco confere de novo). */
 export const SITUACOES_QUE_PAGAM: readonly Situacao[] = ["aguardando_pagamento", "publicado", "pausado", "escondido_por_vencimento"];
 
-export async function lerContexto(supabase: SupabaseClient, anuncianteId: string): Promise<Resultado<ContextoPagamento>> {
+/**
+ * Tudo o que o pagamento do plano precisa. Com propostaId, a proposta de
+ * assinatura aceita define o plano (com o preço travado), o período, o
+ * representante que recebe a comissão e o desconto.
+ */
+export async function lerContexto(supabase: SupabaseClient, anuncianteId: string, propostaId?: string | null): Promise<Resultado<ContextoPagamento>> {
   if (!UUID.test(anuncianteId)) return falha("NAO_ENCONTRADO", "Anunciante não encontrado.");
-  const [anun, assinatura, pagamentos] = await Promise.all([
+  const [anun, assinatura, pagamentos, upgrades] = await Promise.all([
     supabase
       .from("anunciantes")
       .select("id, nome, slug, tipo, status, cidade_id, plano_escolhido_id, periodicidade_escolhida, fundador_desde, representante_id")
       .eq("id", anuncianteId)
       .maybeSingle(),
-    supabase.from("assinaturas").select("ancora, vence_em, plano_id, periodicidade, representante_id").eq("anunciante_id", anuncianteId).maybeSingle(),
-    supabase.from("pagamentos").select("periodicidade").eq("anunciante_id", anuncianteId).is("devolvido_em", null),
+    supabase
+      .from("assinaturas")
+      .select("ancora, vence_em, plano_id, periodicidade, representante_id, plano_vendido_id, plano_seguinte_id")
+      .eq("anunciante_id", anuncianteId)
+      .maybeSingle(),
+    supabase.from("pagamentos").select("periodicidade").eq("anunciante_id", anuncianteId).eq("tipo", "plano").is("devolvido_em", null),
+    supabase
+      .from("upgrades")
+      .select("id, representante_id, diferenca_mensal_centavos, parcelas_pagas, concluida, desconto_centavos")
+      .eq("anunciante_id", anuncianteId)
+      .is("cancelado_em", null)
+      .eq("concluida", false)
+      .order("criado_em"),
   ]);
   if (anun.error) return mensagemDoBanco(anun.error, "lerContexto: anunciante");
   if (!anun.data) return falha("NAO_ENCONTRADO", "Anunciante não encontrado.");
   if (assinatura.error) return mensagemDoBanco(assinatura.error, "lerContexto: assinatura");
   if (pagamentos.error) return mensagemDoBanco(pagamentos.error, "lerContexto: pagamentos");
+  if (upgrades.error) return mensagemDoBanco(upgrades.error, "lerContexto: upgrades");
   const a = anun.data;
 
-  const vendaId = (assinatura.data?.representante_id as string | null) ?? (a.representante_id as string | null);
+  let proposta: Proposta | null = null;
+  if (propostaId) {
+    const lida = await lerProposta(supabase, propostaId);
+    if (!lida.ok) return lida;
+    if (lida.dados.anuncianteId !== a.id) return falha("NAO_ENCONTRADO", "Proposta não encontrada.");
+    proposta = lida.dados;
+  }
+
+  const vendaId = proposta?.representanteId ?? (assinatura.data?.representante_id as string | null) ?? (a.representante_id as string | null);
   const ids = [vendaId, a.representante_id as string | null].filter((x): x is string => !!x);
   const [reps, planos, config] = await Promise.all([
     ids.length > 0
@@ -255,6 +296,17 @@ export async function lerContexto(supabase: SupabaseClient, anuncianteId: string
           : null,
       planos: planos.data.map((p) => ({ id: p.id, nome: p.nome, valorMensalCentavos: p.valor_mensal_centavos, mesesCobradosNoAnual: p.meses_cobrados_no_anual })),
       historicos,
+      planoVendidoId: (assinatura.data?.plano_vendido_id as string | null) ?? null,
+      planoSeguinteId: (assinatura.data?.plano_seguinte_id as string | null) ?? null,
+      faixas: upgrades.data.map((u) => ({
+        id: u.id,
+        representanteId: u.representante_id,
+        diferencaMensalCentavos: u.diferenca_mensal_centavos,
+        parcelasPagas: u.parcelas_pagas,
+        concluida: u.concluida,
+        descontoCentavos: u.desconto_centavos,
+      })),
+      proposta,
     },
   };
 }
@@ -265,9 +317,11 @@ export function lerEscolha(parametros: URLSearchParams | FormData, contexto: Con
     const v = parametros.get(nome);
     return typeof v === "string" ? v.slice(0, 40) : "";
   };
+  // A proposta aceita fixa o plano e o período; sem ela, vale a redução agendada para a renovação.
+  const p = contexto.proposta;
   const valores = {
-    planoId: valor("plano") || contexto.assinatura?.planoId || contexto.anunciante.planoEscolhidoId || "",
-    periodicidade: valor("periodicidade") || contexto.assinatura?.periodicidade || contexto.anunciante.periodicidadeEscolhida || "mensal",
+    planoId: p?.planoId || valor("plano") || contexto.planoSeguinteId || contexto.assinatura?.planoId || contexto.anunciante.planoEscolhidoId || "",
+    periodicidade: p?.periodicidade || valor("periodicidade") || contexto.assinatura?.periodicidade || contexto.anunciante.periodicidadeEscolhida || "mensal",
     pagoEm: valor("pago_em") || hojeNaCidade(),
   };
   const r = esquemaEscolhaPagamento.safeParse(valores);
@@ -283,14 +337,29 @@ export async function calcular(contexto: ContextoPagamento, escolha: EscolhaPaga
   if (!SITUACOES_QUE_PAGAM.includes(contexto.anunciante.status)) {
     return falha("CONFLITO", "O cadastro precisa estar aprovado para receber pagamento.");
   }
-  const plano = contexto.planos.find((p) => p.id === escolha.planoId);
+  const proposta = contexto.proposta;
+  if (proposta) {
+    if (proposta.tipo !== "assinatura") return falha("CONFLITO", "Esta proposta é de mudança de plano: registre pela tela de mudança de plano.");
+    if (proposta.situacao !== "aceita") return falha("CONFLITO", "A proposta precisa estar aceita pelo anunciante.");
+    if (hoje > proposta.expiraEm) return falha("CONFLITO", "A proposta venceu: o representante precisa fazer outra.");
+    if (proposta.planoId !== escolha.planoId || proposta.periodicidade !== escolha.periodicidade) {
+      return falha("DADOS_INVALIDOS", "O plano e o período são os da proposta aceita.");
+    }
+  }
+  const catalogo = contexto.planos.find((p) => p.id === escolha.planoId);
+  // Com a proposta, vale o preço travado nela (decisão S4).
+  const plano = proposta && catalogo ? { ...planoDaProposta(proposta), nome: catalogo.nome } : catalogo;
   if (!plano) return falha("DADOS_INVALIDOS", "Escolha um plano pago deste tipo de anunciante.");
   if (escolha.pagoEm > hoje) return falha("DADOS_INVALIDOS", "O dia do pagamento não pode ser depois de hoje.");
+  const vendido = contexto.planoVendidoId && contexto.planoVendidoId !== plano.id ? contexto.planos.find((p) => p.id === contexto.planoVendidoId) : null;
   const [regras, abertura] = await Promise.all([obterRegrasCobranca(), obterAberturaAoPublico()]);
   try {
     const calculado = calcularPagamentoPlano({
       plano,
-      historicoPlano: contexto.historicos[plano.id],
+      historicoPlano: proposta ? undefined : contexto.historicos[plano.id],
+      planoVendido: vendido ?? null,
+      faixasUpgrade: contexto.faixas,
+      descontoVendaCentavos: proposta?.descontoCentavos ?? 0,
       periodicidade: escolha.periodicidade,
       pagoEm: escolha.pagoEm,
       confirmadoEm: hoje,
@@ -312,6 +381,26 @@ export async function calcular(contexto: ContextoPagamento, escolha: EscolhaPaga
 // ---------------------------------------------------------------------------
 // Registro
 // ---------------------------------------------------------------------------
+
+/** Parcelas que mudam a faixa (pagas ou concluídas), no formato de registrar_pagamento_plano; o banco confere as parcelas de antes. */
+function parcelasParaGravar(faixas: ContextoPagamento["faixas"], parcelas: readonly ParcelaDaFaixa[]) {
+  return parcelas.flatMap((p) => {
+    const faixa = faixas.find((f) => f.id === p.faixaId)!;
+    if (p.parcelasPagasDepois === faixa.parcelasPagas && p.concluida === faixa.concluida && !p.comissao) return [];
+    return [
+      {
+        faixa: p.faixaId,
+        parcelasAntes: faixa.parcelasPagas,
+        parcelasPagasDepois: p.parcelasPagasDepois,
+        concluida: p.concluida,
+        desconto: p.descontoCentavos,
+        base: p.comissao?.baseCentavos ?? null,
+        percentual: p.comissao?.percentual ?? null,
+        valor: p.comissao?.valorCentavos ?? null,
+      },
+    ];
+  });
+}
 
 export async function registrarPagamento(
   supabase: SupabaseClient,
@@ -375,6 +464,9 @@ export async function registrarPagamento(
     p_carteira_base: c.comissaoCarteira?.baseCentavos ?? null,
     p_carteira_percentual: c.comissaoCarteira?.percentual ?? null,
     p_carteira_valor: c.comissaoCarteira?.valorCentavos ?? null,
+    p_proposta: contexto.proposta?.id ?? null,
+    p_desconto_representante: c.descontoRepresentanteCentavos,
+    p_parcelas_upgrade: parcelasParaGravar(contexto.faixas, c.parcelasUpgrade),
   });
   if (error) {
     if (caminho) await apagarComprovante(supabase, caminho);
@@ -569,5 +661,170 @@ export async function contestar(supabase: SupabaseClient, pagamento: PagamentoDe
   const { error } = await supabase.rpc("registrar_contestacao", { p_pagamento: pagamento.id, p_motivo: lido.data.motivo });
   if (error) return mensagemDoBanco(error, "contestar");
   await limparPerfilDoCache(origemDoSite, pagamento.anuncianteSlug);
+  return { ok: true, dados: null };
+}
+
+// ---------------------------------------------------------------------------
+// Mudança para um plano maior no meio do período (plano 3B.1)
+// ---------------------------------------------------------------------------
+
+export interface UpgradeCalculado extends PagamentoUpgradeCalculado {
+  planoAtual: PlanoPago;
+  planoNovo: PlanoPago;
+  periodicidade: "mensal" | "anual";
+  periodo: { inicio: string; venceEm: string };
+  /** Faixa nova do representante da proposta; null sem comissão de venda (sem proposta, sócio ou plano já comissionado). */
+  faixa: { representanteId: string; codigo: string; diferencaMensalCentavos: number; descontoCentavos: number } | null;
+}
+
+/**
+ * O pagamento do upgrade (calcularPagamentoUpgrade): a diferença proporcional
+ * até o vencimento, que não muda. Com a proposta aceita, o preço é o travado
+ * nela e o representante ganha a faixa da comissão (decisões S4, S7 e S8).
+ */
+export async function calcularUpgrade(
+  contexto: ContextoPagamento,
+  extra: { periodoInicio: string | null; maiorComissionadaCentavos: number },
+  escolha: { planoId: string; pagoEm: string },
+  hoje = hojeNaCidade(),
+): Promise<Resultado<UpgradeCalculado>> {
+  const s = contexto.assinatura;
+  if (!s || !["publicado", "pausado"].includes(contexto.anunciante.status)) {
+    return falha("CONFLITO", "O anunciante precisa estar no ar, com o plano pago em dia, para mudar de plano.");
+  }
+  const proposta = contexto.proposta;
+  if (proposta) {
+    if (proposta.tipo !== "upgrade") return falha("CONFLITO", "Esta proposta é de assinatura: registre pela tela de pagamento do plano.");
+    if (proposta.situacao !== "aceita") return falha("CONFLITO", "A proposta precisa estar aceita pelo anunciante.");
+    if (hoje > proposta.expiraEm) return falha("CONFLITO", "A proposta venceu: o representante precisa fazer outra.");
+  }
+  const planoId = proposta?.planoId ?? escolha.planoId;
+  const atual = contexto.planos.find((p) => p.id === s.planoId);
+  const catalogo = contexto.planos.find((p) => p.id === planoId);
+  if (!atual || !catalogo) return falha("DADOS_INVALIDOS", "Escolha um plano pago deste tipo de anunciante.");
+  const novo = proposta ? { ...planoDaProposta(proposta), nome: catalogo.nome } : catalogo;
+  if (novo.valorMensalCentavos <= atual.valorMensalCentavos) {
+    return falha("DADOS_INVALIDOS", "O plano novo precisa ser maior que o atual. Para um menor, agende a redução.");
+  }
+  if (escolha.pagoEm > hoje) return falha("DADOS_INVALIDOS", "O dia do pagamento não pode ser depois de hoje.");
+  if (escolha.pagoEm >= s.venceEm) return falha("DADOS_INVALIDOS", "No dia do vencimento ou depois, registre a renovação já no plano novo.");
+
+  const regras = await obterRegrasCobranca();
+  const inicio = extra.periodoInicio ?? s.ancora;
+  const fundadorDesde = contexto.anunciante.fundadorDesde;
+  const rep = proposta ? contexto.representante : null;
+  const diferenca = rep?.recebeComissao
+    ? diferencaParaComissao({
+        mensalidadeNovaCentavos: novo.valorMensalCentavos,
+        mensalidadeAtualCentavos: atual.valorMensalCentavos,
+        maiorComissionadaCentavos: extra.maiorComissionadaCentavos,
+      })
+    : 0;
+  const faixa =
+    rep && diferenca > 0
+      ? { representanteId: rep.id, codigo: rep.codigo, diferencaMensalCentavos: diferenca, descontoCentavos: proposta!.descontoCentavos }
+      : null;
+  try {
+    const calculado = calcularPagamentoUpgrade({
+      planoAtual: atual,
+      planoNovo: novo,
+      periodicidade: s.periodicidade,
+      periodo: { inicio, venceEm: s.venceEm },
+      pagoEm: escolha.pagoEm,
+      confirmadoEm: hoje,
+      percentualFundador: fundadorDesde ? percentualFundadorNoAno(regras.escalaDescontoFundador, anoComoFundador(fundadorDesde, inicio)) : 0,
+      faixa: faixa ? { id: "nova", diferencaMensalCentavos: diferenca, parcelasPagas: 0, concluida: false, descontoCentavos: faixa.descontoCentavos } : null,
+      carteira: contexto.carteira ? { percentual: contexto.carteira.percentual } : null,
+    });
+    if (calculado.valorCobradoCentavos <= 0) return falha("DADOS_INVALIDOS", "O desconto não pode zerar o pagamento.");
+    return {
+      ok: true,
+      dados: { ...calculado, planoAtual: atual, planoNovo: novo, periodicidade: s.periodicidade, periodo: { inicio, venceEm: s.venceEm }, faixa },
+    };
+  } catch (e) {
+    if (e instanceof RangeError) return falha("DADOS_INVALIDOS", e.message);
+    throw e;
+  }
+}
+
+export async function registrarUpgrade(
+  supabase: SupabaseClient,
+  contexto: ContextoPagamento,
+  extra: { periodoInicio: string | null; maiorComissionadaCentavos: number },
+  form: FormData,
+  comprovante: Uint8Array | null,
+  origemDoSite: string,
+): Promise<Resultado<{ id: string }>> {
+  const campo = (nome: string) => {
+    const v = form.get(nome);
+    return typeof v === "string" ? v.slice(0, 400) : undefined;
+  };
+  const lido = esquemaPagamento.safeParse({
+    planoId: campo("plano"),
+    periodicidade: contexto.assinatura?.periodicidade,
+    pagoEm: campo("pago_em"),
+    forma: campo("forma"),
+    parcelas: campo("parcelas") || "1",
+    codigoAutorizacao: campo("codigo_autorizacao"),
+    observacao: campo("observacao"),
+  });
+  if (!lido.success) return falha("DADOS_INVALIDOS", lido.error.issues[0]!.message, mensagensPorCampo(lido.error));
+  const dados = lido.data;
+  const calculado = await calcularUpgrade(contexto, extra, { planoId: dados.planoId, pagoEm: dados.pagoEm });
+  if (!calculado.ok) return calculado;
+  const c = calculado.dados;
+
+  let caminho = "";
+  if (comprovante && comprovante.length > 0) {
+    const guardado = await guardarComprovante(supabase, contexto.anunciante.id, comprovante);
+    if (!guardado.ok) return guardado;
+    caminho = guardado.dados;
+  }
+  const parcela = c.parcela;
+  const { data, error } = await supabase.rpc("registrar_pagamento_upgrade", {
+    p_anunciante: contexto.anunciante.id,
+    p_plano: c.planoNovo.id,
+    p_proposta: contexto.proposta?.id ?? null,
+    p_vence_atual: c.periodo.venceEm,
+    p_valor: c.valorCentavos,
+    p_desconto_representante: c.descontoRepresentanteCentavos,
+    p_forma: dados.forma,
+    p_parcelas: dados.parcelas,
+    p_codigo_autorizacao: dados.codigoAutorizacao,
+    p_pago_em: dados.pagoEm,
+    p_confirmado_em: hojeNaCidade(),
+    p_comprovante: caminho,
+    p_observacao: dados.observacao,
+    p_faixa: c.faixa
+      ? {
+          representante: c.faixa.representanteId,
+          diferenca: c.faixa.diferencaMensalCentavos,
+          desconto: c.faixa.descontoCentavos,
+          parcelasPagasDepois: parcela?.parcelasPagasDepois ?? 0,
+          concluida: parcela?.concluida ?? false,
+          base: parcela?.comissao?.baseCentavos ?? null,
+          percentual: parcela?.comissao?.percentual ?? null,
+          valor: parcela?.comissao?.valorCentavos ?? null,
+        }
+      : null,
+    p_libera_em: c.comissaoLiberaEm,
+    p_carteira_representante: c.comissaoCarteira ? contexto.carteira!.representanteId : null,
+    p_carteira_base: c.comissaoCarteira?.baseCentavos ?? null,
+    p_carteira_percentual: c.comissaoCarteira?.percentual ?? null,
+    p_carteira_valor: c.comissaoCarteira?.valorCentavos ?? null,
+  });
+  if (error) {
+    if (caminho) await apagarComprovante(supabase, caminho);
+    return mensagemDoBanco(error, "registrarUpgrade");
+  }
+  await limparPerfilDoCache(origemDoSite, contexto.anunciante.slug);
+  return { ok: true, dados: { id: data as string } };
+}
+
+/** Agenda (ou desfaz, com planoId vazio) a redução para o próximo vencimento (decisão S2). */
+export async function agendarReducao(supabase: SupabaseClient, anuncianteId: string, planoId: string): Promise<Resultado<null>> {
+  if (!UUID.test(anuncianteId) || (planoId !== "" && !UUID.test(planoId))) return falha("DADOS_INVALIDOS", "Escolha um plano.");
+  const { error } = await supabase.rpc("agendar_reducao", { p_anunciante: anuncianteId, p_plano: planoId || null });
+  if (error) return mensagemDoBanco(error, "agendarReducao");
   return { ok: true, dados: null };
 }
