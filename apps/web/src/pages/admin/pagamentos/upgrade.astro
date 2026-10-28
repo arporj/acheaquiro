@@ -1,0 +1,223 @@
+---
+// Mudança para um plano maior no meio do período (plano 3B.1): o anunciante
+// paga a diferença proporcional até o vencimento, que não muda, e o plano muda
+// na hora. Com a proposta aceita de um representante, vale o preço travado nela
+// e a comissão fica na faixa dele (decisões S4, S7 e S8). O servidor calcula
+// tudo de novo no registro.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { calcularUpgrade, hojeNaCidade, lerContexto, registrarUpgrade } from "@/lib/pagamentos";
+import { formatarCentavos } from "@/lib/precos";
+import { lerContextoProposta } from "@/lib/propostas";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const anuncianteId = Astro.url.searchParams.get("anunciante") ?? "";
+const propostaId = Astro.url.searchParams.get("proposta");
+/** Comprovante de até 5 MB mais os campos de texto. */
+const TAMANHO_MAXIMO_PEDIDO = 5 * 1024 * 1024 + 64 * 1024;
+
+const [contexto, daProposta] = await Promise.all([lerContexto(supabase, anuncianteId, propostaId), lerContextoProposta(supabase, anuncianteId)]);
+if (!contexto.ok && contexto.erro.codigo === "NAO_ENCONTRADO") return new Response(null, { status: 404 });
+let erro = !contexto.ok ? contexto.erro.mensagem : !daProposta.ok ? daProposta.erro.mensagem : "";
+const extra = daProposta.ok
+  ? { periodoInicio: daProposta.dados.assinatura?.periodoInicio ?? null, maiorComissionadaCentavos: daProposta.dados.maiorComissionadaCentavos }
+  : null;
+let campos: Record<string, string> = {};
+let enviado: FormData | null = null;
+
+if (Astro.request.method === "POST" && contexto.ok && extra) {
+  const tamanho = Number(Astro.request.headers.get("content-length") ?? "0");
+  if (!tamanho || tamanho > TAMANHO_MAXIMO_PEDIDO) {
+    erro = "Envio maior que o permitido (comprovante de até 5 MB).";
+    Astro.response.status = 400;
+  } else {
+    enviado = await Astro.request.formData();
+    const arquivo = enviado.get("comprovante");
+    const comprovante = arquivo instanceof File && arquivo.size > 0 ? new Uint8Array(await arquivo.arrayBuffer()) : null;
+    const r = await registrarUpgrade(supabase, contexto.dados, extra, enviado, comprovante, Astro.url.origin);
+    if (r.ok) return Astro.redirect(`/admin/pagamentos/${r.dados.id}?aviso=registrado`, 303);
+    erro = r.erro.mensagem;
+    campos = r.erro.campos ?? {};
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  }
+}
+
+const ctx = contexto.ok ? contexto.dados : null;
+const hoje = hojeNaCidade();
+const valor = (nome: string) => {
+  const v = (enviado ?? Astro.url.searchParams).get(nome);
+  return typeof v === "string" ? v.slice(0, 40) : "";
+};
+const atual = ctx?.assinatura ? ctx.planos.find((p) => p.id === ctx.assinatura!.planoId) : undefined;
+const maiores = ctx ? ctx.planos.filter((p) => p.valorMensalCentavos > (atual?.valorMensalCentavos ?? Infinity)) : [];
+const planoId = ctx?.proposta?.planoId ?? (valor("plano") || maiores[0]?.id || "");
+const pagoEm = valor("pago_em") || hoje;
+const calculado = ctx && extra && planoId ? await calcularUpgrade(ctx, extra, { planoId, pagoEm }) : null;
+if (calculado && !calculado.ok) erro ||= calculado.erro.mensagem;
+const c = calculado?.ok ? calculado.dados : null;
+const valorEnviado = (nome: string) => (enviado?.get(nome) as string | null) ?? "";
+const forma = valorEnviado("forma") || "pix";
+const caixa = "rounded-xl bg-fundo p-3";
+const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
+---
+
+<PaginaAdmin titulo="Mudar para um plano maior" descricao={ctx?.anunciante.nome}>
+  <p class="mt-2 text-sm"><a href={`/admin/anunciantes/${anuncianteId}`} class="font-bold text-azul-600 hover:underline">← Anunciante</a></p>
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  {
+    ctx && (
+      <>
+        <section class={secao}>
+          <div class="grid gap-3 text-sm sm:grid-cols-3">
+            <div class={caixa}>
+              <p class="font-bold text-azul-900">Plano atual</p>
+              <p>{atual ? `${atual.nome} (${ctx.assinatura!.periodicidade})` : "Sem assinatura"}</p>
+              {ctx.assinatura && <p>Vence em {formatarData(ctx.assinatura.venceEm)}</p>}
+            </div>
+            <div class={caixa}>
+              <p class="font-bold text-azul-900">Proposta</p>
+              <p>
+                {ctx.proposta
+                  ? `${ctx.proposta.representante}, aceita, válida até ${formatarData(ctx.proposta.expiraEm)}`
+                  : "Sem proposta: pedido do próprio anunciante, sem comissão de venda"}
+              </p>
+            </div>
+            <div class={caixa}>
+              <p class="font-bold text-azul-900">Carteira</p>
+              <p>{ctx.carteira ? `${ctx.carteira.codigo} (${ctx.carteira.percentual}%)` : "Sem carteira"}</p>
+            </div>
+          </div>
+
+          <form method="get" class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+            <input type="hidden" name="anunciante" value={ctx.anunciante.id} />
+            {ctx.proposta && <input type="hidden" name="proposta" value={ctx.proposta.id} />}
+            <div>
+              <label for="plano" class={classesRotulo}>Plano novo</label>
+              <select id="plano" name="plano" required disabled={!!ctx.proposta} class={classesCampo}>
+                {maiores.map((p) => (
+                  <option value={p.id} selected={p.id === planoId}>
+                    {p.nome} ({formatarCentavos(p.valorMensalCentavos)} por mês)
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label for="pago_em" class={classesRotulo}>Pago em</label>
+              <input id="pago_em" type="date" name="pago_em" value={pagoEm} max={hoje} required class={classesCampo} />
+            </div>
+            <button type="submit" class={classesBotao("contorno", "m")}>Calcular</button>
+          </form>
+        </section>
+
+        {c && (
+          <>
+            <section class={secao}>
+              <p class="text-sm font-bold text-azul-900">Valor a receber agora</p>
+              <p class="font-display text-3xl font-extrabold text-azul-900">{formatarCentavos(c.valorCobradoCentavos)}</p>
+              {c.descontoRepresentanteCentavos > 0 && (
+                <p class="text-sm text-slate-600">
+                  {formatarCentavos(c.valorCentavos)} com {formatarCentavos(c.descontoRepresentanteCentavos)} de desconto do representante
+                </p>
+              )}
+              <ul class="mt-3 space-y-1 text-sm text-slate-700">
+                <li>
+                  Diferença do {c.planoAtual.nome} para o {c.planoNovo.nome} de {formatarData(pagoEm)} até {formatarData(c.periodo.venceEm)}. O plano muda na
+                  hora; o vencimento continua o mesmo.
+                </li>
+                <li>
+                  {c.faixa
+                    ? c.parcela?.comissao
+                      ? `Comissão de ${c.faixa.codigo}: ${formatarCentavos(c.parcela.comissao.valorCentavos)}, liberada em ${formatarData(c.comissaoLiberaEm!)}`
+                      : `Comissão de ${c.faixa.codigo} (sobre ${formatarCentavos(c.faixa.diferencaMensalCentavos)} de diferença por mês): sai a partir da próxima renovação, quando o pagamento a cobre`
+                    : ctx.proposta
+                      ? "Sem comissão de venda: o anunciante já pagou um plano igual ou maior com atendimento, ou o representante não recebe comissão"
+                      : "Sem comissão de venda"}
+                </li>
+                {c.comissaoCarteira && ctx.carteira && (
+                  <li>
+                    Carteira de {ctx.carteira.codigo}: {formatarCentavos(c.comissaoCarteira.valorCentavos)}, liberada em {formatarData(c.comissaoLiberaEm!)}
+                  </li>
+                )}
+              </ul>
+            </section>
+
+            <form method="post" enctype="multipart/form-data" class={secao} data-form-pagamento>
+              <input type="hidden" name="plano" value={c.planoNovo.id} />
+              <input type="hidden" name="pago_em" value={pagoEm} />
+
+              <fieldset>
+                <legend class="text-sm font-bold text-azul-900">Forma de pagamento</legend>
+                <div class="mt-2 flex flex-wrap gap-4">
+                  {(["pix", "debito", "credito"] as const).map((f) => (
+                    <label class="flex items-center gap-2 font-semibold">
+                      <input type="radio" name="forma" value={f} checked={forma === f} data-forma class="size-4 accent-azul-600" />
+                      {f === "pix" ? "Pix" : f === "debito" ? "Débito na maquininha" : "Crédito na maquininha"}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <div class="mt-3 grid gap-3 sm:grid-cols-2" data-so-cartao>
+                <div data-so-credito>
+                  <label for="parcelas" class={classesRotulo}>Parcelas</label>
+                  <select id="parcelas" name="parcelas" class={classesCampo}>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                      <option value={n} selected={String(n) === (valorEnviado("parcelas") || "1")}>
+                        {n === 1 ? "À vista" : `${n}x`}
+                      </option>
+                    ))}
+                  </select>
+                  {campos.parcelas && <p class={classesErroCampo}>{campos.parcelas}</p>}
+                </div>
+                <div>
+                  <label for="codigo_autorizacao" class={classesRotulo}>Código de autorização</label>
+                  <input id="codigo_autorizacao" name="codigo_autorizacao" maxlength="20" value={valorEnviado("codigo_autorizacao")} class={classesCampo} />
+                  {campos.codigoAutorizacao && <p class={classesErroCampo}>{campos.codigoAutorizacao}</p>}
+                </div>
+              </div>
+
+              <label for="escolher-comprovante" class={classesRotulo}>Comprovante (opcional)</label>
+              <input id="escolher-comprovante" type="file" accept="image/*,application/pdf" data-escolher-comprovante class={classesCampo} />
+              <input type="file" name="comprovante" data-comprovante-pronto hidden />
+              <p class="mt-1 text-xs font-bold text-vermelho-700" data-erro-comprovante hidden />
+
+              <label for="observacao" class={classesRotulo}>Observação (opcional)</label>
+              <input id="observacao" name="observacao" maxlength="300" value={valorEnviado("observacao")} class={classesCampo} />
+
+              <button type="submit" class={classesBotao("zap", "g", "mt-5 w-full")}>
+                <Icone nome="certo" class="size-5" />
+                Registrar e mudar para o {c.planoNovo.nome}
+              </button>
+            </form>
+          </>
+        )}
+      </>
+    )
+  }
+</PaginaAdmin>
+
+<script>
+  import { ligarComprovante } from "@/lib/comprovante";
+
+  const form = document.querySelector<HTMLFormElement>("[data-form-pagamento]");
+  if (form) {
+    ligarComprovante(form);
+    const cartao = form.querySelector<HTMLElement>("[data-so-cartao]")!;
+    const credito = form.querySelector<HTMLElement>("[data-so-credito]")!;
+    const parcelas = form.querySelector<HTMLSelectElement>("#parcelas")!;
+    const atualizar = () => {
+      const forma = form.querySelector<HTMLInputElement>("[data-forma]:checked")?.value ?? "pix";
+      cartao.hidden = forma === "pix";
+      credito.hidden = forma !== "credito";
+      // Campo escondido não vai no envio: Pix sem código e débito sempre à vista.
+      for (const campo of cartao.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input, select")) campo.disabled = forma === "pix";
+      parcelas.disabled = forma !== "credito";
+    };
+    for (const radio of form.querySelectorAll("[data-forma]")) radio.addEventListener("change", atualizar);
+    atualizar();
+  }
+</script>

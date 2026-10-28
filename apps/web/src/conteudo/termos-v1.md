@@ -87,15 +87,21 @@ Profissionais de saúde, médicos-veterinários, advogados e demais profissões 
 ### 7.2 Pagamento
 
 - O plano pode ser pago por mês ou por ano. O plano anual é pago de uma vez e vale por 12 meses.
-- Enquanto o pagamento automático pelo site não estiver disponível, o pagamento é feito por Pix para a chave informada na área do anunciante, com o envio do comprovante pela própria área. O plano começa a valer quando a equipe confirma o pagamento.
+- Enquanto o pagamento automático pelo site não estiver disponível, o pagamento é combinado com a equipe do Ache Aqui: por Pix ou por cartão na maquininha. No cartão, a taxa da maquininha é somada ao valor e informada na hora do pagamento. O plano começa a valer quando a equipe confirma o pagamento.
 - O anunciante recebe um aviso por e-mail 7 dias antes do vencimento e outro no dia do vencimento.
 
-### 7.3 Vencimento sem pagamento
+### 7.3 Mudança de plano e propostas
+
+- Mudança para um plano maior: vale assim que o pagamento é confirmado. O anunciante paga a diferença entre os dois planos pelos dias que faltam até o vencimento, que continua no mesmo dia.
+- Mudança para um plano menor: vale a partir da renovação seguinte. Até lá, o anunciante continua no plano que já pagou. O que passar dos limites do plano menor fica oculto, sem ser apagado.
+- Um representante pode enviar ao anunciante uma proposta de assinatura ou de mudança de plano, com o valor calculado. A proposta só vale se o anunciante a aceitar na própria conta e pagar em até 7 dias, pelo preço que ela mostra.
+
+### 7.4 Vencimento sem pagamento
 
 - Perfil de profissional autônomo: fica escondido do site, sem ser apagado, até o pagamento ser confirmado.
 - Perfil de comércio: passa para o plano Gratuito, e o que passar dos limites desse plano fica oculto, sem ser apagado.
 
-### 7.4 Fundadores
+### 7.5 Fundadores
 
 - É Fundador o anunciante que paga a assinatura anual de um plano pago até 26/11/2026. Não há limite de quantidade.
 - O Fundador tem desconto nos planos pagos e nos pacotes extras (categoria adicional, pacote de fotos, encarte adicional, pacote de produtos e endereço adicional) enquanto continuar Fundador: **50% no 1º ano de assinatura, 40% no 2º, 30% no 3º, 20% no 4º e 10% no 5º**. A partir do 6º ano, o Fundador paga o valor cheio e mantém os demais benefícios deste item. O desconto não vale para os destaques nem para os links destacados.
@@ -103,10 +109,10 @@ Profissionais de saúde, médicos-veterinários, advogados e demais profissões 
 - A renovação do Fundador é sempre anual. Enquanto for Fundador, ele pode contratar pacotes extras mensais ou anuais, com o desconto.
 - O anunciante deixa de ser Fundador de vez, e perde o selo, o desconto e o lugar na Vitrine dos Fundadores, quando: renova o plano no mensal; ou a assinatura vence e a renovação anual não é paga em até 7 dias.
 
-### 7.5 Cancelamento e devolução
+### 7.6 Cancelamento e devolução
 
 - O anunciante pode cancelar a renovação a qualquer momento, pela sua área ou pela página "Fale conosco", sem multa. O plano continua valendo até o fim do período já pago.
-- Em até 7 dias depois do primeiro pagamento de um plano ou de um extra, o anunciante pode desistir da contratação e recebe de volta o valor pago, por Pix, em até 10 dias úteis.
+- Em até 7 dias depois do primeiro pagamento de um plano, de um extra ou da mudança para um plano maior, o anunciante pode desistir da contratação e recebe de volta o valor pago, por Pix, em até 10 dias úteis. Na mudança de plano, ele volta ao plano anterior até o vencimento.
 - Depois desses 7 dias, não há devolução proporcional do período restante, inclusive no plano anual.
 - Quando o perfil é suspenso por descumprimento destes Termos, não há devolução do período restante.
 

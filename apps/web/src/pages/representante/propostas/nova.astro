@@ -1,0 +1,137 @@
+---
+// Nova proposta (plano 3B.1): o representante escolhe o plano, o período (na
+// assinatura) e o desconto, vê os valores calculados pelas regras do domínio e
+// a comissão, e envia. O anunciante recebe o e-mail e aceita entrando na conta.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
+import { formatarCentavos } from "@/lib/precos";
+import { calcularProposta, criarProposta, lerContextoProposta, lerReais, tipoDaProposta } from "@/lib/propostas";
+import { lerMeuCadastro } from "@/lib/representante";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+const anuncianteId = Astro.url.searchParams.get("anunciante") ?? "";
+
+const [cadastro, contexto] = await Promise.all([lerMeuCadastro(supabase, usuario.id), lerContextoProposta(supabase, anuncianteId)]);
+if (!contexto.ok && contexto.erro.codigo === "NAO_ENCONTRADO") return new Response(null, { status: 404 });
+let erro = !cadastro.ok ? cadastro.erro.mensagem : !contexto.ok ? contexto.erro.mensagem : "";
+const recebeComissao = cadastro.ok && cadastro.dados.recebeComissao;
+
+if (Astro.request.method === "POST" && cadastro.ok && contexto.ok) {
+  const form = await Astro.request.formData();
+  const r = await criarProposta(supabase, contexto.dados, form, recebeComissao);
+  if (r.ok) return Astro.redirect("/representante/propostas?aviso=enviada", 303);
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const ctx = contexto.ok ? contexto.dados : null;
+const tipo = ctx ? await tipoDaProposta(ctx) : null;
+const atual = ctx?.assinatura ? ctx.planos.find((p) => p.id === ctx.assinatura!.planoId) : undefined;
+const opcoes = ctx ? ctx.planos.filter((p) => tipo === "assinatura" || p.valorMensalCentavos > (atual?.valorMensalCentavos ?? 0)) : [];
+const planoId = Astro.url.searchParams.get("plano") ?? "";
+const periodicidade = Astro.url.searchParams.get("periodicidade") === "anual" ? "anual" : "mensal";
+const descontoTexto = (Astro.url.searchParams.get("desconto") ?? "").slice(0, 12);
+const plano = opcoes.find((p) => p.id === planoId);
+const desconto = lerReais(descontoTexto);
+const valores =
+  ctx && plano && desconto !== null && cadastro.ok
+    ? await calcularProposta(ctx, { plano, periodicidade, descontoCentavos: desconto, recebeComissao })
+    : null;
+if (descontoTexto && desconto === null) erro ||= "Desconto inválido: use reais e centavos, como 10,00.";
+if (valores && !valores.ok) erro ||= valores.erro.mensagem;
+const v = valores?.ok ? valores.dados : null;
+const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
+const porPeriodo = (p: "mensal" | "anual") => (p === "anual" ? "por ano" : "por mês");
+---
+
+<PaginaRepresentante titulo="Nova proposta" descricao={ctx?.anunciante.nome}>
+  <p class="mt-2 text-sm"><a href="/representante/propostas" class="font-bold text-azul-600 hover:underline">← Propostas</a></p>
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  {
+    ctx && tipo && (
+      <>
+        <section class={secao}>
+          <p class="text-sm text-slate-700">
+            {tipo === "upgrade"
+              ? `Hoje no ${atual?.nome ?? "plano atual"} (${ctx.assinatura!.periodicidade}), com vencimento em ${formatarData(ctx.assinatura!.venceEm)}. A mudança vale na hora: o anunciante paga agora a diferença proporcional até o vencimento, que não muda.`
+              : "Sem plano pago em dia: a proposta é de assinatura, paga por inteiro no começo do período."}
+          </p>
+          {opcoes.length === 0 && <p class="mt-2 font-bold text-azul-900">O anunciante já está no maior plano.</p>}
+          {opcoes.length > 0 && (
+            <form method="get" class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] sm:items-end">
+              <input type="hidden" name="anunciante" value={ctx.anunciante.id} />
+              <div>
+                <label for="plano" class={classesRotulo}>Plano</label>
+                <select id="plano" name="plano" required class={classesCampo}>
+                  {opcoes.map((p) => (
+                    <option value={p.id} selected={p.id === planoId}>
+                      {p.nome} ({formatarCentavos(p.valorMensalCentavos)} por mês)
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {tipo === "assinatura" && (
+                <div>
+                  <label for="periodicidade" class={classesRotulo}>Período</label>
+                  <select id="periodicidade" name="periodicidade" class={classesCampo}>
+                    <option value="mensal" selected={periodicidade === "mensal"}>Mensal</option>
+                    <option value="anual" selected={periodicidade === "anual"}>Anual</option>
+                  </select>
+                </div>
+              )}
+              <div>
+                <label for="desconto" class={classesRotulo}>Seu desconto (R$)</label>
+                <input id="desconto" name="desconto" inputmode="decimal" placeholder="0,00" value={descontoTexto} class={classesCampo} />
+              </div>
+              <button type="submit" class={classesBotao("contorno", "m")}>Calcular</button>
+            </form>
+          )}
+        </section>
+
+        {v && (
+          <section class={secao}>
+            <p class="text-sm font-bold text-azul-900">O que o anunciante vê na proposta</p>
+            <ul class="mt-2 space-y-1 text-sm text-slate-700">
+              <li>
+                {v.tipo === "upgrade" ? "Agora, a diferença até o vencimento: " : "Primeiro pagamento: "}
+                <strong>{formatarCentavos(v.agora.cobradoCentavos)}</strong>
+                {v.agora.descontoCentavos > 0 && ` (${formatarCentavos(v.agora.valorCentavos)} com o seu desconto de ${formatarCentavos(v.agora.descontoCentavos)})`}
+              </li>
+              {v.proximo && (
+                <li>
+                  No vencimento de {formatarData(v.proximo.venceEm)}, já no plano novo: <strong>{formatarCentavos(v.proximo.cobradoCentavos)}</strong>
+                  {v.proximo.descontoCentavos > 0 && ` (${formatarCentavos(v.proximo.valorCentavos)} com o seu desconto de ${formatarCentavos(v.proximo.descontoCentavos)})`}
+                </li>
+              )}
+              <li>
+                Renovações, pelo preço cheio: <strong>{formatarCentavos(v.renovacaoCentavos)}</strong> {porPeriodo(v.periodicidade)}
+              </li>
+            </ul>
+            <p class="mt-3 text-sm text-slate-700">
+              {v.comissaoEm
+                ? `Sua comissão ${v.comissaoEm === "agora" ? "neste pagamento" : "no próximo vencimento"}: ${formatarCentavos(v.comissaoCentavos - desconto!)} (${formatarCentavos(v.comissaoCentavos)} menos o desconto). O desconto pode ir até ${formatarCentavos(v.descontoMaximoCentavos)}.`
+                : recebeComissao
+                  ? "Esta proposta não gera comissão de venda (o anunciante já pagou um plano igual ou maior com atendimento)."
+                  : "Você não recebe comissão por enquanto."}
+            </p>
+            <p class="mt-1 text-xs text-slate-500">A proposta vale 7 dias para o anunciante aceitar e pagar, com este preço.</p>
+            <form method="post" class="mt-4">
+              <input type="hidden" name="plano" value={v.plano.id} />
+              <input type="hidden" name="periodicidade" value={v.periodicidade} />
+              <input type="hidden" name="desconto" value={descontoTexto} />
+              <button type="submit" class={classesBotao("zap", "g", "w-full")}>
+                <Icone nome="certo" class="size-5" />
+                Enviar a proposta por e-mail
+              </button>
+            </form>
+          </section>
+        )}
+      </>
+    )
+  }
+</PaginaRepresentante>

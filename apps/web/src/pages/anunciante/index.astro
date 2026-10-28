@@ -13,7 +13,10 @@ import { enviarParaAnalise, lerMeuCadastro, representanteDoCadastro } from "@/li
 import { ROTULO_SITUACAO, lerOpcoes } from "@/lib/anunciantesAdmin";
 import { formatarTelefone, mensagemEquipe } from "@/lib/contato";
 import { DOCUMENTOS, enderecoDocumento } from "@/lib/documentosLegais";
+import { hojeNaCidade } from "@/lib/pagamentos";
 import { textoValorPlano } from "@/lib/precos";
+import { ROTULO_PROPOSTA, listarPropostas, situacaoVisivel } from "@/lib/propostas";
+import { formatarData } from "@/lib/texto";
 
 const supabase = Astro.locals.supabase!;
 const usuario = Astro.locals.usuario!;
@@ -49,6 +52,11 @@ const [opcoes, representante] = await Promise.all([
   conferir && cadastro ? representanteDoCadastro(supabase, cadastro.id) : Promise.resolve(null),
 ]);
 if (opcoes && !opcoes.ok) erro ||= opcoes.erro.mensagem;
+// Propostas dos representantes ainda abertas (plano 3B.1).
+const propostas = cadastro && !conferir ? await listarPropostas(supabase, { anuncianteId: cadastro.id }) : null;
+if (propostas && !propostas.ok) erro ||= propostas.erro.mensagem;
+const hoje = hojeNaCidade();
+const abertas = propostas?.ok ? propostas.dados.filter((p) => ["aguardando_aceite", "aceita"].includes(situacaoVisivel(p, hoje))) : [];
 if (representante && !representante.ok) erro ||= representante.erro.mensagem;
 
 // Nomes para o resumo do cadastro.
@@ -211,6 +219,27 @@ const privacidade = DOCUMENTOS.privacidade;
           </LinkContatoEquipe>
         </p>
       </div>
+    )
+  }
+
+  {
+    abertas.length > 0 && (
+      <section class="mt-6 rounded-2xl bg-amarelo-200/60 p-5 ring-1 ring-amarelo-400">
+        <h2 class="font-display text-xl font-bold text-azul-900">Propostas para você</h2>
+        <ul class="mt-2 space-y-2">
+          {abertas.map((p) => (
+            <li>
+              <a href={`/anunciante/proposta/${p.id}`} class="font-bold text-azul-600 hover:underline">
+                {p.tipo === "upgrade" ? `Mudança para o plano ${p.plano}` : `Plano ${p.plano}, ${p.periodicidade}`}
+              </a>
+              <span class="text-sm text-slate-600">
+                {" "}
+                · de {p.representante} · {ROTULO_PROPOSTA[situacaoVisivel(p, hoje)]} · vale até {formatarData(p.expiraEm)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
     )
   }
 

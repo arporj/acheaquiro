@@ -1,0 +1,163 @@
+---
+// Proposta do representante na área do anunciante (plano 3B.1, decisão S3: o
+// aceite é com a conta aberta). Mostra o que muda e os valores, calculados na
+// hora pelas regras do domínio com o preço travado na proposta; o aceite cancela
+// as outras propostas abertas. O pagamento é combinado com a equipe.
+import { Icone, Modal, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import LinkContatoEquipe from "@/components/institucional/LinkContatoEquipe.astro";
+import { mensagemEquipe } from "@/lib/contato";
+import { hojeNaCidade } from "@/lib/pagamentos";
+import { formatarCentavos } from "@/lib/precos";
+import {
+  ROTULO_PROPOSTA,
+  calcularProposta,
+  lerContextoProposta,
+  lerProposta,
+  planoDaProposta,
+  responderProposta,
+  situacaoVisivel,
+} from "@/lib/propostas";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const id = Astro.params.id ?? "";
+
+const lida = await lerProposta(supabase, id);
+if (!lida.ok && lida.erro.codigo === "NAO_ENCONTRADO") return new Response(null, { status: 404 });
+let erro = lida.ok ? "" : lida.erro.mensagem;
+
+if (Astro.request.method === "POST" && lida.ok) {
+  const form = await Astro.request.formData();
+  const resposta = form.get("resposta") === "aceitar" ? "aceitar" : "recusar";
+  const r = await responderProposta(supabase, id, resposta);
+  if (r.ok) return Astro.redirect(`/anunciante/proposta/${id}?aviso=${resposta === "aceitar" ? "aceita" : "recusada"}`, 303);
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const AVISOS: Record<string, string> = {
+  aceita: "Proposta aceita. Agora é só pagar: fale com a equipe pelo WhatsApp, por Pix ou cartão.",
+  recusada: "Proposta recusada. Nada muda no seu plano.",
+};
+const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
+const p = lida.ok ? lida.dados : null;
+const hoje = hojeNaCidade();
+const situacao = p ? situacaoVisivel(p, hoje) : null;
+const contexto = p ? await lerContextoProposta(supabase, p.anuncianteId) : null;
+// O desconto só existe com comissão; sem desconto, quem recebe não muda os valores.
+const valores =
+  p && contexto?.ok && (situacao === "aguardando_aceite" || situacao === "aceita")
+    ? await calcularProposta(
+        contexto.dados,
+        { plano: planoDaProposta(p), periodicidade: p.periodicidade, descontoCentavos: p.descontoCentavos, recebeComissao: true },
+        hoje,
+      )
+    : null;
+if (contexto && !contexto.ok) erro ||= contexto.erro.mensagem;
+if (valores && !valores.ok) erro ||= valores.erro.mensagem;
+const v = valores?.ok ? valores.dados : null;
+const secao = "mt-6 rounded-2xl bg-fundo p-5";
+const porPeriodo = (periodo: "mensal" | "anual") => (periodo === "anual" ? "por ano" : "por mês");
+---
+
+<PaginaAcesso titulo="Proposta" logado largura="larga">
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  {
+    p && situacao && (
+      <>
+        <p class="mt-2 text-slate-700">
+          {p.representante}, representante do Ache Aqui RO, propôs para <strong>{p.anunciante}</strong>{" "}
+          {p.tipo === "upgrade" ? `a mudança para o plano ${p.plano}` : `a assinatura do plano ${p.plano}, ${p.periodicidade}`}.
+        </p>
+        <p class="mt-1 text-sm font-bold text-azul-900">Situação: {ROTULO_PROPOSTA[situacao]}</p>
+
+        {v && (
+          <section class={secao}>
+            <h2 class="font-display text-lg font-bold text-azul-900">Valores</h2>
+            <ul class="mt-2 space-y-1 text-slate-700">
+              <li>
+                {v.tipo === "upgrade" ? "Agora, a diferença até o seu próximo vencimento: " : "Primeiro pagamento: "}
+                <strong>{formatarCentavos(v.agora.cobradoCentavos)}</strong>
+                {v.agora.descontoCentavos > 0 && ` (com ${formatarCentavos(v.agora.descontoCentavos)} de desconto)`}
+              </li>
+              {v.proximo && (
+                <li>
+                  No vencimento de {formatarData(v.proximo.venceEm)}, já no plano {p.plano}: <strong>{formatarCentavos(v.proximo.cobradoCentavos)}</strong>
+                  {v.proximo.descontoCentavos > 0 && ` (com ${formatarCentavos(v.proximo.descontoCentavos)} de desconto)`}
+                </li>
+              )}
+              <li>
+                Depois, <strong>{formatarCentavos(v.renovacaoCentavos)}</strong> {porPeriodo(v.periodicidade)}, pelo preço de hoje.
+              </li>
+            </ul>
+            {v.tipo === "upgrade" && (
+              <p class="mt-2 text-sm text-slate-600">
+                O plano muda assim que o pagamento for confirmado. O dia do vencimento continua o mesmo, e a diferença de agora diminui um pouco a cada dia.
+              </p>
+            )}
+            <p class="mt-2 text-sm text-slate-600">
+              Esta proposta vale até {formatarData(p.expiraEm)}, para aceitar e pagar. Depois de pagar, você tem 7 dias para desistir, com o dinheiro devolvido.
+            </p>
+          </section>
+        )}
+
+        {situacao === "aguardando_aceite" && v && (
+          <div class="mt-6 flex flex-wrap gap-3">
+            <button type="button" data-abrir-modal="modal-aceitar" class={classesBotao("zap", "g")}>
+              <Icone nome="certo" class="size-5" />
+              Aceitar a proposta
+            </button>
+            <button type="button" data-abrir-modal="modal-recusar" class={classesBotao("contorno", "g")}>
+              Recusar
+            </button>
+          </div>
+        )}
+
+        {situacao === "aceita" && (
+          <p class="mt-6">
+            <LinkContatoEquipe mensagem={mensagemEquipe(`Aceitei a proposta do plano ${p.plano} e quero pagar`)} class={classesBotao("zap", "m")}>
+              Pagar por Pix ou cartão
+            </LinkContatoEquipe>
+          </p>
+        )}
+
+        <p class="mt-6 text-sm">
+          <a href="/anunciante" class="font-bold text-azul-600 hover:underline">← Área do anunciante</a>
+        </p>
+
+        <Modal id="modal-aceitar" titulo="Aceitar a proposta">
+          <p class="text-slate-700">
+            Aceitar {p.tipo === "upgrade" ? `a mudança para o plano ${p.plano}` : `a assinatura do plano ${p.plano}`}? Depois do aceite, a equipe combina o
+            pagamento com você. As outras propostas abertas são canceladas.
+          </p>
+          <form method="post" class="mt-5 flex gap-2">
+            <input type="hidden" name="resposta" value="aceitar" />
+            <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>Voltar</button>
+            <button type="submit" class={classesBotao("zap", "m", "flex-1")}>Aceitar</button>
+          </form>
+        </Modal>
+        <Modal id="modal-recusar" titulo="Recusar a proposta">
+          <p class="text-slate-700">Recusar a proposta? Nada muda no seu plano.</p>
+          <form method="post" class="mt-5 flex gap-2">
+            <input type="hidden" name="resposta" value="recusar" />
+            <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>Voltar</button>
+            <button type="submit" class={classesBotao("perigo", "m", "flex-1")}>Recusar</button>
+          </form>
+        </Modal>
+      </>
+    )
+  }
+</PaginaAcesso>
+
+<script>
+  for (const botao of document.querySelectorAll<HTMLButtonElement>("[data-abrir-modal]")) {
+    botao.addEventListener("click", () => {
+      const dialogo = document.getElementById(botao.dataset.abrirModal ?? "");
+      if (dialogo instanceof HTMLDialogElement) dialogo.showModal();
+    });
+  }
+</script>

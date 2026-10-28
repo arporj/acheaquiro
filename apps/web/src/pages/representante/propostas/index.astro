@@ -1,0 +1,132 @@
+---
+// Propostas do representante (item 4.12, parte 5; plano 3B.1): a busca do
+// anunciante (qualquer um com conta, decisão de 23/10/2026) e as propostas
+// feitas, com a situação e o cancelamento enquanto não foram pagas.
+import { Modal, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
+import { hojeNaCidade } from "@/lib/pagamentos";
+import { formatarCentavos } from "@/lib/precos";
+import { ROTULO_PROPOSTA, buscarAnunciantes, listarPropostas, responderProposta, situacaoVisivel } from "@/lib/propostas";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const AVISOS: Record<string, string> = {
+  enviada: "Proposta enviada. O anunciante recebe um e-mail para entrar na conta, ver os valores e aceitar.",
+  cancelada: "Proposta cancelada.",
+};
+const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
+let erro = "";
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const r = await responderProposta(supabase, String(form.get("id") ?? ""), "cancelar");
+  if (r.ok) return Astro.redirect("/representante/propostas?aviso=cancelada", 303);
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const termo = (Astro.url.searchParams.get("termo") ?? "").slice(0, 80);
+const [propostas, encontrados] = await Promise.all([listarPropostas(supabase), buscarAnunciantes(supabase, termo)]);
+if (!propostas.ok) erro ||= propostas.erro.mensagem;
+if (!encontrados.ok) erro ||= encontrados.erro.mensagem;
+const hoje = hojeNaCidade();
+const cartao = "rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5";
+---
+
+<PaginaRepresentante titulo="Propostas" descricao="Assinatura para quem ainda não tem plano pago, ou um plano maior para quem já anuncia.">
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <section class={`${cartao} mt-4`}>
+    <form method="get" class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+      <div>
+        <label for="termo" class={classesRotulo}>Nova proposta: buscar o anunciante pelo nome</label>
+        <input id="termo" name="termo" minlength="2" maxlength="80" value={termo} required class={classesCampo} />
+      </div>
+      <button type="submit" class={classesBotao("contorno", "m")}>Buscar</button>
+    </form>
+    {
+      termo && encontrados.ok && (
+        <ul class="mt-3 divide-y divide-slate-100 text-sm">
+          {encontrados.dados.length === 0 && (
+            <li class="py-2 text-slate-600">Nenhum anunciante com conta encontrado. A proposta é para quem já tem conta no site.</li>
+          )}
+          {encontrados.dados.map((a) => (
+            <li class="flex items-center justify-between gap-3 py-2">
+              <span>
+                <span class="font-bold text-azul-900">{a.nome}</span>
+                <span class="text-slate-500"> · {a.tipo === "comercio" ? "comércio" : "autônomo"} · {a.plano ?? "sem plano"}</span>
+              </span>
+              <a href={`/representante/propostas/nova?anunciante=${a.id}`} class={classesBotao("azul", "p")}>
+                Propor
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+
+  <section class="mt-6">
+    <h2 class="font-display text-lg font-bold text-azul-900">Suas propostas</h2>
+    {
+      propostas.ok && propostas.dados.length === 0 && (
+        <p class={`${cartao} mt-2 text-slate-600`}>Nenhuma proposta ainda.</p>
+      )
+    }
+    {
+      propostas.ok && propostas.dados.length > 0 && (
+        <ul class="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white text-sm shadow-sm ring-1 ring-black/5">
+          {propostas.dados.map((p) => {
+            const situacao = situacaoVisivel(p, hoje);
+            return (
+              <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
+                <span class="min-w-0 flex-1">
+                  <span class="block font-bold text-azul-900">{p.anunciante}</span>
+                  <span class="block text-xs text-slate-500">
+                    {p.tipo === "upgrade" ? "Mudança para o" : "Assinatura do"} {p.plano} ({p.periodicidade})
+                    {p.descontoCentavos > 0 && ` · desconto de ${formatarCentavos(p.descontoCentavos)}`} · feita em {formatarData(p.criadaEm.slice(0, 10))}
+                    {(situacao === "aguardando_aceite" || situacao === "aceita") && ` · vale até ${formatarData(p.expiraEm)}`}
+                  </span>
+                </span>
+                <span class="rounded-full bg-fundo px-2 py-0.5 text-xs font-extrabold text-azul-900">{ROTULO_PROPOSTA[situacao]}</span>
+                {(situacao === "aguardando_aceite" || situacao === "aceita") && (
+                  <button type="button" data-abrir-modal={`cancelar-${p.id}`} class={classesBotao("contorno", "p")}>
+                    Cancelar
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )
+    }
+  </section>
+
+  {
+    propostas.ok &&
+      propostas.dados
+        .filter((p) => ["aguardando_aceite", "aceita"].includes(situacaoVisivel(p, hoje)))
+        .map((p) => (
+          <Modal id={`cancelar-${p.id}`} titulo="Cancelar a proposta">
+            <p class="text-slate-700">Cancelar a proposta do {p.plano} para {p.anunciante}? O anunciante não poderá mais aceitá-la.</p>
+            <form method="post" class="mt-5 flex gap-2">
+              <input type="hidden" name="id" value={p.id} />
+              <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>Voltar</button>
+              <button type="submit" class={classesBotao("perigo", "m", "flex-1")}>Cancelar a proposta</button>
+            </form>
+          </Modal>
+        ))
+  }
+</PaginaRepresentante>
+
+<script>
+  for (const botao of document.querySelectorAll<HTMLButtonElement>("[data-abrir-modal]")) {
+    botao.addEventListener("click", () => {
+      const dialogo = document.getElementById(botao.dataset.abrirModal ?? "");
+      if (dialogo instanceof HTMLDialogElement) dialogo.showModal();
+    });
+  }
+</script>

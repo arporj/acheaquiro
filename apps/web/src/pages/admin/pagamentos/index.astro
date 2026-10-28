@@ -6,22 +6,31 @@ import { Icone, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo } from "@/components/conta/estilos";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
-import { ROTULO_FORMA, lerMes, listarAguardando, listarDoMes, listarEmAtraso } from "@/lib/pagamentos";
+import { ROTULO_FORMA, hojeNaCidade, lerMes, listarAguardando, listarDoMes, listarEmAtraso } from "@/lib/pagamentos";
 import { formatarCentavos } from "@/lib/precos";
+import { listarPropostas } from "@/lib/propostas";
 import { formatarData } from "@/lib/texto";
 
 const supabase = Astro.locals.supabase!;
 const pedida = Astro.url.searchParams.get("aba");
-const aba = pedida === "mes" || pedida === "atraso" ? pedida : "aguardando";
+const aba = pedida === "mes" || pedida === "atraso" || pedida === "propostas" ? pedida : "aguardando";
 const mes = lerMes(Astro.url.searchParams.get("mes"));
 
-const [aguardando, emAtraso, doMes] = await Promise.all([
+const [aguardando, emAtraso, propostas, doMes] = await Promise.all([
   listarAguardando(supabase),
   listarEmAtraso(supabase),
+  listarPropostas(supabase, { situacao: "aceita" }),
   aba === "mes" ? listarDoMes(supabase, mes) : Promise.resolve(null),
 ]);
 const erro =
-  (!aguardando.ok && aguardando.erro.mensagem) || (!emAtraso.ok && emAtraso.erro.mensagem) || (doMes && !doMes.ok && doMes.erro.mensagem) || "";
+  (!aguardando.ok && aguardando.erro.mensagem) ||
+  (!emAtraso.ok && emAtraso.erro.mensagem) ||
+  (!propostas.ok && propostas.erro.mensagem) ||
+  (doMes && !doMes.ok && doMes.erro.mensagem) ||
+  "";
+// Propostas aceitas e ainda no prazo de 7 dias para pagar (plano 3B.1).
+const hoje = hojeNaCidade();
+const aceitas = propostas.ok ? propostas.dados.filter((p) => p.expiraEm >= hoje) : [];
 const fila = aguardando.ok ? aguardando.dados : [];
 const atrasados = emAtraso.ok ? emAtraso.dados : [];
 const nomeMes = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${mes}-01T12:00:00Z`));
@@ -40,8 +49,50 @@ const abaClasse =
     <a href="/admin/pagamentos?aba=atraso" aria-current={aba === "atraso" ? "page" : undefined} class={abaClasse}>
       Em atraso <span class="ml-1 opacity-75">{atrasados.length}</span>
     </a>
+    <a href="/admin/pagamentos?aba=propostas" aria-current={aba === "propostas" ? "page" : undefined} class={abaClasse}>
+      Propostas aceitas <span class="ml-1 opacity-75">{aceitas.length}</span>
+    </a>
     <a href="/admin/pagamentos?aba=mes" aria-current={aba === "mes" ? "page" : undefined} class={abaClasse}>Pagamentos do mês</a>
   </nav>
+
+  {
+    aba === "propostas" && (
+      <>
+        <p class="mt-4 text-sm text-slate-600">
+          Propostas dos representantes aceitas pelo anunciante. O pagamento precisa ser registrado até o último dia da proposta, com o preço e o desconto
+          dela; depois disso, o representante faz outra.
+        </p>
+        {aceitas.length === 0 && !erro && <p class="mt-2 rounded-2xl bg-white p-6 text-center text-slate-500 ring-1 ring-black/5">Nenhuma proposta aceita.</p>}
+        <ul class="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+          {aceitas.map((p) => (
+            <li class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+              <span class="min-w-0 flex-1">
+                <a href={`/admin/anunciantes/${p.anuncianteId}`} class="block truncate font-bold text-azul-900 hover:underline">
+                  {p.anunciante}
+                </a>
+                <span class="block truncate text-xs text-slate-500">
+                  {p.tipo === "upgrade" ? "Mudança para o" : "Assinatura do"} {p.plano} ({p.periodicidade}) · de {p.representante}
+                  {p.descontoCentavos > 0 && ` · desconto de ${formatarCentavos(p.descontoCentavos)}`}
+                </span>
+              </span>
+              <span class={`${etiqueta} bg-amarelo-200 text-azul-900`}>Paga até {formatarData(p.expiraEm)}</span>
+              <a
+                href={
+                  p.tipo === "upgrade"
+                    ? `/admin/pagamentos/upgrade?anunciante=${p.anuncianteId}&proposta=${p.id}`
+                    : `/admin/pagamentos/registrar?anunciante=${p.anuncianteId}&proposta=${p.id}`
+                }
+                class={classesBotao("azul", "p")}
+              >
+                <Icone nome="dinheiro" class="size-4" />
+                Registrar pagamento
+              </a>
+            </li>
+          ))}
+        </ul>
+      </>
+    )
+  }
 
   {
     aba === "atraso" && (

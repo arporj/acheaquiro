@@ -344,7 +344,7 @@ export async function salvarExtra(supabase: SupabaseClient, id: string, form: Fo
  * (decisão de 28/10/2026).
  */
 export const DOCUMENTOS_DA_ESCALA = [
-  "Termos de Uso, item 7.4 (apps/web/src/conteudo/termos-v1.md e a cópia em docs/Juridico). Se alguém já aceitou a versão atual, a mudança sai numa versão nova, que todos aceitam de novo.",
+  "Termos de Uso, item 7.5 (apps/web/src/conteudo/termos-v1.md e a cópia em docs/Juridico). Se alguém já aceitou a versão atual, a mudança sai numa versão nova, que todos aceitam de novo.",
   "Especificação funcional (docs): objetivo, itens 4.16, 6.4 e 10 e decisões 4, 27 e 46.",
   "CLAUDE.md do projeto (calendário e Fundadores).",
   "Site de apresentação (apps/web/src/mocks/planos.ts), que não lê o banco.",

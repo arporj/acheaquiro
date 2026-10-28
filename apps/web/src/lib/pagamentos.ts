@@ -497,15 +497,18 @@ export interface PagamentoLista {
   devolvido: boolean;
   /** Devolvido por contestação no cartão (o dinheiro voltou pelo banco do anunciante). */
   contestado: boolean;
+  /** Diferença paga na mudança para um plano maior no meio do período. */
+  upgrade: boolean;
 }
 
 const COLUNAS_LISTA =
-  "id, anunciante_id, periodicidade, numero, valor_centavos, forma, parcelas, pago_em, devolvido_em, tipo_devolucao, " +
+  "id, anunciante_id, tipo, periodicidade, numero, valor_centavos, forma, parcelas, pago_em, devolvido_em, tipo_devolucao, " +
   "anunciante:anunciantes(nome), plano:planos(nome), conta:contas_recebimento(nome)";
 
 type LinhaLista = {
   id: string;
   anunciante_id: string;
+  tipo: "plano" | "upgrade";
   periodicidade: "mensal" | "anual";
   numero: number;
   valor_centavos: number;
@@ -533,6 +536,7 @@ const paraLista = (l: LinhaLista): PagamentoLista => ({
   pagoEm: l.pago_em,
   devolvido: l.devolvido_em !== null,
   contestado: l.tipo_devolucao === "contestacao",
+  upgrade: l.tipo === "upgrade",
 });
 
 /** "AAAA-MM" do mês pedido; o mês atual se vier vazio ou inválido. */
@@ -578,7 +582,10 @@ export interface PagamentoDetalhe extends PagamentoLista {
   motivoDevolucao: string | null;
   /** Endereço temporário (5 minutos) do comprovante, só para a administração. */
   comprovante: string | null;
-  comissao: { representante: string; origem: string; valorCentavos: number; liberaEm: string; cancelada: boolean } | null;
+  /** Desconto dado pelo representante (proposta), já fora do valor. */
+  descontoRepresentanteCentavos: number;
+  /** Venda, upgrade, carteira e descontos de contestação deste pagamento. */
+  comissoes: { representante: string; origem: string; valorCentavos: number; liberaEm: string; cancelada: boolean }[];
   podeDevolver: boolean;
   /** Pagamento no cartão ainda não devolvido: o banco do anunciante pode estornar (contestação). */
   podeContestar: boolean;
@@ -589,7 +596,7 @@ export async function lerPagamento(supabase: SupabaseClient, id: string): Promis
   const { data, error } = await supabase
     .from("pagamentos")
     .select(
-      `${COLUNAS_LISTA}, periodo_inicio, vence_em, valor_cheio_centavos, desconto_fundador_centavos, codigo_autorizacao, confirmado_em, ` +
+      `${COLUNAS_LISTA}, periodo_inicio, vence_em, valor_cheio_centavos, desconto_fundador_centavos, desconto_representante_centavos, codigo_autorizacao, confirmado_em, ` +
         "observacao, tornou_fundador, motivo_devolucao, comprovante_caminho, slug:anunciantes(slug), " +
         "comissoes(origem, valor_centavos, libera_em, cancelada_em, representante:representantes(codigo))",
     )
@@ -602,6 +609,7 @@ export async function lerPagamento(supabase: SupabaseClient, id: string): Promis
     vence_em: string;
     valor_cheio_centavos: number;
     desconto_fundador_centavos: number;
+    desconto_representante_centavos: number;
     codigo_autorizacao: string | null;
     confirmado_em: string;
     observacao: string;
@@ -612,7 +620,6 @@ export async function lerPagamento(supabase: SupabaseClient, id: string): Promis
     comissoes: { origem: string; valor_centavos: number; libera_em: string; cancelada_em: string | null; representante: { codigo: string } }[];
   };
   const comprovante = await enderecoDoComprovante(supabase, l.comprovante_caminho);
-  const comissao = l.comissoes[0];
   return {
     ok: true,
     dados: {
@@ -629,9 +636,14 @@ export async function lerPagamento(supabase: SupabaseClient, id: string): Promis
       devolvidoEm: l.devolvido_em,
       motivoDevolucao: l.motivo_devolucao,
       comprovante,
-      comissao: comissao
-        ? { representante: comissao.representante.codigo, origem: comissao.origem, valorCentavos: comissao.valor_centavos, liberaEm: comissao.libera_em, cancelada: comissao.cancelada_em !== null }
-        : null,
+      descontoRepresentanteCentavos: l.desconto_representante_centavos,
+      comissoes: l.comissoes.map((c) => ({
+        representante: c.representante.codigo,
+        origem: c.origem,
+        valorCentavos: c.valor_centavos,
+        liberaEm: c.libera_em,
+        cancelada: c.cancelada_em !== null,
+      })),
       podeDevolver: !l.devolvido_em && podeDevolver({ numero: l.numero, pagoEm: l.pago_em, hoje: hojeNaCidade() }),
       podeContestar: !l.devolvido_em && l.forma !== "pix",
     },

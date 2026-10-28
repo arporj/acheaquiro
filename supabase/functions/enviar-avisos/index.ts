@@ -20,7 +20,7 @@ const WHATSAPP_EQUIPE = "5521988520666";
 
 interface Aviso {
   id: string;
-  tipo: "lembrete_7_dias" | "lembrete_vencimento" | "plano_vencido" | "aviso_preco" | "escala_fundador";
+  tipo: "lembrete_7_dias" | "lembrete_vencimento" | "plano_vencido" | "aviso_preco" | "escala_fundador" | "proposta";
   para: string;
   tentativas: number;
   dados: {
@@ -38,6 +38,11 @@ interface Aviso {
     antes?: string;
     depois?: string;
     documentos?: string[];
+    /** Proposta do representante: quem fez, o plano e até quando vale. */
+    propostaId?: string;
+    representante?: string;
+    planoNovo?: string;
+    expiraEm?: string;
   };
 }
 
@@ -68,6 +73,17 @@ function montar(
     ? `Como Fundador, a renovação é anual e precisa ser paga até ${limite} para você manter o selo e o desconto.`
     : "";
 
+  if (aviso.tipo === "proposta") {
+    return {
+      assunto: `Proposta do Ache Aqui RO para ${d.nome ?? "o seu perfil"}`,
+      paragrafos: [
+        `${d.representante ?? "Um representante"}, do Ache Aqui RO, preparou uma proposta do plano ${d.planoNovo ?? ""} para ${d.nome ?? "o seu perfil"}.`,
+        `Para ver os valores e aceitar, entre na sua conta pelo botão abaixo. A proposta vale até ${data(d.expiraEm)}, para aceitar e pagar.`,
+        "Se não reconhece este pedido, é só não aceitar: nada muda no seu plano.",
+      ],
+      botao: { texto: "Ver a proposta", link: `${PRODUCAO}/anunciante/proposta/${d.propostaId ?? ""}` },
+    };
+  }
   if (aviso.tipo === "escala_fundador") {
     return {
       assunto: "Desconto de Fundador mudou: documentos a atualizar",

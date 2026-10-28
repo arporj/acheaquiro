@@ -8,6 +8,7 @@ import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
 import { ROTULO_FORMA, contestar, devolver, lerPagamento } from "@/lib/pagamentos";
+import { ROTULO_ORIGEM, type OrigemComissao } from "@/lib/comissoes";
 import { formatarCentavos } from "@/lib/precos";
 import { formatarData } from "@/lib/texto";
 
@@ -59,7 +60,7 @@ const caixa = "rounded-xl bg-fundo p-3";
               {p.anunciante}
             </a>
             <p>
-              {p.plano} {p.periodicidade} · {p.numero}º pagamento
+              {p.plano} {p.periodicidade} · {p.upgrade ? "mudança para um plano maior" : `${p.numero}º pagamento`}
             </p>
             <p>
               Período: {formatarData(p.periodoInicio)} a {formatarData(p.venceEm)}
@@ -74,6 +75,7 @@ const caixa = "rounded-xl bg-fundo p-3";
                 {formatarCentavos(p.valorCheioCentavos)} com {formatarCentavos(p.descontoFundadorCentavos)} de desconto de Fundador
               </p>
             )}
+            {p.descontoRepresentanteCentavos > 0 && <p>{formatarCentavos(p.descontoRepresentanteCentavos)} de desconto do representante</p>}
           </div>
           <div class={caixa}>
             <p class="font-bold text-azul-900">Forma e conta</p>
@@ -97,14 +99,13 @@ const caixa = "rounded-xl bg-fundo p-3";
           </div>
           <div class={caixa}>
             <p class="font-bold text-azul-900">Comissão</p>
-            {p.comissao ? (
+            {p.comissoes.length === 0 && <p>Sem comissão</p>}
+            {p.comissoes.map((c) => (
               <p>
-                {p.comissao.origem === "carteira" ? "Carteira" : "Venda"} de {p.comissao.representante}: {formatarCentavos(p.comissao.valorCentavos)}
-                {p.comissao.cancelada ? " · cancelada" : ` · liberada em ${formatarData(p.comissao.liberaEm)}`}
+                {ROTULO_ORIGEM[c.origem as OrigemComissao] ?? c.origem} de {c.representante}: {formatarCentavos(c.valorCentavos)}
+                {c.cancelada ? " · cancelada" : ` · liberada em ${formatarData(c.liberaEm)}`}
               </p>
-            ) : (
-              <p>Sem comissão</p>
-            )}
+            ))}
           </div>
         </div>
 
