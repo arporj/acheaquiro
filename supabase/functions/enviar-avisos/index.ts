@@ -13,12 +13,14 @@ const POR_CHAMADA = 40;
 const MAXIMO_TENTATIVAS = 5;
 const REMETENTE = { name: "Ache Aqui RO", email: "nao-responda@acheaquiro.com.br" };
 const SITE = "https://acheaquiro.com.br";
+/** Endereço da produção: até 26/11/2026, acheaquiro.com.br mostra só o "em breve"; depois, prod. redireciona. */
+const PRODUCAO = "https://prod.acheaquiro.com.br";
 /** WhatsApp da equipe: o mesmo de WHATSAPP_EQUIPE em apps/web/src/lib/contato.ts. */
 const WHATSAPP_EQUIPE = "5521988520666";
 
 interface Aviso {
   id: string;
-  tipo: "lembrete_7_dias" | "lembrete_vencimento" | "plano_vencido" | "aviso_preco";
+  tipo: "lembrete_7_dias" | "lembrete_vencimento" | "plano_vencido" | "aviso_preco" | "escala_fundador";
   para: string;
   tentativas: number;
   dados: {
@@ -32,6 +34,10 @@ interface Aviso {
     /** Aviso de novo preço: o valor que este assinante vai pagar e a partir de qual vencimento. */
     valorNovoCentavos?: number;
     aPartirDe?: string;
+    /** Mudança da escala do desconto de Fundador, para os administradores. */
+    antes?: string;
+    depois?: string;
+    documentos?: string[];
   };
 }
 
@@ -48,7 +54,10 @@ const linkEquipe = (assunto: string) =>
   `https://wa.me/${WHATSAPP_EQUIPE}?text=${encodeURIComponent(`Olá! Vim pelo site do Ache Aqui RO. ${assunto}.`)}`;
 
 /** Assunto e parágrafos de cada aviso. */
-function montar(aviso: Aviso, tolerancia: number): { assunto: string; paragrafos: string[]; botao: { texto: string; link: string } } {
+function montar(
+  aviso: Aviso,
+  tolerancia: number,
+): { assunto: string; paragrafos: string[]; botao: { texto: string; link: string }; rodape?: string } {
   const d = aviso.dados;
   const plano = `${d.plano ?? "seu plano"}${d.periodicidade ? ` (${d.periodicidade})` : ""}`;
   const limite = d.venceEm ? data(somarDias(d.venceEm, tolerancia)) : "";
@@ -59,6 +68,18 @@ function montar(aviso: Aviso, tolerancia: number): { assunto: string; paragrafos
     ? `Como Fundador, a renovação é anual e precisa ser paga até ${limite} para você manter o selo e o desconto.`
     : "";
 
+  if (aviso.tipo === "escala_fundador") {
+    return {
+      assunto: "Desconto de Fundador mudou: documentos a atualizar",
+      paragrafos: [
+        `A escala do desconto de Fundador mudou${d.antes ? ` de "${d.antes}"` : ""} para "${d.depois ?? ""}".`,
+        "As páginas do site já mostram a escala nova. Estes textos fixos não mudam sozinhos e precisam ser atualizados:",
+        ...(d.documentos ?? []).map((doc) => `• ${doc}`),
+      ],
+      botao: { texto: "Abrir o catálogo", link: `${PRODUCAO}/admin/catalogo` },
+      rodape: "Você recebe este aviso porque é administrador do Ache Aqui RO.",
+    };
+  }
   if (aviso.tipo === "aviso_preco") {
     const periodo = d.periodicidade === "anual" ? "por ano" : "por mês";
     return {
@@ -104,7 +125,7 @@ function montar(aviso: Aviso, tolerancia: number): { assunto: string; paragrafos
   };
 }
 
-function html(paragrafos: string[], botao: { texto: string; link: string }): string {
+function html(paragrafos: string[], botao: { texto: string; link: string }, rodape?: string): string {
   const corpo = paragrafos
     .filter(Boolean)
     .map((p) => `<p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#1e293b">${escapar(p)}</p>`)
@@ -116,7 +137,7 @@ function html(paragrafos: string[], botao: { texto: string; link: string }): str
 ${corpo}
 <p style="margin:24px 0 0"><a href="${botao.link}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:999px">${escapar(botao.texto)}</a></p>
 </div>
-<p style="margin:16px 0 0;font-size:12px;color:#64748b">Você recebe este aviso porque anuncia no Ache Aqui RO (<a href="${SITE}" style="color:#64748b">acheaquiro.com.br</a>). Este endereço não recebe respostas.</p>
+<p style="margin:16px 0 0;font-size:12px;color:#64748b">${rodape ? escapar(rodape) : `Você recebe este aviso porque anuncia no Ache Aqui RO (<a href="${SITE}" style="color:#64748b">acheaquiro.com.br</a>).`} Este endereço não recebe respostas.</p>
 </div></body></html>`;
 }
 
@@ -166,7 +187,7 @@ Deno.serve(async () => {
       .select("id");
     if (!reservado?.length) continue;
 
-    const { assunto, paragrafos, botao } = montar(aviso, tolerancia);
+    const { assunto, paragrafos, botao, rodape } = montar(aviso, tolerancia);
     const resposta = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: { "api-key": chave, "content-type": "application/json", accept: "application/json" },
@@ -174,7 +195,7 @@ Deno.serve(async () => {
         sender: REMETENTE,
         to: [{ email: aviso.para }],
         subject: assunto,
-        htmlContent: html(paragrafos, botao),
+        htmlContent: html(paragrafos, botao, rodape),
         textContent: [...paragrafos.filter(Boolean), `${botao.texto}: ${botao.link}`].join("\n\n"),
         tags: ["aviso-vencimento"],
       }),

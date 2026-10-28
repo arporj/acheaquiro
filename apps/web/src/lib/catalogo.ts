@@ -18,6 +18,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { obterRegrasCobranca } from "../dados/consultas";
 import { limparCacheDoSite } from "./arquivos";
 import { hojeNaCidade } from "./pagamentos";
+import { descricaoDescontoFundador } from "./precos";
 
 type CodigoFalha = "DADOS_INVALIDOS" | "CONFLITO" | "SEM_PERMISSAO" | "NAO_ENCONTRADO" | "ERRO_INTERNO";
 type Falha = { ok: false; erro: { codigo: CodigoFalha; mensagem: string; campos?: Record<string, string> } };
@@ -336,8 +337,28 @@ export async function salvarExtra(supabase: SupabaseClient, id: string, form: Fo
 // Escala do desconto de Fundador
 // ---------------------------------------------------------------------------
 
-export async function salvarEscala(supabase: SupabaseClient, form: FormData, temFundadores: boolean, origemDoSite: string): Promise<Resultado<null>> {
-  if (temFundadores) {
+/**
+ * Textos fixos que repetem a escala do desconto de Fundador. As páginas
+ * públicas leem a escala do banco e mudam sozinhas; estes não. Quem muda a
+ * escala vê a lista na tela, e todos os administradores recebem por e-mail
+ * (decisão de 28/10/2026).
+ */
+export const DOCUMENTOS_DA_ESCALA = [
+  "Termos de Uso, item 7.4 (apps/web/src/conteudo/termos-v1.md e a cópia em docs/Juridico). Se alguém já aceitou a versão atual, a mudança sai numa versão nova, que todos aceitam de novo.",
+  "Especificação funcional (docs): objetivo, itens 4.16, 6.4 e 10 e decisões 4, 27 e 46.",
+  "CLAUDE.md do projeto (calendário e Fundadores).",
+  "Site de apresentação (apps/web/src/mocks/planos.ts), que não lê o banco.",
+  "Material de divulgação impresso ou já enviado (flyer, mensagens prontas dos representantes).",
+];
+
+/** Salva a escala e põe na fila o e-mail aos administradores, numa transação (salvar_escala_fundador). */
+export async function salvarEscala(
+  supabase: SupabaseClient,
+  form: FormData,
+  atual: { escala: DegrauDescontoFundador[]; temFundadores: boolean },
+  origemDoSite: string,
+): Promise<Resultado<{ avisos: number; mudou: boolean }>> {
+  if (atual.temFundadores) {
     return falha("CONFLITO", "Já há Fundadores: mudar a escala muda o valor deles sem o aviso de 30 dias. Fale com o responsável pelo sistema.");
   }
   const linhas = [0, 1, 2, 3, 4].map((i) => ({ ateAno: campo(form, `ate_ano_${i}`), percentual: campo(form, `percentual_${i}`) }));
@@ -350,12 +371,14 @@ export async function salvarEscala(supabase: SupabaseClient, form: FormData, tem
     if (e instanceof RangeError) return falha("DADOS_INVALIDOS", e.message);
     throw e;
   }
-  const { data: cidade, error: erroCidade } = await supabase.from("cidades").select("id").eq("slug", CIDADE).single();
-  if (erroCidade) return mensagemDoBanco(erroCidade, "salvarEscala: cidade");
-  const { error } = await supabase
-    .from("configuracoes")
-    .upsert({ cidade_id: cidade.id, chave: "desconto_fundador_escala", valor: escala, atualizado_em: new Date().toISOString() }, { onConflict: "cidade_id,chave" });
+  if (JSON.stringify(escala) === JSON.stringify(atual.escala)) return { ok: true, dados: { avisos: 0, mudou: false } };
+  const textos = {
+    antes: atual.escala.length ? descricaoDescontoFundador(atual.escala) : "",
+    depois: descricaoDescontoFundador(escala),
+    documentos: DOCUMENTOS_DA_ESCALA,
+  };
+  const { data, error } = await supabase.rpc("salvar_escala_fundador", { p_escala: escala, p_antes: atual.escala, p_textos: textos });
   if (error) return mensagemDoBanco(error, "salvarEscala");
   await limparCacheDoSite(origemDoSite);
-  return { ok: true, dados: null };
+  return { ok: true, dados: { avisos: Number(data ?? 0), mudou: true } };
 }

@@ -8,7 +8,7 @@ import { Modal, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
-import { lerCatalogo, salvarEscala, salvarExtra, salvarPlano, type ExtraCatalogo } from "@/lib/catalogo";
+import { DOCUMENTOS_DA_ESCALA, lerCatalogo, salvarEscala, salvarExtra, salvarPlano, type ExtraCatalogo } from "@/lib/catalogo";
 import { formatarCentavos } from "@/lib/precos";
 import { resumoDoAnual } from "@/lib/resumoAnual";
 
@@ -20,7 +20,10 @@ const AVISOS: Record<string, string> = {
       ? `Plano salvo. ${avisosNaFila} assinante(s) vão receber por e-mail o novo valor, que vale a partir do primeiro vencimento daqui a ${DIAS_AVISO_PRECO} dias ou mais.`
       : "Plano salvo. Quem contratar a partir de agora já paga o valor novo.",
   extra: "Extra salvo.",
-  escala: "Escala do desconto de Fundador salva.",
+  escala:
+    Astro.url.searchParams.get("mudou") === "nao"
+      ? "A escala do desconto de Fundador não mudou: nada foi gravado."
+      : `Escala do desconto de Fundador salva. As páginas do site já mostram a escala nova. Os textos fixos abaixo não mudam sozinhos: atualize-os. ${avisosNaFila} administrador(es) vão receber esta lista por e-mail.`,
 };
 const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
 let erro = "";
@@ -43,8 +46,8 @@ if (Astro.request.method === "POST" && lido.ok) {
     erro = r.erro.mensagem;
     Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
   } else if (acao === "escala") {
-    const r = await salvarEscala(supabase, form, lido.dados.temFundadores, Astro.url.origin);
-    if (r.ok) return Astro.redirect("/admin/catalogo?aviso=escala", 303);
+    const r = await salvarEscala(supabase, form, lido.dados, Astro.url.origin);
+    if (r.ok) return Astro.redirect(`/admin/catalogo?aviso=escala&avisos=${r.dados.avisos}&mudou=${r.dados.mudou ? "sim" : "nao"}`, 303);
     erro = r.erro.mensagem;
     Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
   } else {
@@ -76,6 +79,18 @@ const resumoExtra = (e: ExtraCatalogo) =>
 
 <PaginaAdmin titulo="Catálogo e valores" descricao="Planos, extras e o desconto de Fundador. Toda mudança fica no registro de atividades.">
   {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {
+    aviso && Astro.url.searchParams.get("aviso") === "escala" && Astro.url.searchParams.get("mudou") === "sim" && (
+      <section class="mt-3 rounded-2xl bg-amarelo-200/60 p-4 text-sm text-slate-800 ring-1 ring-amarelo-400">
+        <p class="font-bold">Documentos a atualizar com a escala nova</p>
+        <ul class="mt-1 list-disc space-y-1 pl-5">
+          {DOCUMENTOS_DA_ESCALA.map((d) => (
+            <li>{d}</li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
   {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
   <section class="mt-4 rounded-2xl bg-fundo p-4 text-sm text-slate-700">
