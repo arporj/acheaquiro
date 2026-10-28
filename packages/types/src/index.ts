@@ -86,8 +86,9 @@ export interface Extra {
 
 /**
  * Um degrau do desconto de Fundador: o percentual vale até o ano de assinatura
- * indicado (inclusive). O último degrau não tem fim. Decisão de 21/10/2026:
- * [{ ateAno: 3, percentual: 50 }, { percentual: 25 }].
+ * indicado (inclusive). O último degrau pode não ter fim (vale dali em diante);
+ * com fim, depois dele não há desconto. Decisão de 28/10/2026: 50%, 40%, 30%,
+ * 20% e 10% do 1º ao 5º ano, valor cheio a partir do 6º.
  */
 export interface DegrauDescontoFundador {
   ateAno?: number;

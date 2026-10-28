@@ -4,6 +4,7 @@ import Topo from "@/components/anuncios/Topo.astro";
 import Abertura from "@/components/institucional/Abertura.astro";
 import BotaoContato from "@/components/institucional/BotaoContato.astro";
 import CardResultado from "@/components/resultados/CardResultado.astro";
+import { anoSemDescontoFundador } from "@acheaqui/domain";
 import { listarFundadores, listarPlanos, obterRegrasCobranca } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
@@ -16,6 +17,10 @@ const regras = await obterRegrasCobranca();
 const prazo = formatarData(regras.prazoFundador);
 const desconto = `${percentualInicialFundador(regras)}%`;
 const escala = descricaoDescontoFundador(regras.escalaDescontoFundador);
+const semDesconto = anoSemDescontoFundador(regras.escalaDescontoFundador);
+const fimDoDesconto = semDesconto
+  ? ` A partir do ${semDesconto}º ano, o plano e os pacotes voltam ao valor cheio; o selo e a vitrine continuam.`
+  : "";
 
 const beneficios: { icone: NomeIcone; titulo: string; texto: string }[] = [
   {
@@ -25,8 +30,8 @@ const beneficios: { icone: NomeIcone; titulo: string; texto: string }[] = [
   },
   {
     icone: "dinheiro",
-    titulo: "Desconto enquanto for Fundador",
-    texto: `${escala[0]!.toUpperCase()}${escala.slice(1)}, nos planos e nos pacotes extras: categoria adicional, fotos, encarte, produtos e endereço. Os destaques e os links destacados, que têm vagas limitadas, não têm desconto.`,
+    titulo: "Desconto de Fundador",
+    texto: `${escala[0]!.toUpperCase()}${escala.slice(1)}, nos planos e nos pacotes extras: categoria adicional, fotos, encarte, produtos e endereço. Os destaques e os links destacados, que têm vagas limitadas, não têm desconto.${fimDoDesconto}`,
   },
   {
     icone: "estrela",
@@ -68,7 +73,7 @@ const chip =
 
 <Layout
   titulo="Fundadores"
-  descricao={`Quem paga a assinatura anual até ${prazo} vira Fundador do Ache Aqui RO, com desconto em todo ano renovado no anual: ${escala}.`}
+  descricao={`Quem paga a assinatura anual até ${prazo} vira Fundador do Ache Aqui RO, com desconto ao renovar no anual: ${escala}.`}
   previa={{
     titulo: "Fundadores do Ache Aqui RO",
     descricao: `Pague o anual até ${prazo} e tenha desconto de ${escala}, selo e vitrine própria.`,

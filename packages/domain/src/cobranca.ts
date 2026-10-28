@@ -45,7 +45,8 @@ export interface DescontoFundador {
 /**
  * Confere a escala do desconto de Fundador, que vem da tabela de configurações:
  * ao menos um degrau, anos crescentes a partir do 1, percentuais inteiros de 0
- * a 100 e só o último degrau sem fim.
+ * a 100 e só o último degrau pode ficar sem fim. Com ano final no último
+ * degrau, o desconto acaba nele (decisão de 28/10/2026).
  */
 export function validarEscalaFundador(escala: readonly DegrauDescontoFundador[]): void {
   if (escala.length === 0) throw new RangeError("A escala do desconto de Fundador precisa de ao menos um degrau.");
@@ -54,12 +55,9 @@ export function validarEscalaFundador(escala: readonly DegrauDescontoFundador[])
     if (!Number.isInteger(degrau.percentual) || degrau.percentual < 0 || degrau.percentual > 100) {
       throw new RangeError("Percentual do desconto de Fundador precisa ser inteiro, de 0 a 100.");
     }
-    const ultimo = posicao === escala.length - 1;
-    if (ultimo) {
-      if (degrau.ateAno !== undefined) throw new RangeError("O último degrau do desconto de Fundador não tem ano final.");
-      return;
-    }
-    if (degrau.ateAno === undefined || !Number.isInteger(degrau.ateAno) || degrau.ateAno <= anoAnterior) {
+    if (posicao === escala.length - 1 && degrau.ateAno === undefined) return;
+    if (degrau.ateAno === undefined) throw new RangeError("Só o último degrau do desconto de Fundador pode ficar sem ano final.");
+    if (!Number.isInteger(degrau.ateAno) || degrau.ateAno <= anoAnterior) {
       throw new RangeError("Os anos da escala do desconto de Fundador precisam ser inteiros e crescentes, a partir do 1.");
     }
     anoAnterior = degrau.ateAno;
@@ -71,8 +69,15 @@ export function percentualFundadorNoAno(escala: readonly DegrauDescontoFundador[
   validarEscalaFundador(escala);
   if (!Number.isInteger(ano) || ano < 1) throw new RangeError("O ano de assinatura começa em 1.");
   const degrau = escala.find((d) => d.ateAno === undefined || ano <= d.ateAno);
-  // validarEscalaFundador garante o último degrau sem fim: sempre há um degrau.
-  return degrau!.percentual;
+  // Depois do último degrau com ano final, o Fundador paga o valor cheio.
+  return degrau?.percentual ?? 0;
+}
+
+/** Primeiro ano sem desconto de Fundador; null quando o último degrau não tem fim. */
+export function anoSemDescontoFundador(escala: readonly DegrauDescontoFundador[]): number | null {
+  validarEscalaFundador(escala);
+  const fim = escala.at(-1)!.ateAno;
+  return fim === undefined ? null : fim + 1;
 }
 
 /**

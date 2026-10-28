@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   anoComoFundador,
+  anoSemDescontoFundador,
   aplicarPercentual,
   calcularCobrancaExtra,
   calcularCobrancaPlano,
@@ -218,6 +219,18 @@ describe("percentualFundadorNoAno", () => {
     expect(percentualFundadorNoAno([{ percentual: 50 }], 8)).toBe(50);
   });
 
+  it("escala com fim: depois do último ano, o Fundador paga o valor cheio (decisão de 28/10/2026)", () => {
+    const comFim = [
+      { ateAno: 1, percentual: 50 },
+      { ateAno: 2, percentual: 40 },
+      { ateAno: 3, percentual: 30 },
+      { ateAno: 4, percentual: 20 },
+      { ateAno: 5, percentual: 10 },
+    ];
+    expect([1, 2, 3, 4, 5, 6, 20].map((ano) => percentualFundadorNoAno(comFim, ano))).toEqual([50, 40, 30, 20, 10, 0, 0]);
+    expect(anoSemDescontoFundador(comFim)).toBe(6);
+  });
+
   it("recusa ano menor que 1 ou fracionado", () => {
     expect(() => percentualFundadorNoAno(escalaFundador, 0)).toThrow(RangeError);
     expect(() => percentualFundadorNoAno(escalaFundador, 1.5)).toThrow(RangeError);
@@ -238,6 +251,12 @@ describe("percentualFundadorNoAno", () => {
   });
 });
 
+describe("anoSemDescontoFundador", () => {
+  it("sem fim quando o último degrau não tem ano final", () => {
+    expect(anoSemDescontoFundador(escalaFundador)).toBeNull();
+  });
+});
+
 describe("validarEscalaFundador", () => {
   it("aceita a escala decidida", () => {
     expect(() => validarEscalaFundador(escalaFundador)).not.toThrow();
@@ -247,8 +266,12 @@ describe("validarEscalaFundador", () => {
     expect(() => validarEscalaFundador([])).toThrow(RangeError);
   });
 
-  it("recusa último degrau com ano final (o desconto ficaria sem regra depois dele)", () => {
-    expect(() => validarEscalaFundador([{ ateAno: 3, percentual: 50 }])).toThrow(RangeError);
+  it("aceita último degrau com ano final (o desconto acaba nele)", () => {
+    expect(() => validarEscalaFundador([{ ateAno: 3, percentual: 50 }])).not.toThrow();
+  });
+
+  it("recusa ano final do último degrau igual ou anterior ao do degrau de antes", () => {
+    expect(() => validarEscalaFundador([{ ateAno: 3, percentual: 50 }, { ateAno: 3, percentual: 25 }])).toThrow(RangeError);
   });
 
   it("recusa degrau do meio sem ano final", () => {

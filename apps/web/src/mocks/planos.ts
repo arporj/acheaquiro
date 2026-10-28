@@ -128,8 +128,14 @@ export const extrasDisponiveis: Extra[] = [
 ];
 
 export const regrasCobranca: RegrasCobranca = {
-  // Decisão de 21/10/2026: 50% nos 3 primeiros anos e 25% do 4º em diante.
-  escalaDescontoFundador: [{ ateAno: 3, percentual: 50 }, { percentual: 25 }],
+  // Decisão de 28/10/2026: 50%, 40%, 30%, 20% e 10% do 1º ao 5º ano; valor cheio a partir do 6º.
+  escalaDescontoFundador: [
+    { ateAno: 1, percentual: 50 },
+    { ateAno: 2, percentual: 40 },
+    { ateAno: 3, percentual: 30 },
+    { ateAno: 4, percentual: 20 },
+    { ateAno: 5, percentual: 10 },
+  ],
   prazoFundador: "2026-11-26",
   toleranciaVencimentoDias: 7,
   percentualCarteira: 5,

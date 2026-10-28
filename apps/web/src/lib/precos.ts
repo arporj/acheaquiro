@@ -29,7 +29,7 @@ export function percentualInicialFundador(regras: RegrasCobranca): number {
   return percentualFundadorNoAno(regras.escalaDescontoFundador, 1);
 }
 
-/** A escala em texto: "50% nos 3 primeiros anos e 25% a partir do 4º ano". */
+/** A escala em texto: "50% no 1º ano, 40% no 2º ano ... e 10% no 5º ano" ou "50% nos 3 primeiros anos e 25% a partir do 4º ano". */
 export function descricaoDescontoFundador(escala: readonly DegrauDescontoFundador[]): string {
   validarEscalaFundador(escala);
   let anoAnterior = 0;
