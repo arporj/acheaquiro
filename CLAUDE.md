@@ -62,6 +62,12 @@ Calendário: pré-cadastro dos Fundadores de 09/11 a 26/11/2026, feito pela equi
 
 - Logo e ícones em apps/web/public/marca (decisão de 26/10/2026): logo-principal (para fundo branco), logo-principal-fundo-azul (a que o site usa no cabeçalho, no rodapé e na "em breve", nos três sites), logo-horizontal, simbolo-fundo-azul (só a lupa com a seta, no cabeçalho pelo celular, onde a logo completa não cabe ao lado dos botões), favicon.svg, icone-512 e og-image-1200x630 (prévia dos links). O favicon.ico e o apple-touch-icon.png (sem cantos transparentes, porque o iPhone pinta de preto o canto transparente) ficam na raiz de public, gerados do favicon.svg.
 
+## Prévia dos links compartilhados
+
+- Decisão de 28/10/2026: o link compartilhado de um perfil é propaganda do anunciante, e não do site. A prévia no WhatsApp mostra a foto de perfil, "Nome · Categoria em Rio das Ostras" e o texto do anunciante, cortado numa palavra inteira com reticências a partir de 155 caracteres (resumirTexto e fotoParaPrevia em packages/domain/previa.ts). Sem foto em JPEG, vai a imagem do site. O mesmo vale para o artista (/artista/[slug]) e para o evento da Agenda (/agenda/[evento], com o cartaz em eventos.cartaz).
+- A foto de perfil é sempre gravada em JPEG (FORMATO_FOTO_PERFIL em packages/validation), porque a prévia do WhatsApp só garante esse formato. O anunciante escolhe a foto em qualquer formato que o celular tenha; a tela de envio converte no navegador (o Worker gratuito não aguenta converter imagem no servidor), e o servidor recusa foto de perfil fora do JPEG.
+- Site de apresentação: /seu-anuncio ("Veja como fica o seu anúncio") mostra os planos com um perfil fictício de cada um, para a equipe e os representantes mandarem pelo WhatsApp. Só existe no ambiente de apresentação.
+
 ## Documentação
 
 - A especificação funcional fica em /docs. Antes de propor qualquer solução, leia a versão de número mais alto.

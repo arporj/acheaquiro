@@ -8,6 +8,14 @@ export type TipoArquivo = "webp" | "jpeg" | "png" | "pdf";
 export type FormatoFoto = "webp" | "jpeg";
 
 /**
+ * A foto de perfil é sempre gravada em JPEG, porque é ela que vai para a
+ * prévia do link no WhatsApp, que só garante JPEG (decisão de 28/10/2026). O
+ * anunciante escolhe a foto em qualquer formato que o navegador abra (JPG,
+ * PNG, WebP, HEIC no iPhone); a tela de envio converte para JPEG.
+ */
+export const FORMATO_FOTO_PERFIL: FormatoFoto = "jpeg";
+
+/**
  * Cada foto é gravada em três versões, com o lado maior de até 400, 800 e
  * 1.600 px; a página indica as três ao navegador, que escolhe a da tela.
  * Nada é redimensionado na hora de mostrar (sem limite de transformações).

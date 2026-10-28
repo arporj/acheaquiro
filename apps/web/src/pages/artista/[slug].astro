@@ -1,6 +1,7 @@
 ---
 // Perfil do artista ou da banda: fotos, vídeos, formação, contato para
 // contratar e os shows (próximos e anteriores) em todos os lugares.
+import { fotoParaPrevia, resumirTexto } from "@acheaqui/domain";
 import { FotoMarcador, Icone, classesBotao } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
 import AvatarArtista from "@/components/agenda/AvatarArtista.astro";
@@ -25,12 +26,14 @@ const perfil = artista.anuncianteId ? await anuncianteSlugPorId(artista.anuncian
 const SHOWS_NO_CARD = 4;
 const proximos = todos.filter((i) => i.data >= hoje);
 const linkAgenda = `/agenda?artista=${artista.slug}`;
+// O link compartilhado é propaganda do artista: a foto e o texto dele (packages/domain/previa.ts).
+const resumo = resumirTexto(artista.descricao) || `${artista.estilo} em Rio das Ostras: próximos shows e contato`;
 ---
 
 <Layout
   titulo={`${artista.nome} · ${artista.estilo}`}
-  descricao={artista.descricao.slice(0, 155)}
-  previa={{ titulo: artista.nome, descricao: `${artista.estilo} em Rio das Ostras: próximos shows e contato` }}
+  descricao={resumo}
+  previa={{ titulo: `${artista.nome} · ${artista.estilo}`, descricao: resumo, imagem: fotoParaPrevia(artista.foto?.url) }}
 >
   <Topo pagina="interna" />
   <main class="mx-auto w-full max-w-6xl px-4 pt-4 pb-12">

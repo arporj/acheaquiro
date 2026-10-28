@@ -326,6 +326,8 @@ export interface EventoAgenda {
   /** AAAA-MM-DD. */
   data: string;
   barracas: Barraca[];
+  /** Cartaz ou foto do evento, em JPEG: aparece no topo da página e na prévia do link. */
+  cartaz?: Foto;
 }
 
 /** Uma apresentação: num comércio com o extra de Agenda ou num evento. */

@@ -1,5 +1,6 @@
 ---
 // Página de um evento com produtor: programação por horário e barracas.
+import { fotoParaPrevia, resumirTexto } from "@acheaqui/domain";
 import { Icone, classesBotao } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
 import AvatarArtista from "@/components/agenda/AvatarArtista.astro";
@@ -23,9 +24,15 @@ const data = dataLonga(evento.data);
 const barracas = await Promise.all(
   evento.barracas.map(async (b) => ({ ...b, perfil: b.anuncianteId ? await anuncianteSlugPorId(b.anuncianteId) : undefined })),
 );
+// O link compartilhado é propaganda do evento: o cartaz, a data, o local e o texto (packages/domain/previa.ts).
+const resumo = resumirTexto(`${data.charAt(0).toUpperCase()}${data.slice(1)} · ${evento.local}, ${bairro}. ${evento.descricao}`);
 ---
 
-<Layout titulo={`${evento.nome} · Agenda`} descricao={evento.descricao} previa={{ titulo: evento.nome, descricao: `${data} · ${evento.local}` }}>
+<Layout
+  titulo={`${evento.nome} · Agenda`}
+  descricao={resumo}
+  previa={{ titulo: evento.nome, descricao: resumo, imagem: fotoParaPrevia(evento.cartaz?.url) }}
+>
   <Topo pagina="interna" />
   <main class="mx-auto w-full max-w-4xl px-4 pt-4 pb-12">
     <nav aria-label="Você está em" class="flex items-center gap-1 text-sm font-semibold text-slate-500">
@@ -34,6 +41,17 @@ const barracas = await Promise.all(
       <a href="/agenda" class="hover:text-azul-600">Agenda</a>
       <Icone nome="direita" class="size-3.5" />
     </nav>
+
+    {
+      evento.cartaz?.url && (
+        <img
+          src={evento.cartaz.url}
+          alt={evento.cartaz.legenda ?? `Cartaz de ${evento.nome}`}
+          fetchpriority="high"
+          class="mt-2 aspect-[1200/630] w-full rounded-3xl object-cover shadow-sm"
+        />
+      )
+    }
 
     <section class="mt-2 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-6">
       <div class="flex items-start justify-between gap-3">

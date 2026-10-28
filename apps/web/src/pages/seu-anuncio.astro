@@ -1,0 +1,84 @@
+---
+// "Veja como fica o seu anúncio" (decisão de 28/10/2026): um link só, para a
+// equipe e os representantes mandarem pelo WhatsApp no pré-cadastro, com os
+// planos e um perfil fictício de cada um. Só existe no site de apresentação,
+// porque os exemplos são os anunciantes fictícios (src/mocks).
+import { classesBotao } from "@acheaqui/ui";
+import Topo from "@/components/anuncios/Topo.astro";
+import Abertura from "@/components/institucional/Abertura.astro";
+import BotaoContato from "@/components/institucional/BotaoContato.astro";
+import TabelaPlanos, { type ExemploPlano } from "@/components/institucional/TabelaPlanos.astro";
+import { anunciantePorSlug, listarPlanos, obterRegrasCobranca } from "@/dados/consultas";
+import Layout from "@/layouts/Layout.astro";
+import { ambiente } from "@/lib/ambiente";
+import { guardarNoCache } from "@/lib/cache";
+import { mensagemEquipe } from "@/lib/contato";
+
+if (ambiente !== "apresentacao") return Astro.rewrite("/404");
+guardarNoCache(Astro);
+
+/** Perfil fictício de cada plano, por id do plano. */
+const EXEMPLOS: Record<string, string> = {
+  "prof-superpremium": "carlos-eletricista",
+  "prof-premium": "ze-faz-tudo",
+  "prof-profissional": "ana-paula-diarista",
+  "prof-basico": "tiago-instalacoes",
+  "com-premium": "pizzaria-bella-ostras",
+  "com-vitrine": "restaurante-sabor-do-mar",
+  "com-basico": "mundo-pet-ro",
+  "com-gratuito": "cantina-da-praia",
+};
+
+const exemplos: Partial<Record<string, ExemploPlano>> = {};
+for (const [planoId, slug] of Object.entries(EXEMPLOS)) {
+  const anunciante = await anunciantePorSlug(slug);
+  if (!anunciante) {
+    console.error("seu-anuncio: perfil de exemplo não encontrado", { planoId, slug });
+    continue;
+  }
+  exemplos[planoId] = { slug, nome: anunciante.nome, foto: anunciante.fotoPerfil };
+}
+
+const planos = { profissional: await listarPlanos("profissional"), comercio: await listarPlanos("comercio") };
+const regras = await obterRegrasCobranca();
+---
+
+<Layout
+  titulo="Veja como fica o seu anúncio"
+  descricao="Exemplos de perfis de profissionais autônomos e de comércios em cada plano do Ache Aqui RO."
+  previa={{
+    titulo: "Veja como fica o seu anúncio no Ache Aqui RO",
+    descricao: "Exemplos de perfil de profissional autônomo e de comércio em cada plano. Escolha o seu e fale com a gente.",
+  }}
+>
+  <Topo pagina="interna" />
+
+  <main>
+    <Abertura
+      chamada="Veja como fica o seu anúncio"
+      subtitulo="Escolha Profissional ou Comércio e toque em “Ver exemplo” para abrir um perfil de cada plano. Os anunciantes dos exemplos são fictícios."
+    >
+      O seu perfil no <span class="text-amarelo-400">Ache Aqui RO</span>
+      <Fragment slot="acoes">
+        <a href="#planos" class={classesBotao("amarelo", "g")}>Ver os exemplos</a>
+      </Fragment>
+    </Abertura>
+
+    <section id="planos" class="mx-auto max-w-6xl scroll-mt-4 px-4 py-10">
+      <h2 class="mb-5 font-display text-3xl font-extrabold text-azul-900">Planos e exemplos</h2>
+      <TabelaPlanos planos={planos} regras={regras} exemplos={exemplos} />
+    </section>
+
+    <section class="mx-auto max-w-6xl px-4 pb-14">
+      <div class="rounded-[2rem] bg-tinta px-6 py-8 text-center text-white md:px-10 md:py-10">
+        <h2 class="font-display text-3xl font-extrabold md:text-4xl">
+          Gostou? <span class="text-amarelo-400">Monte o seu</span>
+        </h2>
+        <p class="mx-auto mt-2 max-w-xl text-white/80">
+          A equipe do Ache Aqui ou um representante faz o cadastro com você, com as suas fotos e o seu texto.
+        </p>
+        <BotaoContato rotulo="Quero anunciar" mensagem={mensagemEquipe("Vi os exemplos de anúncio e quero anunciar")} class="mt-6" />
+      </div>
+    </section>
+  </main>
+</Layout>

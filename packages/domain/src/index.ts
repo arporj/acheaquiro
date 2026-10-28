@@ -13,3 +13,4 @@ export * from "./horario";
 export * from "./patrocinio";
 export * from "./artista";
 export * from "./upgrade";
+export * from "./previa";

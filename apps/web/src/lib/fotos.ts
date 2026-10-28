@@ -4,7 +4,7 @@
 // pessoa logada, e o banco recusa o que ela não pode fazer.
 import { podeAdicionar } from "@acheaqui/domain";
 import type { Resultado } from "@acheaqui/types";
-import { ArquivoInvalido, conferirVersaoFoto, TAMANHOS_FOTO, type FormatoFoto, type TamanhoFoto } from "@acheaqui/validation";
+import { ArquivoInvalido, conferirVersaoFoto, FORMATO_FOTO_PERFIL, TAMANHOS_FOTO, type FormatoFoto, type TamanhoFoto } from "@acheaqui/validation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { apagarArquivosPublicos, caminhoFoto, caminhosFoto, gravarArquivoPublico } from "./arquivos";
 import { clienteServico } from "./sessao";
@@ -90,6 +90,10 @@ export async function enviarFoto(supabase: SupabaseClient, usuarioId: string, en
   }
   const formato = conferidas[0]!.formato;
   if (conferidas.some((v) => v.formato !== formato)) return erro("ARQUIVO_INVALIDO", "As três versões da foto precisam ter o mesmo formato.");
+  // A foto de perfil vai para a prévia do link no WhatsApp, que só garante JPEG.
+  if (envio.finalidade === "perfil" && formato !== FORMATO_FOTO_PERFIL) {
+    return erro("ARQUIVO_INVALIDO", "A foto de perfil precisa chegar em JPEG. Escolha a foto de novo.");
+  }
   const maior = conferidas[conferidas.length - 1]!;
 
   const chave = `fotos/${anunciante.id}/${crypto.randomUUID()}`;

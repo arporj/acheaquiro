@@ -2,16 +2,25 @@
 // Planos de autônomos e de comércios (itens 6.2 e 6.3), com seletores de tipo
 // e de período. Tudo vem do servidor; o script só troca os atributos data-tipo
 // e data-periodo da raiz, e as classes group-data-* mostram o que vale.
-import { Icone, Selo, type NomeIcone } from "@acheaqui/ui";
-import type { Plano, RegrasCobranca, Selo as TipoSelo, TipoAnunciante } from "@acheaqui/types";
+import { FotoMarcador, Icone, Selo, type NomeIcone } from "@acheaqui/ui";
+import type { Foto, Plano, RegrasCobranca, Selo as TipoSelo, TipoAnunciante } from "@acheaqui/types";
 import { formatarCentavos, valorPlano } from "@/lib/precos";
+
+/** Perfil fictício que mostra como fica um anúncio do plano (site de apresentação). */
+export interface ExemploPlano {
+  slug: string;
+  nome: string;
+  foto?: Foto;
+}
 
 interface Props {
   planos: Record<TipoAnunciante, Plano[]>;
   regras: RegrasCobranca;
+  /** Por id do plano: o card ganha o link para o perfil de exemplo. */
+  exemplos?: Partial<Record<string, ExemploPlano>>;
 }
 
-const { planos, regras } = Astro.props;
+const { planos, regras, exemplos } = Astro.props;
 const mesesAnual = planos.profissional[0]?.mesesCobradosNoAnual ?? 10;
 
 const tipos: { id: TipoAnunciante; rotulo: string }[] = [
@@ -164,7 +173,7 @@ const botao =
                 )}
               </div>
 
-              <ul class="space-y-2 border-t border-slate-100 pt-4 text-sm">
+              <ul class="flex-1 space-y-2 border-t border-slate-100 pt-4 text-sm">
                 {recursos(plano, planos[t.id]).map((r) => (
                   <li class={`flex gap-2 ${r.inclui ? "text-tinta" : "text-slate-400"}`}>
                     <Icone
@@ -176,6 +185,20 @@ const botao =
                   </li>
                 ))}
               </ul>
+
+              {exemplos?.[plano.id] && (
+                <a
+                  href={`/perfil/${exemplos[plano.id]!.slug}`}
+                  class="mt-5 flex items-center gap-3 rounded-2xl bg-azul-50 p-2 pr-3 ring-1 ring-azul-100 transition hover:bg-azul-100"
+                >
+                  <FotoMarcador foto={exemplos[plano.id]!.foto} icone="store" cor="#1747C9" class="size-12 shrink-0 rounded-xl" tamanhoIcone="text-xl" />
+                  <span class="min-w-0 flex-1">
+                    <span class="block text-xs font-bold text-slate-500">Ver exemplo deste plano</span>
+                    <span class="block truncate font-display font-bold text-azul-900">{exemplos[plano.id]!.nome}</span>
+                  </span>
+                  <Icone nome="direita" class="size-5 shrink-0 text-azul-600" />
+                </a>
+              )}
             </li>
           );
         })}

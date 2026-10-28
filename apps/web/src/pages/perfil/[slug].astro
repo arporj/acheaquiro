@@ -1,4 +1,5 @@
 ---
+import { fotoParaPrevia, resumirTexto } from "@acheaqui/domain";
 import { EtiquetaAberto, EtiquetaFundador, FotoMarcador, Icone, IconeCategoria, Selo } from "@acheaqui/ui";
 import type { Categoria, FormaPagamento } from "@acheaqui/types";
 import Topo from "@/components/anuncios/Topo.astro";
@@ -56,12 +57,15 @@ const semPagamentoNemRedes =
   anunciante.formasPagamento.length === 0 && !anunciante.instagram && !(anunciante.tipo === "comercio" && anunciante.siteProprio);
 const fundoMapa =
   "background-image: linear-gradient(90deg, #fff 0 6px, transparent 6px), linear-gradient(0deg, #fff 0 6px, transparent 6px), linear-gradient(35deg, transparent 48%, #fde68a 48% 52%, transparent 52%); background-size: 70px 70px, 90px 90px, 100% 100%";
+// O link compartilhado é propaganda do anunciante: a foto e o texto dele (packages/domain/previa.ts).
+const categoriaNaCidade = `${categoria.nome} em Rio das Ostras`;
+const resumo = resumirTexto(anunciante.descricao) || categoriaNaCidade;
 ---
 
 <Layout
   titulo={`${anunciante.nome} · ${categoria.nome}`}
-  descricao={anunciante.descricao.slice(0, 155)}
-  previa={{ titulo: anunciante.nome, descricao: `${categoria.nome} em Rio das Ostras` }}
+  descricao={resumo}
+  previa={{ titulo: `${anunciante.nome} · ${categoriaNaCidade}`, descricao: resumo, imagem: fotoParaPrevia(anunciante.fotoPerfil.url) }}
 >
   <Topo pagina="interna" />
   <main class="mx-auto w-full max-w-6xl px-4 pt-4 pb-28 lg:pb-12">
