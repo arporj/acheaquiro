@@ -10,6 +10,7 @@ import { classesCampo, classesRotulo } from "@/components/conta/estilos";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
 import { lerCatalogo, salvarEscala, salvarExtra, salvarPlano, type ExtraCatalogo } from "@/lib/catalogo";
 import { formatarCentavos } from "@/lib/precos";
+import { resumoDoAnual } from "@/lib/resumoAnual";
 
 const supabase = Astro.locals.supabase!;
 const avisosNaFila = Number(Astro.url.searchParams.get("avisos") ?? "0");
@@ -138,8 +139,9 @@ const resumoExtra = (e: ExtraCatalogo) =>
                         {p.valorMensalCentavos === 0 && <p class="mt-1 text-xs text-slate-500">O plano Gratuito continua gratuito.</p>}
                       </div>
                       <div>
-                        <label class={classesRotulo} for={`meses-${p.id}`}>Mensalidades no anual</label>
-                        <input id={`meses-${p.id}`} name="meses_anual" type="number" min="1" max="12" required value={p.mesesCobradosNoAnual} class={classesCampo} />
+                        <label class={classesRotulo} for={`meses-${p.id}`}>Meses pagos no plano anual</label>
+                        <input id={`meses-${p.id}`} name="meses_anual" type="number" min="1" max="12" required value={p.mesesCobradosNoAnual} data-anual class={classesCampo} />
+                        <p class="mt-1 text-xs text-slate-500" data-anual-resumo>{resumoDoAnual(p.valorMensalCentavos, p.mesesCobradosNoAnual)}</p>
                       </div>
                       <div>
                         <label class={classesRotulo} for={`fotos-${p.id}`}>Fotos</label>
@@ -276,8 +278,9 @@ const resumoExtra = (e: ExtraCatalogo) =>
                   )}
                   {e.cobranca === "mensal" && (
                     <div>
-                      <label class={classesRotulo} for={`emeses-${e.id}`}>Mensalidades no anual</label>
-                      <input id={`emeses-${e.id}`} name="meses_anual" type="number" min="1" max="12" required value={e.mesesCobradosNoAnual} class={classesCampo} />
+                      <label class={classesRotulo} for={`emeses-${e.id}`}>Meses pagos no plano anual</label>
+                      <input id={`emeses-${e.id}`} name="meses_anual" type="number" min="1" max="12" required value={e.mesesCobradosNoAnual} data-anual class={classesCampo} />
+                      <p class="mt-1 text-xs text-slate-500" data-anual-resumo>{resumoDoAnual(e.valorMensalCentavos, e.mesesCobradosNoAnual)}</p>
                     </div>
                   )}
                 </div>
@@ -372,6 +375,8 @@ const resumoExtra = (e: ExtraCatalogo) =>
 
 <script>
   import { ligarConfirmacoes } from "@/lib/formularioPatrocinio";
+  import { ligarResumoDoAnual } from "@/lib/resumoAnual";
 
   ligarConfirmacoes();
+  ligarResumoDoAnual();
 </script>
