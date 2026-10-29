@@ -43,7 +43,7 @@ Nome, e-mail, chave Pix para receber comissões, anunciantes vinculados, comiss�
 | Calcular e pagar comissões de representantes | Pagamentos, dados do representante | Execução de contrato |
 | Mostrar ao anunciante os números do seu perfil e enviar relatórios | Uso do perfil | Execução de contrato |
 | Enviar avisos de vencimento, aprovação e alterações destes documentos | E-mail | Execução de contrato |
-| Divulgar os mais procurados do mês e do ano (Termos de Uso, item 8) | Nome, categoria e foto principal do perfil | Legítimo interesse, com direito de oposição pelo e-mail do item 1 |
+| Mostrar os anunciantes na divulgação do próprio site (Termos de Uso, item 8) | Nome, categoria e foto principal do perfil | Legítimo interesse, com direito de oposição pelo e-mail do item 1 |
 | Contar visitas e cliques e impedir abusos e fraudes | Código diário do visitante, registros de acesso | Legítimo interesse |
 | Ordenar comércios pela distância | Localização do aparelho, sem guardar | Consentimento, dado pela permissão do navegador |
 | Guardar registros de acesso por 6 meses | Registros de acesso | Obrigação legal (Marco Civil da Internet, art. 15) |

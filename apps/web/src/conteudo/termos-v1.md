@@ -119,8 +119,7 @@ Profissionais de saúde, médicos-veterinários, advogados e demais profissões 
 ## 8. Contatos, métricas e divulgação
 
 - O site conta as visitas ao perfil e os cliques nos botões de contato e mostra esses números ao anunciante na sua área. Os números não identificam os visitantes.
-- O Ache Aqui pode divulgar os anunciantes mais procurados no site (por exemplo, nas redes sociais, no próprio site e, quando houver, em carro de som) e, quando houver, premiar os mais procurados do ano. Para isso, usa o nome, a categoria e a foto principal do perfil.
-- O anunciante que não quiser participar dessas divulgações pode pedir pelo e-mail privacidade@acheaquiro.com.br.
+- O Ache Aqui pode mostrar os anunciantes na divulgação do próprio site, em qualquer meio (por exemplo, nas redes sociais e no próprio site), usando o nome, a categoria e a foto principal do perfil. O anunciante pode pedir para ficar de fora dessa divulgação pelo e-mail privacidade@acheaquiro.com.br.
 - As posições dos anunciantes na lista seguem as regras da página "Anuncie aqui" e incluem sorteios. O Ache Aqui não garante número mínimo de visitas, contatos ou vendas.
 
 ## 9. Representantes
