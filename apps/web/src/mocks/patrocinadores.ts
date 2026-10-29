@@ -42,27 +42,34 @@ export const patrocinadores: Patrocinador[] = [
 const cotasSemFormato: Omit<CotaPatrocinioVenda, "formatoLogo">[] = [
   {
     cota: "master", nome: "Master", vagas: 1, valorCentavos: 690000, valorFundadorCentavos: 570000,
-    beneficios: ["Logo maior no rodapé de todas as páginas", "2 posts por mês no Instagram do Ache Aqui RO", "Logo nos cartazes e panfletos, quando houver", "Carro de som, quando houver"],
+    beneficios: [
+      "Logo maior no rodapé de todas as páginas",
+      "Post fixado no perfil do Instagram do Ache Aqui RO durante os 12 meses",
+      "1 reel e 1 story por mês no Instagram",
+      'Presença no destaque "Patrocinadores" do perfil no Instagram',
+      "Logo nos cartazes e panfletos, quando houver",
+      "Carro de som, quando houver",
+    ],
   },
   {
     cota: "ouro", nome: "Ouro", vagas: 3, valorCentavos: 490000, valorFundadorCentavos: 400000,
-    beneficios: ["Logo médio no rodapé de todas as páginas", "1 post por mês no Instagram", "Logo nos cartazes e panfletos, quando houver"],
+    beneficios: ["Logo médio no rodapé de todas as páginas", "1 post no feed e 1 story por mês no Instagram", 'Presença no destaque "Patrocinadores" do perfil no Instagram', "Logo nos cartazes e panfletos, quando houver"],
   },
   {
     cota: "apoio", nome: "Apoio", vagas: 6, valorCentavos: 220000, valorFundadorCentavos: 180000,
-    beneficios: ["Logo pequeno no rodapé de todas as páginas", "1 post de boas-vindas no Instagram"],
+    beneficios: ["Logo pequeno no rodapé de todas as páginas", "1 post de boas-vindas no Instagram", 'Presença no destaque "Patrocinadores" do perfil no Instagram'],
   },
   {
     cota: "grupo", nome: "Grupo de categorias", valorCentavos: 259000, valorFundadorCentavos: 215000,
-    beneficios: ["Nome ao lado do grupo, em todas as categorias dele (exemplo: Comer e beber)", "1 post por mês no Instagram"],
+    beneficios: ["Nome ao lado do grupo, em todas as categorias dele (exemplo: Comer e beber)", "1 post de boas-vindas e 1 story por mês no Instagram", 'Presença no destaque "Patrocinadores" do perfil no Instagram'],
   },
   {
     cota: "categoria", nome: "Categoria", valorCentavos: 129000, valorFundadorCentavos: 107000,
-    beneficios: ["Nome ao lado do título da categoria (exemplo: Pizzarias)", "1 post de boas-vindas no Instagram"],
+    beneficios: ["Nome ao lado do título da categoria (exemplo: Pizzarias)", "1 post de boas-vindas no Instagram", 'Presença no destaque "Patrocinadores" do perfil no Instagram'],
   },
   {
     cota: "agenda", nome: "Agenda", vagas: 1, valorCentavos: 290000, valorFundadorCentavos: 240000,
-    beneficios: ["Nome ao lado do título da Agenda de shows e eventos", "1 post por mês no Instagram"],
+    beneficios: ["Nome ao lado do título da Agenda de shows e eventos", "1 post de boas-vindas e 1 story por mês no Instagram", 'Presença no destaque "Patrocinadores" do perfil no Instagram'],
   },
 ];
 
