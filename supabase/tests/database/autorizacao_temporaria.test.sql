@@ -27,6 +27,12 @@ insert into auth.users (id, email, aud, role) values
 update perfis_usuario set papel = 'representante' where usuario_id = '22222222-2222-2222-2222-222222222222';
 insert into representantes (usuario_id, cidade_id, codigo)
 select '22222222-2222-2222-2222-222222222222', id, 'teste-rep' from cidades where slug = 'rio-das-ostras';
+-- O representante só é tratado como tal com a segunda etapa (aal2) e o termo de
+-- confidencialidade aceito na versão em vigor (interno.meu_representante_id).
+insert into aceites_documentos (usuario_id, documento, versao)
+select u.id::uuid, 'confidencialidade', d.versao
+from (values ('22222222-2222-2222-2222-222222222222')) as u (id)
+cross join (select versao from documentos_legais where documento = 'confidencialidade' order by vigente_desde desc limit 1) d;
 insert into anunciantes (id, cidade_id, tipo, slug, nome, usuario_id, status, categoria_principal_id, plano_id)
 select 'a1000000-0000-0000-0000-000000000001', c.id, 'profissional', 'teste-a1', 'Teste Publicado',
   '11111111-1111-1111-1111-111111111111', 'publicado', cat.id, (select p.id from planos p where p.cidade_id = c.id and p.codigo = 'prof-nivel1')
@@ -34,7 +40,7 @@ from cidades c join categorias cat on cat.cidade_id = c.id and cat.slug_lista = 
 where c.slug = 'rio-das-ostras';
 
 -- Representante sem autorização
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","aal":"aal1"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 select is(teste_linhas_alteradas($c$update anunciantes set descricao = 'Sem autorização' where slug = 'teste-a1'$c$), 0,
   'representante sem autorização não altera perfil publicado');
@@ -55,7 +61,7 @@ select lives_ok($$ insert into autorizacoes_edicao (id, anunciante_id, cidade_id
 reset role;
 
 -- Representante autorizado
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","aal":"aal1"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 select is(teste_linhas_alteradas($c$update anunciantes set descricao = 'Alterado pelo representante autorizado' where slug = 'teste-a1'$c$), 1,
   'representante autorizado altera o perfil');
@@ -75,7 +81,7 @@ select is(teste_linhas_alteradas($c$update autorizacoes_edicao set revogada_em =
   'anunciante cancela a autorização');
 reset role;
 
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","aal":"aal1"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 select is(teste_linhas_alteradas($c$update anunciantes set descricao = 'Depois do cancelamento' where slug = 'teste-a1'$c$), 0,
   'depois do cancelamento, o representante não altera mais');
@@ -86,7 +92,7 @@ select set_config('request.jwt.claims', '', true);
 insert into autorizacoes_edicao (anunciante_id, cidade_id, autorizado_id, criada_em, valida_ate)
 select id, cidade_id, '22222222-2222-2222-2222-222222222222', now() - interval '3 hours', now() - interval '1 hour'
 from anunciantes where slug = 'teste-a1';
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","aal":"aal1"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 select is(teste_linhas_alteradas($c$update anunciantes set descricao = 'Com autorização vencida' where slug = 'teste-a1'$c$), 0,
   'autorização vencida não vale');

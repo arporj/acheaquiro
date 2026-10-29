@@ -19,7 +19,7 @@ end
 $f$;
 grant execute on function public.teste_linhas_alteradas(text) to anon, authenticated;
 
-select plan(36);
+select plan(38);
 
 -- ---------------------------------------------------------------------------
 -- Dados de teste (como postgres, sem RLS)
@@ -122,7 +122,24 @@ reset role;
 -- ---------------------------------------------------------------------------
 -- Representante
 -- ---------------------------------------------------------------------------
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","aal":"aal2"}', true);
+set local role authenticated;
+select is((select count(*)::int from anunciantes where slug = 'teste-a2'), 0, 'representante sem o termo de confidencialidade não vê o rascunho que trouxe');
+reset role;
+
+-- O representante só é tratado como tal com a segunda etapa (aal2) e o termo de
+-- confidencialidade aceito na versão em vigor (interno.meu_representante_id).
+insert into aceites_documentos (usuario_id, documento, versao)
+select u.id::uuid, 'confidencialidade', d.versao
+from (values ('22222222-2222-2222-2222-222222222222')) as u (id)
+cross join (select versao from documentos_legais where documento = 'confidencialidade' order by vigente_desde desc limit 1) d;
+
 select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","aal":"aal1"}', true);
+set local role authenticated;
+select is((select count(*)::int from anunciantes where slug = 'teste-a2'), 0, 'representante sem a segunda etapa não vê o rascunho que trouxe');
+reset role;
+
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 select is((select count(*)::int from anunciantes where slug in ('teste-a2', 'teste-a3')), 1, 'representante vê o rascunho que trouxe e não o de outro');
 select lives_ok($$ insert into anunciantes (cidade_id, tipo, slug, nome, representante_id, categoria_principal_id)

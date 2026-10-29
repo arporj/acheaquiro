@@ -61,6 +61,8 @@ export const esquemaBannerPorDia = z
     message: "O mínimo de dias para pagar o bloco não pode passar dos dias do bloco.",
   });
 
+const MENSAGEM_PERCENTUAL = "Percentual: de 0 a 100, sem casas decimais.";
+
 /**
  * Escala do desconto de Fundador, vinda das linhas do formulário: até o ano
  * (vazio no último degrau) e o percentual. Linhas sem percentual são ignoradas.
@@ -77,7 +79,12 @@ export const esquemaEscalaFundador = z
             .optional()
             .transform((v) => ((v ?? "").trim() === "" ? undefined : Number(v)))
             .pipe(z.number().int("Até o ano: número inteiro.").min(1, "Até o ano: a partir do 1.").max(50, "Até o ano: no máximo 50.").optional()),
-          percentual: inteiro(0, 100, "Percentual: de 0 a 100, sem casas decimais."),
+          // A entrada é o texto do formulário (já sem as linhas vazias).
+          percentual: z.coerce
+            .number<string | undefined>({ error: MENSAGEM_PERCENTUAL })
+            .int(MENSAGEM_PERCENTUAL)
+            .min(0, MENSAGEM_PERCENTUAL)
+            .max(100, MENSAGEM_PERCENTUAL),
         }),
       )
       .min(1, "Informe ao menos um degrau do desconto.")

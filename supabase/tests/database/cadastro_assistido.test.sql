@@ -36,6 +36,12 @@ from cidades c cross join (values
   ('bbbbbbbb-0000-0000-0000-000000000002', '22222222-0000-0000-0000-000000000002', 'teste-rep-2')
 ) as v (id, usuario, codigo)
 where c.slug = 'rio-das-ostras';
+-- O representante só é tratado como tal com a segunda etapa (aal2) e o termo de
+-- confidencialidade aceito na versão em vigor (interno.meu_representante_id).
+insert into aceites_documentos (usuario_id, documento, versao)
+select u.id::uuid, 'confidencialidade', d.versao
+from (values ('22222222-0000-0000-0000-000000000001'), ('22222222-0000-0000-0000-000000000002')) as u (id)
+cross join (select versao from documentos_legais where documento = 'confidencialidade' order by vigente_desde desc limit 1) d;
 insert into anunciantes (id, cidade_id, tipo, slug, nome, representante_id, status, categoria_principal_id, email_convite, plano_id)
 select v.id::uuid, c.id, 'profissional', v.slug, 'Teste Assistido', 'bbbbbbbb-0000-0000-0000-000000000001', 'rascunho', cat.id, v.email,
   (select p.id from planos p where p.cidade_id = c.id and p.codigo = 'prof-nivel1')
@@ -47,7 +53,7 @@ cross join (values
 where c.slug = 'rio-das-ostras';
 
 -- Representante que trouxe
-select set_config('request.jwt.claims', '{"sub":"22222222-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-0000-0000-0000-000000000001","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 select throws_ok($$ select vincular_conta_anunciante('a1000000-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000004') $$,
   'P0001', 'A conta não corresponde ao e-mail convidado.', 'não liga o cadastro a uma conta de outro e-mail');
@@ -63,7 +69,7 @@ select is((select count(*)::int from auditoria where tabela = 'anunciantes' and 
   'a ligação fica registrada em nome do representante');
 
 -- Outro representante
-select set_config('request.jwt.claims', '{"sub":"22222222-0000-0000-0000-000000000002","role":"authenticated","aal":"aal1"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-0000-0000-0000-000000000002","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 select throws_ok($$ select vincular_conta_anunciante('a2000000-0000-0000-0000-000000000002', '11111111-0000-0000-0000-000000000003') $$,
   'P0001', 'Cadastro não encontrado ou sem permissão.', 'outro representante não liga cadastro que não trouxe');
@@ -89,7 +95,8 @@ select is(teste_linhas_alteradas($c$update anunciantes set status = 'rascunho', 
 reset role;
 
 set local role anon;
-select is((select count(*)::int from documentos_legais where versao = '1'), 2, 'visitante lê os documentos legais em vigor');
+select is((select count(*)::int from documentos_legais where documento in ('termos', 'privacidade') and versao = '1'), 2,
+  'visitante lê os documentos legais em vigor');
 reset role;
 
 select * from finish();
