@@ -47,8 +47,8 @@ export type ExtraAdmin = z.output<typeof esquemaExtraAdmin>;
 /** Pacotes que aumentam um limite do plano: quantos itens o pacote dá. */
 export const esquemaQuantidadePacote = inteiro(1, 1000, "Quantidade do pacote: de 1 a 1000.");
 
-/** Destaque Exclusivo, vendido por dia (item 6.4). O valor do bloco é o valor do extra. */
-export const esquemaDestaquePorDia = z
+/** Banner Exclusivo, vendido por dia (item 6.4). O valor do bloco é o valor do extra. */
+export const esquemaBannerPorDia = z
   .object({
     diariaCentavos: reaisEmCentavos("Diária"),
     valorBlocoCentavos: reaisEmCentavos("Bloco de dias seguidos"),

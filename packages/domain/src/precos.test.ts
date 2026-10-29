@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { calcularPagamentoPlano } from "./assinatura";
 import { avisoDePreco, precoDaRenovacao, precoVigenteEm, type PrecoVigente } from "./precos";
 
-// Vitrine: R$ 59,90 desde 01/10/2026; aumento para R$ 69,90 avisado em 01/03/2027.
+// Avançado: R$ 59,90 desde 01/10/2026; aumento para R$ 69,90 avisado em 01/03/2027.
 const vitrine: PrecoVigente[] = [
   { valorMensalCentavos: 6990, mesesCobradosNoAnual: 10, vigenteDesde: "2027-03-01" },
   { valorMensalCentavos: 5990, mesesCobradosNoAnual: 10, vigenteDesde: "2026-10-01" },

@@ -70,8 +70,8 @@ describe("calcularCobrancaExtra", () => {
     aceitaDescontoFundador: true,
     permiteAnual: true,
   };
-  const superDestaque: ValoresExtra = { ...pacoteDeFotos, valorMensalCentavos: 8990, aceitaDescontoFundador: false };
-  const soMensal: ValoresExtra = { ...superDestaque, permiteAnual: false };
+  const carrossel: ValoresExtra = { ...pacoteDeFotos, valorMensalCentavos: 8990, aceitaDescontoFundador: false };
+  const soMensal: ValoresExtra = { ...carrossel, permiteAnual: false };
 
   it("pacote mensal com Fundador tem 50% de desconto", () => {
     expect(calcularCobrancaExtra(pacoteDeFotos, "mensal", comFundador)).toEqual({
@@ -85,8 +85,8 @@ describe("calcularCobrancaExtra", () => {
     expect(calcularCobrancaExtra(pacoteDeFotos, "mensal", semFundador).valorDevidoCentavos).toBe(490);
   });
 
-  it("destaque não tem desconto, mesmo para Fundador", () => {
-    expect(calcularCobrancaExtra(superDestaque, "mensal", comFundador)).toEqual({
+  it("Carrossel não tem desconto, mesmo para Fundador", () => {
+    expect(calcularCobrancaExtra(carrossel, "mensal", comFundador)).toEqual({
       valorCheioCentavos: 8990,
       descontoFundadorCentavos: 0,
       valorDevidoCentavos: 8990,
@@ -95,7 +95,7 @@ describe("calcularCobrancaExtra", () => {
 
   it("vendido junto com a assinatura anual, custa 10 mensalidades", () => {
     expect(calcularCobrancaExtra(pacoteDeFotos, "anual", comFundador).valorDevidoCentavos).toBe(2450);
-    expect(calcularCobrancaExtra(superDestaque, "anual", semFundador).valorDevidoCentavos).toBe(89900);
+    expect(calcularCobrancaExtra(carrossel, "anual", semFundador).valorDevidoCentavos).toBe(89900);
   });
 
   it("centavos ímpares: arredonda o valor devido e o desconto fecha a conta", () => {
@@ -236,7 +236,7 @@ describe("percentualFundadorNoAno", () => {
     expect(() => percentualFundadorNoAno(escalaFundador, 1.5)).toThrow(RangeError);
   });
 
-  it("em 10 anos no Premium de autônomo, o Fundador paga R$ 2.018,25 (com 50% para sempre, pagaria R$ 1.495,00)", () => {
+  it("em 10 anos no Avançado de autônomo, o Fundador paga R$ 2.018,25 (com 50% para sempre, pagaria R$ 1.495,00)", () => {
     const premium: ValoresPlano = { valorMensalCentavos: 2990, mesesCobradosNoAnual: 10 };
     const total = (escala: typeof escalaFundador) =>
       Array.from({ length: 10 }, (_, i) => i + 1).reduce(

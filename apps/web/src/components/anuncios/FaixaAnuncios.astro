@@ -4,48 +4,48 @@
 import { FotoMarcador, Icone, Selo } from "@acheaqui/ui";
 import type { ItemResultado } from "@/dados/consultas";
 
-type Destaque = { item: ItemResultado; descricao: string; bairro: string };
+type Banner = { item: ItemResultado; descricao: string; bairro: string };
 
 interface Props {
   pagina: "inicial" | "interna";
-  destaque?: Destaque;
-  superDestaques: ItemResultado[];
+  banner?: Banner;
+  carrossel: ItemResultado[];
 }
 
-const { pagina, destaque, superDestaques } = Astro.props;
+const { pagina, banner, carrossel } = Astro.props;
 const compacta = pagina === "interna";
 // O carrossel repete a lista para o giro contínuo; a cópia fica fora do leitor de tela e do Tab.
 const copias = [0, 1];
 ---
 
-<section aria-label="Anunciantes em destaque" class={compacta ? "bg-white pb-2 shadow-sm" : "pb-2"}>
+<section aria-label="Anunciantes em banner" class={compacta ? "bg-white pb-2 shadow-sm" : "pb-2"}>
   {
-    destaque && !compacta && (
+    banner && !compacta && (
       <div class="mx-auto max-w-6xl px-4 pt-4">
         <a
-          href={`/perfil/${destaque.item.slug}`}
+          href={`/perfil/${banner.item.slug}`}
           class="group relative flex min-h-36 overflow-hidden rounded-3xl bg-white shadow-[0_10px_30px_-12px_rgb(10_34_102/0.35)] ring-3 ring-amarelo-400 transition hover:-translate-y-0.5 sm:min-h-44"
         >
           <FotoMarcador
-            foto={destaque.item.foto}
+            foto={banner.item.foto}
             prioritaria
-            icone={destaque.item.icone}
-            cor={destaque.item.cor}
+            icone={banner.item.icone}
+            cor={banner.item.cor}
             class="w-28 shrink-0 sm:w-64"
             tamanhoIcone="text-5xl sm:text-7xl"
           />
           <div class="flex flex-1 flex-col justify-center gap-1 p-4 sm:p-6">
             <span class="inline-flex w-fit items-center gap-1 rounded-full bg-amarelo-400 px-2.5 py-0.5 text-[0.7rem] font-extrabold uppercase tracking-wide text-azul-900">
               <Icone nome="estrela" class="size-3" fill="currentColor" />
-              Destaque exclusivo
+              Anúncio
             </span>
             <h2 class="font-display text-2xl leading-tight font-extrabold text-azul-900 sm:text-3xl">
-              {destaque.item.nome} <Selo selo={destaque.item.selo} class="align-[-0.1em]" />
+              {banner.item.nome} <Selo selo={banner.item.selo} class="align-[-0.1em]" />
             </h2>
             <p class="text-sm font-semibold text-slate-600">
-              {destaque.item.categoriaNome} · {destaque.bairro}
+              {banner.item.categoriaNome} · {banner.bairro}
             </p>
-            <p class="mt-1 hidden max-w-xl text-sm text-slate-600 sm:line-clamp-2">{destaque.descricao}</p>
+            <p class="mt-1 hidden max-w-xl text-sm text-slate-600 sm:line-clamp-2">{banner.descricao}</p>
             <span class="mt-2 inline-flex items-center gap-1 text-sm font-extrabold text-azul-600 group-hover:underline">
               Ver perfil <Icone nome="direita" class="size-4" />
             </span>
@@ -55,17 +55,17 @@ const copias = [0, 1];
     )
   }
   {
-    destaque && compacta && (
+    banner && compacta && (
       <div class="mx-auto max-w-6xl px-4 pt-2">
         <a
-          href={`/perfil/${destaque.item.slug}`}
+          href={`/perfil/${banner.item.slug}`}
           class="flex items-center gap-3 rounded-2xl bg-amarelo-200/60 px-3 py-1.5 ring-1 ring-amarelo-400 hover:bg-amarelo-200"
         >
-          <FotoMarcador foto={destaque.item.foto} icone={destaque.item.icone} cor={destaque.item.cor} class="size-9 shrink-0 rounded-xl" tamanhoIcone="text-lg" />
+          <FotoMarcador foto={banner.item.foto} icone={banner.item.icone} cor={banner.item.cor} class="size-9 shrink-0 rounded-xl" tamanhoIcone="text-lg" />
           <span class="min-w-0 flex-1 truncate text-sm">
-            <span class="font-extrabold text-azul-900 uppercase text-[0.7rem] tracking-wide">Destaque exclusivo · </span>
-            <span class="font-bold">{destaque.item.nome}</span>
-            <span class="text-slate-600"> · {destaque.item.categoriaNome}</span>
+            <span class="font-extrabold text-azul-900 uppercase text-[0.7rem] tracking-wide">Anúncio · </span>
+            <span class="font-bold">{banner.item.nome}</span>
+            <span class="text-slate-600"> · {banner.item.categoriaNome}</span>
           </span>
           <Icone nome="direita" class="size-4 shrink-0 text-azul-700" />
         </a>
@@ -73,14 +73,14 @@ const copias = [0, 1];
     )
   }
   {
-    superDestaques.length > 0 && !compacta && (
+    carrossel.length > 0 && !compacta && (
       <div class="pt-4">
-        <h2 class="mx-auto max-w-6xl px-4 text-xs font-extrabold tracking-wider text-azul-700 uppercase">Super Destaque</h2>
+        <h2 class="mx-auto max-w-6xl px-4 text-xs font-extrabold tracking-wider text-azul-700 uppercase">Anúncios</h2>
         <div class="mt-2 overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_4%,black_96%,transparent)]">
           <div data-carrossel class="flex w-max animate-carrossel gap-3 py-2 hover:[animation-play-state:paused] focus-within:[animation-play-state:paused]">
             {copias.map((copia) => (
               <ul class="flex gap-3" aria-hidden={copia === 1 ? "true" : undefined}>
-                {superDestaques.map((item) => (
+                {carrossel.map((item) => (
                   <li>
                     <a
                       href={`/perfil/${item.slug}`}
@@ -106,12 +106,12 @@ const copias = [0, 1];
     )
   }
   {
-    superDestaques.length > 0 && compacta && (
+    carrossel.length > 0 && compacta && (
       <div class="overflow-hidden pt-2 [mask-image:linear-gradient(90deg,transparent,black_4%,black_96%,transparent)]">
         <div data-carrossel class="flex w-max animate-carrossel gap-2 hover:[animation-play-state:paused] focus-within:[animation-play-state:paused]">
           {copias.map((copia) => (
             <ul class="flex gap-2" aria-hidden={copia === 1 ? "true" : undefined}>
-              {superDestaques.map((item) => (
+              {carrossel.map((item) => (
                 <li>
                   <a
                     href={`/perfil/${item.slug}`}
@@ -133,7 +133,7 @@ const copias = [0, 1];
 </section>
 
 <script>
-  // Super Destaque: a ordem é sorteada a cada visita, com a mesma chance para
+  // Carrossel: a ordem é sorteada a cada visita, com a mesma chance para
   // todos (decisão de 20/10/2026). A página fica em cache, então o sorteio é
   // feito aqui; as duas cópias do carrossel recebem a mesma ordem.
   import { criarAleatorio, embaralhar } from "@acheaqui/domain";
@@ -149,7 +149,7 @@ const copias = [0, 1];
     for (const lista of listas) {
       const itens = [...lista.children];
       if (itens.length !== quantidade) {
-        console.error("Carrossel do Super Destaque: as cópias têm quantidades diferentes de anunciantes.");
+        console.error("Carrossel: as cópias têm quantidades diferentes de anunciantes.");
         continue;
       }
       lista.replaceChildren(...ordem.map((i) => itens[i]!));

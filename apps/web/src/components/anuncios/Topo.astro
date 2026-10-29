@@ -1,7 +1,7 @@
 ---
-// Cabeçalho + Destaque Exclusivo + carrossel Super Destaque (item 4.1),
+// Cabeçalho + Banner Exclusivo + Carrossel (item 4.1),
 // presentes no topo de todas as páginas.
-import { destaqueExclusivo, nomeBairro, superDestaques } from "@/dados/consultas";
+import { bannerExclusivo, nomeBairro, anunciantesDoCarrossel } from "@/dados/consultas";
 import Cabecalho from "../Cabecalho.astro";
 import FaixaAnuncios from "./FaixaAnuncios.astro";
 
@@ -10,8 +10,8 @@ interface Props {
 }
 
 const { pagina } = Astro.props;
-const exclusivo = await destaqueExclusivo();
-const destaque = exclusivo && {
+const exclusivo = await bannerExclusivo();
+const banner = exclusivo && {
   item: exclusivo.item,
   descricao: exclusivo.anunciante.descricao,
   bairro:
@@ -20,4 +20,4 @@ const destaque = exclusivo && {
 ---
 
 <Cabecalho comBusca={pagina === "interna"} />
-<FaixaAnuncios pagina={pagina} destaque={destaque} superDestaques={await superDestaques()} />
+<FaixaAnuncios pagina={pagina} banner={banner} carrossel={await anunciantesDoCarrossel()} />

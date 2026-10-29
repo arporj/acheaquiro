@@ -7,7 +7,7 @@
 import { avisoDePreco, situacaoCobranca, somarDias, validarEscalaFundador, type AvisoDePreco } from "@acheaqui/domain";
 import type { DegrauDescontoFundador, Resultado } from "@acheaqui/types";
 import {
-  esquemaDestaquePorDia,
+  esquemaBannerPorDia,
   esquemaEscalaFundador,
   esquemaExtraAdmin,
   esquemaPlanoAdmin,
@@ -279,9 +279,9 @@ export async function salvarExtra(supabase: SupabaseClient, id: string, form: Fo
   if (!atual) return falha("NAO_ENCONTRADO", "Extra não encontrado.");
 
   const porDia = atual.cobranca === "por_dia";
-  // No Destaque Exclusivo, o valor do extra é o do bloco de dias seguidos.
-  const destaque = porDia
-    ? esquemaDestaquePorDia.safeParse({
+  // No Banner Exclusivo, o valor do extra é o do bloco de dias seguidos.
+  const banner = porDia
+    ? esquemaBannerPorDia.safeParse({
         diariaCentavos: campo(form, "diaria"),
         valorBlocoCentavos: campo(form, "valor_bloco"),
         diasPorBloco: campo(form, "dias_bloco"),
@@ -289,11 +289,11 @@ export async function salvarExtra(supabase: SupabaseClient, id: string, form: Fo
         antecedenciaDias: campo(form, "antecedencia"),
       })
     : null;
-  if (destaque && !destaque.success) return falha("DADOS_INVALIDOS", destaque.error.issues[0]!.message);
+  if (banner && !banner.success) return falha("DADOS_INVALIDOS", banner.error.issues[0]!.message);
   const lido = esquemaExtraAdmin.safeParse({
     nome: campo(form, "nome"),
     descricao: campo(form, "descricao"),
-    valorMensalCentavos: destaque?.success ? (destaque.data.valorBlocoCentavos / 100).toFixed(2).replace(".", ",") : campo(form, "valor"),
+    valorMensalCentavos: banner?.success ? (banner.data.valorBlocoCentavos / 100).toFixed(2).replace(".", ",") : campo(form, "valor"),
     mesesCobradosNoAnual: campo(form, "meses_anual") ?? "10",
     aceitaDescontoFundador: campo(form, "desconto_fundador"),
     permiteAnual: porDia ? undefined : campo(form, "permite_anual"),
@@ -304,14 +304,14 @@ export async function salvarExtra(supabase: SupabaseClient, id: string, form: Fo
   if (quantidade && !quantidade.success) return falha("DADOS_INVALIDOS", quantidade.error.issues[0]!.message);
 
   const d = lido.data;
-  const regras = destaque?.success
+  const regras = banner?.success
     ? {
         ...(atual.regras as Record<string, unknown>),
-        diaria_centavos: destaque.data.diariaCentavos,
-        valor_bloco_centavos: destaque.data.valorBlocoCentavos,
-        dias_por_bloco: destaque.data.diasPorBloco,
-        minimo_dias_para_bloco: destaque.data.minimoDiasParaBloco,
-        antecedencia_dias: destaque.data.antecedenciaDias,
+        diaria_centavos: banner.data.diariaCentavos,
+        valor_bloco_centavos: banner.data.valorBlocoCentavos,
+        dias_por_bloco: banner.data.diasPorBloco,
+        minimo_dias_para_bloco: banner.data.minimoDiasParaBloco,
+        antecedencia_dias: banner.data.antecedenciaDias,
       }
     : atual.regras;
   const { error } = await supabase

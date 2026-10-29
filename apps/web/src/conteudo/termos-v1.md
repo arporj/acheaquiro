@@ -104,10 +104,10 @@ Profissionais de saúde, médicos-veterinários, advogados e demais profissões 
 ### 7.5 Fundadores
 
 - É Fundador o anunciante que paga a assinatura anual de um plano pago até 26/11/2026. Não há limite de quantidade.
-- O Fundador tem desconto nos planos pagos e nos pacotes extras (categoria adicional, pacote de fotos, encarte adicional, pacote de produtos e endereço adicional) enquanto continuar Fundador: **50% no 1º ano de assinatura, 40% no 2º, 30% no 3º, 20% no 4º e 10% no 5º**. A partir do 6º ano, o Fundador paga o valor cheio e mantém os demais benefícios deste item. O desconto não vale para os destaques nem para os links destacados.
-- O Fundador também recebe o selo "Fundador" no perfil, lugar na Vitrine dos Fundadores do site, menção na divulgação do lançamento e, quando o recurso existir, o selo "Verificado" sem custo.
+- O Fundador tem desconto nos planos pagos e nos pacotes extras (categoria adicional, pacote de fotos, encarte adicional, pacote de produtos e endereço adicional) enquanto continuar Fundador: **50% no 1º ano de assinatura, 40% no 2º, 30% no 3º, 20% no 4º e 10% no 5º**. A partir do 6º ano, o Fundador paga o valor cheio e mantém os demais benefícios deste item. O desconto não vale para o Banner Exclusivo, o Carrossel nem os links destacados.
+- O Fundador também recebe o selo "Fundador" no perfil, lugar no Mural dos Fundadores do site, menção na divulgação do lançamento e, quando o recurso existir, o selo "Verificado" sem custo.
 - A renovação do Fundador é sempre anual. Enquanto for Fundador, ele pode contratar pacotes extras mensais ou anuais, com o desconto.
-- O anunciante deixa de ser Fundador de vez, e perde o selo, o desconto e o lugar na Vitrine dos Fundadores, quando: renova o plano no mensal; ou a assinatura vence e a renovação anual não é paga em até 7 dias.
+- O anunciante deixa de ser Fundador de vez, e perde o selo, o desconto e o lugar no Mural dos Fundadores, quando: renova o plano no mensal; ou a assinatura vence e a renovação anual não é paga em até 7 dias.
 
 ### 7.6 Cancelamento e devolução
 

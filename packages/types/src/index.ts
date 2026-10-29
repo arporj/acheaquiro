@@ -69,7 +69,7 @@ export interface Extra {
   valorMensalCentavos: number;
   /** Complemento do preço: "por categoria, em 3 bairros". */
   unidade?: string;
-  /** "por_dia": o Destaque Exclusivo, escolhido em calendário (regras em `porDia`). */
+  /** "por_dia": o Banner Exclusivo, escolhido em calendário (regras em `porDia`). */
   cobranca: "mensal" | "por_dia";
   porDia?: {
     diariaCentavos: number;
@@ -79,7 +79,7 @@ export interface Extra {
     antecedenciaDias: number;
   };
   mesesCobradosNoAnual: number;
-  /** Pacotes têm desconto de Fundador; destaques e patrocínios não. */
+  /** Pacotes têm desconto de Fundador; Banner Exclusivo, Carrossel e links destacados não. */
   aceitaDescontoFundador: boolean;
   permiteAnual: boolean;
 }
@@ -203,7 +203,6 @@ export interface LinkDestacado {
   categoriaId: string;
   /** Vazio = vale para qualquer bairro. */
   bairroId?: string;
-  plus: boolean;
 }
 
 export type MotivoDenuncia =

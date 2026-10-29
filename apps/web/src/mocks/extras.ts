@@ -2,17 +2,17 @@
 // no sistema real, são calculados na hora (aberto agora e distância).
 import type { LinkDestacado } from "@acheaqui/types";
 
-/** Destaque Exclusivo: um único anunciante por dia. */
-export const destaqueExclusivoId = "c03";
+/** Banner Exclusivo: um único anunciante por dia. */
+export const bannerExclusivoId = "c03";
 
-/** Carrossel Super Destaque: no máximo 8 vagas. */
-export const superDestaqueIds = ["a01", "c06", "a06", "c01", "a05", "c07", "a09", "c04"];
+/** Carrossel: no máximo 8 vagas. */
+export const carrosselIds = ["a01", "c06", "a06", "c01", "a05", "c07", "a09", "c04"];
 
 export const linksDestacados: LinkDestacado[] = [
-  { anuncianteId: "a01", categoriaId: "eletricista", plus: true },
-  { anuncianteId: "a06", categoriaId: "bombeiro-hidraulico", plus: false },
-  { anuncianteId: "c01", categoriaId: "pet-shop", plus: false },
-  { anuncianteId: "c06", categoriaId: "restaurante", plus: false },
+  { anuncianteId: "a01", categoriaId: "eletricista" },
+  { anuncianteId: "a06", categoriaId: "bombeiro-hidraulico" },
+  { anuncianteId: "c01", categoriaId: "pet-shop" },
+  { anuncianteId: "c06", categoriaId: "restaurante" },
 ];
 
 /**

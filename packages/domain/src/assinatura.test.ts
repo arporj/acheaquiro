@@ -68,7 +68,7 @@ describe("podeDevolver", () => {
   });
 });
 
-// Padaria Boa Massa, plano Vitrine de R$ 59,90 (exemplos do item 4.12).
+// Padaria Boa Massa, plano Avançado de comércio, de R$ 59,90 (exemplos do item 4.12).
 describe("calcularPagamentoPlano", () => {
   const entrada: EntradaPagamentoPlano = {
     plano: { valorMensalCentavos: 5990, mesesCobradosNoAnual: 10 },

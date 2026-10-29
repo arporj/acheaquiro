@@ -33,7 +33,7 @@ export interface PagamentoComissionavel {
   valorPagoCentavos: number;
   /**
    * Qual pagamento da assinatura (ou do extra) este é: 1, 2, 3... No anual, a
-   * renovação do 2º ano é o pagamento 2. A compra de dias do Destaque Exclusivo
+   * renovação do 2º ano é o pagamento 2. A compra de dias do Banner Exclusivo
    * e o contrato de patrocínio são sempre o pagamento 1.
    */
   numeroMensalidade: number;

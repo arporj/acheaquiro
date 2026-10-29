@@ -1,10 +1,10 @@
-// Destaque Exclusivo vendido por dia (Especificação Funcional, item 6.4;
+// Banner Exclusivo vendido por dia (Especificação Funcional, item 6.4;
 // decisões de 20/10/2026). Um anunciante por dia; os dias são escolhidos num
 // calendário, entre os livres. Os números vêm de extras.regras.
 import type { Resultado } from "@acheaqui/types";
 import { somarDias, type DataISO } from "./datas";
 
-export interface RegrasDestaqueExclusivo {
+export interface RegrasBannerExclusivo {
   /** Valor de cada dia avulso (hoje, R$ 24,90). */
   diariaCentavos: number;
   /** Valor de um bloco de dias seguidos (hoje, R$ 500,00 por 30 dias). */
@@ -23,7 +23,7 @@ export interface BlocoACompletar {
   dias: number;
 }
 
-export interface PrecoDestaque {
+export interface PrecoBanner {
   valorCentavos: number;
   blocosACompletar: BlocoACompletar[];
 }
@@ -46,7 +46,7 @@ export function sequenciasDeDias(dias: readonly DataISO[]): DataISO[][] {
  * bloco, e os dias que faltam para completá-lo ficam para os próximos dias
  * livres depois da sequência. Dias soltos pagam sempre a diária.
  */
-export function calcularPrecoDestaque(dias: readonly DataISO[], regras: RegrasDestaqueExclusivo): PrecoDestaque {
+export function calcularPrecoBanner(dias: readonly DataISO[], regras: RegrasBannerExclusivo): PrecoBanner {
   validarRegras(regras);
   if (new Set(dias).size !== dias.length) throw new RangeError("Há dias repetidos na escolha.");
 
@@ -67,10 +67,10 @@ export function calcularPrecoDestaque(dias: readonly DataISO[], regras: RegrasDe
 }
 
 /** Confere a escolha de dias antes de mostrar o valor e receber o comprovante. */
-export function validarReservaDestaque(
+export function validarReservaBanner(
   dias: readonly DataISO[],
-  contexto: { hoje: DataISO; ocupados: ReadonlySet<DataISO>; regras: RegrasDestaqueExclusivo },
-): Resultado<PrecoDestaque> {
+  contexto: { hoje: DataISO; ocupados: ReadonlySet<DataISO>; regras: RegrasBannerExclusivo },
+): Resultado<PrecoBanner> {
   if (dias.length === 0) {
     return { ok: false, erro: { codigo: "DADOS_INVALIDOS", mensagem: "Escolha pelo menos um dia." } };
   }
@@ -91,7 +91,7 @@ export function validarReservaDestaque(
       erro: { codigo: "CONFLITO", mensagem: "Algum dos dias escolhidos acabou de ser reservado. Escolha outro." },
     };
   }
-  return { ok: true, dados: calcularPrecoDestaque(dias, contexto.regras) };
+  return { ok: true, dados: calcularPrecoBanner(dias, contexto.regras) };
 }
 
 /** Os próximos dias livres depois de uma data, para completar um bloco pago. */
@@ -107,7 +107,7 @@ export function proximosDiasLivres(aposDia: DataISO, quantidade: number, ocupado
 }
 
 /**
- * Dias pré-reservados que passaram antes de a equipe confirmar o Pix. O destaque
+ * Dias pré-reservados que passaram antes de a equipe confirmar o Pix. O banner
  * vale a partir do dia seguinte à confirmação; esses dias são trocados por
  * outros dias livres, escolhidos pelo anunciante, sem devolução em dinheiro.
  */
@@ -115,10 +115,10 @@ export function diasPerdidosNaConfirmacao(dias: readonly DataISO[], confirmadoEm
   return dias.filter((dia) => dia <= confirmadoEm).sort();
 }
 
-function validarRegras(regras: RegrasDestaqueExclusivo): void {
+function validarRegras(regras: RegrasBannerExclusivo): void {
   const numeros = Object.values(regras);
   if (numeros.some((n) => !Number.isInteger(n) || n < 0) || regras.diasPorBloco < 1) {
-    throw new RangeError("Regras do Destaque Exclusivo inválidas.");
+    throw new RangeError("Regras do Banner Exclusivo inválidas.");
   }
   if (regras.minimoDiasParaBloco < 1 || regras.minimoDiasParaBloco > regras.diasPorBloco) {
     throw new RangeError("O mínimo de dias para o bloco precisa estar entre 1 e os dias do bloco.");

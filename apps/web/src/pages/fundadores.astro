@@ -19,7 +19,7 @@ const desconto = `${percentualInicialFundador(regras)}%`;
 const escala = descricaoDescontoFundador(regras.escalaDescontoFundador);
 const semDesconto = anoSemDescontoFundador(regras.escalaDescontoFundador);
 const fimDoDesconto = semDesconto
-  ? ` A partir do ${semDesconto}º ano, o plano e os pacotes voltam ao valor cheio; o selo e a vitrine continuam.`
+  ? ` A partir do ${semDesconto}º ano, o plano e os pacotes voltam ao valor cheio; o selo e o lugar no Mural dos Fundadores continuam.`
   : "";
 
 const beneficios: { icone: NomeIcone; titulo: string; texto: string }[] = [
@@ -31,11 +31,11 @@ const beneficios: { icone: NomeIcone; titulo: string; texto: string }[] = [
   {
     icone: "dinheiro",
     titulo: "Desconto de Fundador",
-    texto: `${escala[0]!.toUpperCase()}${escala.slice(1)}, nos planos e nos pacotes extras: categoria adicional, fotos, encarte, produtos e endereço. Os destaques e os links destacados, que têm vagas limitadas, não têm desconto.${fimDoDesconto}`,
+    texto: `${escala[0]!.toUpperCase()}${escala.slice(1)}, nos planos e nos pacotes extras: categoria adicional, fotos, encarte, produtos e endereço. O Banner Exclusivo, o Carrossel e os links destacados, que têm vagas limitadas, não têm desconto.${fimDoDesconto}`,
   },
   {
     icone: "estrela",
-    titulo: "Vitrine dos Fundadores",
+    titulo: "Mural dos Fundadores",
     texto:
       "Página própria, com item no menu do site e filtro por categoria. No primeiro mês depois da abertura, a página inicial também mostra os Fundadores, em rodízio.",
   },
@@ -66,7 +66,7 @@ const gruposPreco = [
 }));
 
 const fundadores = await listarFundadores();
-const categoriasVitrine = [...new Set(fundadores.map((f) => f.categoriaNome))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+const categoriasMural = [...new Set(fundadores.map((f) => f.categoriaNome))].sort((a, b) => a.localeCompare(b, "pt-BR"));
 const chip =
   "inline-flex h-9 shrink-0 items-center rounded-full bg-white px-3.5 text-sm font-bold text-tinta ring-1 ring-azul-100 not-aria-pressed:hover:bg-azul-50 aria-pressed:bg-azul-600 aria-pressed:text-white aria-pressed:ring-azul-600";
 ---
@@ -76,7 +76,7 @@ const chip =
   descricao={`Quem paga a assinatura anual até ${prazo} vira Fundador do Ache Aqui RO, com desconto ao renovar no anual: ${escala}.`}
   previa={{
     titulo: "Fundadores do Ache Aqui RO",
-    descricao: `Pague o anual até ${prazo} e tenha desconto de ${escala}, selo e vitrine própria.`,
+    descricao: `Pague o anual até ${prazo} e tenha desconto de ${escala}, selo e lugar no Mural dos Fundadores.`,
   }}
 >
   <Topo pagina="interna" />
@@ -113,7 +113,7 @@ const chip =
           <p>
             <strong>Como manter:</strong> a renovação do Fundador é sempre anual. Você continua Fundador enquanto renovar no
             anual em até {regras.toleranciaVencimentoDias} dias depois do vencimento. Quem passa para o mensal, ou não
-            renova nesse prazo, deixa de ser Fundador de vez e perde o selo, o desconto e a vaga na vitrine.
+            renova nesse prazo, deixa de ser Fundador de vez e perde o selo, o desconto e o lugar no Mural dos Fundadores.
           </p>
         </div>
       </div>
@@ -160,9 +160,9 @@ const chip =
       </div>
     </section>
 
-    <section id="vitrine" class="bg-white py-10" data-vitrine>
+    <section id="mural" class="bg-white py-10" data-mural>
       <div class="mx-auto max-w-6xl px-4">
-        <h2 class="font-display text-3xl font-extrabold text-azul-900">Vitrine dos Fundadores</h2>
+        <h2 class="font-display text-3xl font-extrabold text-azul-900">Mural dos Fundadores</h2>
         <p class="mt-1 text-slate-600">Os anunciantes que acreditaram no Ache Aqui RO desde o começo.</p>
 
         {
@@ -177,7 +177,7 @@ const chip =
         <div hidden={fundadores.length === 0} class="mt-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]" role="group" aria-label="Filtrar por categoria">
           <button type="button" data-categoria="" aria-pressed="true" class={chip}>Todas</button>
           {
-            categoriasVitrine.map((categoria) => (
+            categoriasMural.map((categoria) => (
               <button type="button" data-categoria={categoria} aria-pressed="false" class={chip}>
                 {categoria}
               </button>
@@ -210,7 +210,7 @@ const chip =
 </Layout>
 
 <script>
-  for (const raiz of document.querySelectorAll<HTMLElement>("[data-vitrine]")) {
+  for (const raiz of document.querySelectorAll<HTMLElement>("[data-mural]")) {
     const botoes = [...raiz.querySelectorAll<HTMLButtonElement>("[data-categoria]")];
     const itens = [...raiz.querySelectorAll<HTMLElement>("[data-item-categoria]")];
     for (const botao of botoes) {

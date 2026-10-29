@@ -27,9 +27,9 @@ insert into auth.users (id, email, aud, role) values
 update perfis_usuario set papel = 'representante' where usuario_id = '22222222-2222-2222-2222-222222222222';
 insert into representantes (usuario_id, cidade_id, codigo)
 select '22222222-2222-2222-2222-222222222222', id, 'teste-rep' from cidades where slug = 'rio-das-ostras';
-insert into anunciantes (id, cidade_id, tipo, slug, nome, usuario_id, status, categoria_principal_id)
+insert into anunciantes (id, cidade_id, tipo, slug, nome, usuario_id, status, categoria_principal_id, plano_id)
 select 'a1000000-0000-0000-0000-000000000001', c.id, 'profissional', 'teste-a1', 'Teste Publicado',
-  '11111111-1111-1111-1111-111111111111', 'publicado', cat.id
+  '11111111-1111-1111-1111-111111111111', 'publicado', cat.id, (select p.id from planos p where p.cidade_id = c.id and p.codigo = 'prof-nivel1')
 from cidades c join categorias cat on cat.cidade_id = c.id and cat.slug_lista = 'eletricistas'
 where c.slug = 'rio-das-ostras';
 
@@ -62,7 +62,7 @@ select is(teste_linhas_alteradas($c$update anunciantes set descricao = 'Alterado
 select lives_ok($$ insert into fotos (anunciante_id, cidade_id, finalidade, chave, largura, altura)
   select id, cidade_id, 'galeria', 'fotos/' || id || '/f1000000-0000-0000-0000-000000000001', 400, 300 from anunciantes where slug = 'teste-a1' $$,
   'representante autorizado envia foto');
-select throws_ok($$ update anunciantes set plano_id = (select id from planos where codigo = 'prof-premium') where slug = 'teste-a1' $$,
+select throws_ok($$ update anunciantes set plano_id = (select id from planos where codigo = 'prof-nivel3') where slug = 'teste-a1' $$,
   'P0001', 'Este campo só pode ser alterado pela administração.', 'representante autorizado não muda o plano');
 reset role;
 

@@ -53,7 +53,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a01", slug: "carlos-eletricista", cidadeId, tipo: "profissional",
     nome: "Carlos Eletricista", categoriaId: "eletricista", categoriasAdicionais: ["tecnico-ar-condicionado"],
-    planoId: "prof-superpremium", fundador: true,
+    planoId: "prof-nivel4", fundador: true,
     descricao:
       "Eletricista há 15 anos em Rio das Ostras. Instalação e troca de quadro de luz, tomadas, chuveiros, iluminação de LED e padrão da Enel. Faço também instalação de ar-condicionado split. Orçamento sem compromisso e atendimento no mesmo dia para emergências.",
     whatsapp: zap(1), telefone: zap(1),
@@ -66,7 +66,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a02", slug: "joao-silva-eletrica", cidadeId, tipo: "profissional",
     nome: "João Silva Elétrica", categoriaId: "eletricista", categoriasAdicionais: [],
-    planoId: "prof-premium", fundador: false,
+    planoId: "prof-nivel3", fundador: false,
     descricao: "Serviços elétricos residenciais e comerciais. Revisão completa da instalação, troca de fiação e instalação de ventiladores de teto.",
     whatsapp: zap(2),
     fotoPerfil: fotoPerfil("a02-perfil"),
@@ -78,7 +78,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a03", slug: "marcos-reis-eletricista", cidadeId, tipo: "profissional",
     nome: "Marcos Reis", categoriaId: "eletricista", categoriasAdicionais: [],
-    planoId: "prof-profissional", fundador: false,
+    planoId: "prof-nivel2", fundador: false,
     descricao: "Pequenos reparos elétricos, troca de disjuntor, tomada e chuveiro. Preço justo.",
     whatsapp: zap(3),
     fotoPerfil: fotoPerfil("a03-perfil"),
@@ -90,7 +90,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a04", slug: "tiago-instalacoes", cidadeId, tipo: "profissional",
     nome: "Tiago Instalações", categoriaId: "eletricista", categoriasAdicionais: [],
-    planoId: "prof-basico", fundador: false,
+    planoId: "prof-nivel1", fundador: false,
     descricao: "Eletricista residencial. Atendo à noite e aos fins de semana.",
     whatsapp: zap(4),
     fotoPerfil: fotoPerfil("a04-perfil"),
@@ -102,7 +102,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a05", slug: "ze-faz-tudo", cidadeId, tipo: "profissional",
     nome: "Zé Faz Tudo", categoriaId: "faz-tudo", categoriasAdicionais: ["montador-de-moveis", "pintor", "eletricista"],
-    planoId: "prof-premium", fundador: true,
+    planoId: "prof-nivel3", fundador: true,
     descricao: "Aquele serviço que ninguém quer fazer, eu faço! Instalo prateleira, cortina, varal, suporte de TV, troco resistência de chuveiro, conserto porta e janela. Pequenas pinturas e montagem de móveis.",
     whatsapp: zap(5), telefone: zap(5),
     fotoPerfil: fotoPerfil("a05-perfil"),
@@ -114,7 +114,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a06", slug: "ricardo-bombeiro-hidraulico", cidadeId, tipo: "profissional",
     nome: "Ricardo Bombeiro Hidráulico", categoriaId: "bombeiro-hidraulico", categoriasAdicionais: ["desentupidora"],
-    planoId: "prof-superpremium", fundador: true,
+    planoId: "prof-nivel4", fundador: true,
     descricao: "Caça-vazamento com equipamento, troca de registro, instalação de caixa d'água, conserto de descarga e desentupimento de pia e ralo. Atendimento 24 horas para emergências.",
     whatsapp: zap(6), telefone: zap(6),
     fotoPerfil: fotoPerfil("a06-perfil"),
@@ -126,7 +126,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a07", slug: "ana-paula-diarista", cidadeId, tipo: "profissional",
     nome: "Ana Paula Diarista", categoriaId: "diarista", categoriasAdicionais: ["passadeira"],
-    planoId: "prof-profissional", fundador: false,
+    planoId: "prof-nivel2", fundador: false,
     descricao: "Faxina completa, limpeza pós-obra e limpeza de casa de veraneio antes da temporada. Tenho referências.",
     whatsapp: zap(7),
     fotoPerfil: fotoPerfil("a07-perfil"),
@@ -138,7 +138,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a08", slug: "marcenaria-oliveira", cidadeId, tipo: "profissional",
     nome: "Marcenaria Oliveira", categoriaId: "marceneiro", categoriasAdicionais: ["moveis-planejados"],
-    planoId: "prof-premium", fundador: true,
+    planoId: "prof-nivel3", fundador: true,
     descricao: "Móveis sob medida em MDF e madeira maciça: cozinhas, armários, painéis de TV e decks. Projeto em 3D sem custo.",
     whatsapp: zap(8),
     fotoPerfil: fotoPerfil("a08-perfil"),
@@ -150,7 +150,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a09", slug: "fernanda-costa-advocacia", cidadeId, tipo: "profissional",
     nome: "Fernanda Costa Advocacia", categoriaId: "advogado", categoriasAdicionais: [],
-    planoId: "prof-premium", fundador: false,
+    planoId: "prof-nivel3", fundador: false,
     descricao: "Atuação em direito de família, previdenciário e do consumidor. Atendimento presencial no Centro e on-line.",
     whatsapp: zap(9),
     fotoPerfil: fotoPerfil("a09-perfil"),
@@ -163,7 +163,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a10", slug: "dr-paulo-mendes", cidadeId, tipo: "profissional",
     nome: "Dr. Paulo Mendes", categoriaId: "medico", categoriasAdicionais: [],
-    planoId: "prof-premium", fundador: false,
+    planoId: "prof-nivel3", fundador: false,
     descricao: "Clínico geral. Consultas em consultório e atendimento domiciliar para idosos e acamados.",
     whatsapp: zap(10), telefone: zap(10),
     fotoPerfil: fotoPerfil("a10-perfil"),
@@ -176,7 +176,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a11", slug: "madame-estrela", cidadeId, tipo: "profissional",
     nome: "Madame Estrela", categoriaId: "cartomante", categoriasAdicionais: [],
-    planoId: "prof-profissional", fundador: false,
+    planoId: "prof-nivel2", fundador: false,
     descricao: "Leitura de tarô e baralho cigano, presencial ou por chamada de vídeo.",
     whatsapp: zap(11),
     fotoPerfil: fotoPerfil("a11-perfil"),
@@ -188,7 +188,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a12", slug: "artes-da-lu", cidadeId, tipo: "profissional",
     nome: "Artes da Lu", categoriaId: "artesanato", categoriasAdicionais: [],
-    planoId: "prof-basico", fundador: false,
+    planoId: "prof-nivel1", fundador: false,
     descricao: "Crochê, amigurumi e peças de decoração feitas à mão. Aceito encomendas para presentes e festas.",
     whatsapp: zap(12),
     fotoPerfil: fotoPerfil("a12-perfil"),
@@ -200,7 +200,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a13", slug: "marmitas-da-dona-cida", cidadeId, tipo: "profissional",
     nome: "Marmitas da Dona Cida", categoriaId: "comida-caseira", categoriasAdicionais: ["buffet"],
-    planoId: "prof-profissional", fundador: true,
+    planoId: "prof-nivel2", fundador: true,
     descricao: "Comida caseira de verdade, feita no dia. Marmitas de segunda a sábado com entrega no almoço. Cardápio da semana pelo WhatsApp.",
     whatsapp: zap(13),
     fotoPerfil: fotoPerfil("a13-perfil"),
@@ -212,7 +212,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a14", slug: "renato-pinturas", cidadeId, tipo: "profissional",
     nome: "Renato Pinturas", categoriaId: "pintor", categoriasAdicionais: [],
-    planoId: "prof-profissional", fundador: false,
+    planoId: "prof-nivel2", fundador: false,
     descricao: "Pintura residencial interna e externa, textura, grafiato e massa corrida.",
     whatsapp: zap(14),
     fotoPerfil: fotoPerfil("a14-perfil"),
@@ -224,7 +224,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a15", slug: "felipe-montador", cidadeId, tipo: "profissional",
     nome: "Felipe Montador", categoriaId: "montador-de-moveis", categoriasAdicionais: [],
-    planoId: "prof-basico", fundador: false,
+    planoId: "prof-nivel1", fundador: false,
     descricao: "Montagem e desmontagem de móveis de todas as lojas.",
     whatsapp: zap(15),
     fotoPerfil: fotoPerfil("a15-perfil"),
@@ -236,7 +236,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a16", slug: "litoral-limpa-fossa", cidadeId, tipo: "profissional",
     nome: "Litoral Limpa Fossa", categoriaId: "limpa-fossa", categoriasAdicionais: ["desentupidora"],
-    planoId: "prof-premium", fundador: true,
+    planoId: "prof-nivel3", fundador: true,
     descricao: "Caminhão próprio para limpeza de fossa e caixa de gordura. Atendemos residências, condomínios e comércios.",
     whatsapp: zap(16), telefone: zap(16),
     fotoPerfil: fotoPerfil("a16-perfil"),
@@ -248,7 +248,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a17", slug: "bichinho-cheiroso", cidadeId, tipo: "profissional",
     nome: "Bichinho Cheiroso", categoriaId: "banho-e-tosa", categoriasAdicionais: ["pet-shop"],
-    planoId: "prof-profissional", fundador: false,
+    planoId: "prof-nivel2", fundador: false,
     descricao: "Banho e tosa a domicílio, com van equipada. Seu pet não precisa sair de casa.",
     whatsapp: zap(17),
     fotoPerfil: fotoPerfil("a17-perfil"),
@@ -260,7 +260,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a18", slug: "dj-leo-batida", cidadeId, tipo: "profissional",
     nome: "DJ Léo Batida", categoriaId: "dj-e-som", categoriasAdicionais: [],
-    planoId: "prof-profissional", fundador: false,
+    planoId: "prof-nivel2", fundador: false,
     descricao: "DJ para festas, casamentos e aniversários, com som e iluminação. Toca também nos bares da cidade: veja a Agenda.",
     whatsapp: zap(18), fotoPerfil: { id: "a18-perfil", url: "" }, galeria: [],
     horario: todosOsDias("10:00", "22:00"), instagram: "djleobatida", formasPagamento: ["pix", "dinheiro"],
@@ -270,7 +270,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a19", slug: "julia-voz-e-violao-musica", cidadeId, tipo: "profissional",
     nome: "Júlia Voz e Violão", categoriaId: "musico", categoriasAdicionais: [],
-    planoId: "prof-premium", fundador: true,
+    planoId: "prof-nivel3", fundador: true,
     descricao: "MPB e bossa nova em formato acústico, para jantares, cerimônias e fins de tarde. Veja os próximos shows na Agenda.",
     whatsapp: zap(19), fotoPerfil: fotoPerfil("ar3-perfil"),
     galeria: [foto("ar3-g-1", "Pôr do sol no quiosque"), foto("ar3-g-2", "Cerimônia de casamento"), foto("ar3-g-3", "Show acústico")],
@@ -280,7 +280,7 @@ const profissionais: AnuncianteProfissional[] = [
   {
     id: "a20", slug: "banda-mare-alta-musica", cidadeId, tipo: "profissional",
     nome: "Banda Maré Alta", categoriaId: "musico", categoriasAdicionais: [],
-    planoId: "prof-profissional", fundador: false,
+    planoId: "prof-nivel2", fundador: false,
     descricao: "Pop rock nacional e internacional para bares, casamentos e festas de empresa, com som próprio.",
     whatsapp: zap(20), fotoPerfil: fotoPerfil("ar1-perfil"),
     galeria: [foto("ar1-capa", "Show ao pôr do sol")],
@@ -293,7 +293,7 @@ const comercios: AnuncianteComercio[] = [
   {
     id: "c01", slug: "pet-shop-amigo-fiel", cidadeId, tipo: "comercio",
     nome: "Pet Shop Amigo Fiel", categoriaId: "pet-shop", categoriasAdicionais: ["banho-e-tosa", "agropecuaria"],
-    planoId: "com-premium", fundador: true,
+    planoId: "com-nivel4", fundador: true,
     descricao: "Rações, petiscos, acessórios e farmácia veterinária. Banho e tosa com hora marcada. Entregamos em toda a cidade.",
     whatsapp: zap(21), telefone: "552227000021",
     fotoPerfil: fotoPerfil("c01-perfil"),
@@ -318,7 +318,7 @@ const comercios: AnuncianteComercio[] = [
   {
     id: "c02", slug: "mundo-pet-ro", cidadeId, tipo: "comercio",
     nome: "Mundo Pet RO", categoriaId: "pet-shop", categoriasAdicionais: [],
-    planoId: "com-basico", fundador: false,
+    planoId: "com-nivel2", fundador: false,
     descricao: "Rações e acessórios com preço baixo.",
     whatsapp: zap(22),
     fotoPerfil: fotoPerfil("c02-perfil"),
@@ -331,7 +331,7 @@ const comercios: AnuncianteComercio[] = [
   {
     id: "c03", slug: "pousada-mar-azul", cidadeId, tipo: "comercio",
     nome: "Pousada Mar Azul", categoriaId: "pousada", categoriasAdicionais: [],
-    planoId: "com-premium", fundador: true,
+    planoId: "com-nivel4", fundador: true,
     descricao: "A 100 metros da Praia do Centro. Quartos com ar-condicionado, café da manhã incluído, piscina e estacionamento. Pacotes especiais para o verão.",
     whatsapp: zap(23), telefone: "552227000023",
     fotoPerfil: fotoPerfil("c03-perfil"),
@@ -349,7 +349,7 @@ const comercios: AnuncianteComercio[] = [
   {
     id: "c04", slug: "restaurante-sabor-do-mar", cidadeId, tipo: "comercio",
     nome: "Restaurante Sabor do Mar", categoriaId: "restaurante", categoriasAdicionais: [],
-    planoId: "com-vitrine", fundador: false,
+    planoId: "com-nivel3", fundador: false,
     descricao: "Frutos do mar, moquecas e peixe frito na beira da praia. Ambiente familiar.",
     whatsapp: zap(24), telefone: "552227000024",
     fotoPerfil: fotoPerfil("c04-perfil"),
@@ -368,7 +368,7 @@ const comercios: AnuncianteComercio[] = [
   {
     id: "c05", slug: "cantina-da-praia", cidadeId, tipo: "comercio",
     nome: "Cantina da Praia", categoriaId: "restaurante", categoriasAdicionais: [],
-    planoId: "com-gratuito", fundador: false,
+    planoId: "com-nivel1", fundador: false,
     descricao: "Prato feito e self-service no almoço.",
     whatsapp: zap(25),
     fotoPerfil: fotoPerfil("c05-perfil"),
@@ -381,7 +381,7 @@ const comercios: AnuncianteComercio[] = [
   {
     id: "c06", slug: "pizzaria-bella-ostras", cidadeId, tipo: "comercio",
     nome: "Pizzaria Bella Ostras", categoriaId: "pizzaria", categoriasAdicionais: ["restaurante", "lanchonete"],
-    planoId: "com-premium", fundador: true,
+    planoId: "com-nivel4", fundador: true,
     descricao: "Pizza no forno a lenha, massa de fermentação natural. Rodízio às sextas e sábados. Peça pelo WhatsApp e receba em casa.",
     whatsapp: zap(26), telefone: "552227000026",
     fotoPerfil: fotoPerfil("c06-perfil"),
@@ -402,7 +402,7 @@ const comercios: AnuncianteComercio[] = [
   {
     id: "c07", slug: "mercado-boa-compra", cidadeId, tipo: "comercio",
     nome: "Mercado Boa Compra", categoriaId: "mercado", categoriasAdicionais: ["acougue", "hortifruti", "padaria"],
-    planoId: "com-premium", fundador: false,
+    planoId: "com-nivel4", fundador: false,
     descricao: "Mercado de bairro com açougue, hortifrúti e padaria. Ofertas novas toda semana.",
     whatsapp: zap(27), telefone: "552227000027",
     fotoPerfil: fotoPerfil("c07-perfil"),
@@ -428,7 +428,7 @@ const comercios: AnuncianteComercio[] = [
   {
     id: "c08", slug: "farmacia-saude-total", cidadeId, tipo: "comercio",
     nome: "Farmácia Saúde Total", categoriaId: "farmacia", categoriasAdicionais: [],
-    planoId: "com-vitrine", fundador: false,
+    planoId: "com-nivel3", fundador: false,
     descricao: "Medicamentos, perfumaria e aferição de pressão. Duas lojas na cidade, com entrega rápida.",
     whatsapp: zap(28), telefone: "552227000028",
     fotoPerfil: fotoPerfil("c08-perfil"),
@@ -449,7 +449,7 @@ const comercios: AnuncianteComercio[] = [
   {
     id: "c09", slug: "casa-do-construtor-ro", cidadeId, tipo: "comercio",
     nome: "Casa do Construtor RO", categoriaId: "material-de-construcao", categoriasAdicionais: ["loja-de-tintas", "ferragens"],
-    planoId: "com-vitrine", fundador: true,
+    planoId: "com-nivel3", fundador: true,
     descricao: "Material básico, elétrico, hidráulico, tintas e ferragens. Entrega com caminhão próprio.",
     whatsapp: zap(29), telefone: "552227000029",
     fotoPerfil: fotoPerfil("c09-perfil"),
@@ -468,7 +468,7 @@ const comercios: AnuncianteComercio[] = [
   {
     id: "c20", slug: "quiosque-mare-cheia", cidadeId, tipo: "comercio",
     nome: "Quiosque Maré Cheia", categoriaId: "bar", categoriasAdicionais: ["restaurante"],
-    planoId: "com-vitrine", fundador: true,
+    planoId: "com-nivel3", fundador: true,
     descricao: "Quiosque pé na areia com petiscos, frutos do mar e música ao vivo de quinta a domingo. Veja quem toca na Agenda.",
     whatsapp: zap(40), fotoPerfil: { id: "c20-perfil", url: "" }, galeria: [],
     horario: horario({ 0: h("10:00", "22:00"), 4: h("16:00", "00:00"), 5: h("16:00", "01:00"), 6: h("10:00", "01:00") }),
@@ -479,7 +479,7 @@ const comercios: AnuncianteComercio[] = [
   {
     id: "c21", slug: "boteco-da-praca", cidadeId, tipo: "comercio",
     nome: "Boteco da Praça", categoriaId: "bar", categoriasAdicionais: ["lanchonete"],
-    planoId: "com-basico", fundador: false,
+    planoId: "com-nivel2", fundador: false,
     descricao: "Chope gelado, porções e roda de samba às sextas e sábados, na praça do Centro. Programação na Agenda.",
     whatsapp: zap(41), fotoPerfil: { id: "c21-perfil", url: "" }, galeria: [],
     horario: horario({ 3: h("17:00", "00:00"), 4: h("17:00", "00:00"), 5: h("17:00", "02:00"), 6: h("12:00", "02:00") }),

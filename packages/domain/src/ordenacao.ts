@@ -7,10 +7,8 @@ export const MAXIMO_DESTACADOS = 3;
 /** A cada quantas posições existe uma vaga rotativa (10ª, 20ª, 30ª...). */
 export const INTERVALO_VAGA_ROTATIVA = 10;
 
-/** Um link destacado contratado na categoria da lista. */
-export interface Patrocinio {
-  /** Destacado Plus: o dobro de chance no sorteio. */
-  plus: boolean;
+/** Um link destacado contratado na categoria da lista. Todos têm a mesma chance no sorteio do topo. */
+export interface LinkDestacadoContratado {
   /** Bairros do pacote (até 3). Vazio = cidade toda. */
   bairroIds?: readonly string[];
 }
@@ -20,7 +18,7 @@ export interface CandidatoLista {
   /** Nível do plano: quanto maior, mais acima na lista. */
   nivelPlano: number;
   /** Links destacados ativos do anunciante na categoria buscada. */
-  patrocinios?: readonly Patrocinio[];
+  linksDestacados?: readonly LinkDestacadoContratado[];
   /** Distância até o visitante, quando ele permite a localização. */
   distanciaKm?: number;
   /** Bairros do anunciante (endereços do comércio); usados com `priorizarBairro`. */
@@ -49,11 +47,11 @@ export interface OpcoesOrdenacao {
 }
 
 export interface ListaOrdenada<T> {
-  /** As até 3 primeiras posições, marcadas como "Destacado". */
+  /** As até 3 primeiras posições, mostradas no box "Anúncios". */
   destacados: T[];
   /**
    * Todos os candidatos, na ordem dos planos. Os destacados também estão
-   * aqui, na posição do seu plano: o patrocínio é um lugar a mais no topo.
+   * aqui, na posição do seu plano: o link destacado é um lugar a mais no topo.
    */
   lista: T[];
   /** Com `priorizarBairro`: quantos itens do início da lista são do bairro escolhido. */
@@ -113,25 +111,21 @@ interface Trecho {
   fim: number;
 }
 
-/** Peso no sorteio do topo nesta busca; 0 quando nenhum patrocínio vale para o bairro. */
-export function pesoPatrocinio(patrocinios: readonly Patrocinio[] | undefined, bairro: string | undefined): number {
-  const validos = (patrocinios ?? []).filter((p) =>
-    p.bairroIds && p.bairroIds.length > 0 ? bairro !== undefined && p.bairroIds.includes(bairro) : true,
+/** Se o anunciante disputa o topo nesta busca: um link da cidade toda ou um pacote que inclui o bairro escolhido. */
+export function disputaOTopo(links: readonly LinkDestacadoContratado[] | undefined, bairro: string | undefined): boolean {
+  return (links ?? []).some((l) =>
+    l.bairroIds && l.bairroIds.length > 0 ? bairro !== undefined && l.bairroIds.includes(bairro) : true,
   );
-  if (validos.length === 0) return 0;
-  return validos.some((p) => p.plus) ? 2 : 1;
 }
 
-/** Até 3 destacados, sorteados com peso 2 para o Destacado Plus. */
+/** Até 3 destacados, sorteados com a mesma chance para todos. */
 function sortearDestacados<T extends CandidatoLista>(
   candidatos: readonly T[],
   bairro: string | undefined,
   aleatorio: Aleatorio,
 ): T[] {
-  const comPatrocinio = candidatos
-    .map((c) => ({ item: c, peso: pesoPatrocinio(c.patrocinios, bairro) }))
-    .filter((c) => c.peso > 0);
-  return sortearComPeso(comPatrocinio, MAXIMO_DESTACADOS, aleatorio);
+  const naDisputa = candidatos.filter((c) => disputaOTopo(c.linksDestacados, bairro));
+  return embaralhar(naDisputa, aleatorio).slice(0, MAXIMO_DESTACADOS);
 }
 
 /** Grupos do maior para o menor nível; dentro de cada grupo, a ordem alterna a cada busca. */

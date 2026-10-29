@@ -37,8 +37,9 @@ select 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '22222222-2222-2222-2222-22222222
 from cidades where slug = 'rio-das-ostras';
 
 -- A1 publicado (dono U1), A2 rascunho do representante, A3 em análise (dono U3).
-insert into anunciantes (id, cidade_id, tipo, slug, nome, usuario_id, representante_id, status, categoria_principal_id)
-select v.id::uuid, c.id, 'profissional', v.slug, v.nome, v.usuario::uuid, v.rep::uuid, v.status::status_anunciante, cat.id
+insert into anunciantes (id, cidade_id, tipo, slug, nome, usuario_id, representante_id, status, categoria_principal_id, plano_id)
+select v.id::uuid, c.id, 'profissional', v.slug, v.nome, v.usuario::uuid, v.rep::uuid, v.status::status_anunciante, cat.id,
+  (select p.id from planos p where p.cidade_id = c.id and p.codigo = 'prof-nivel1')
 from cidades c
 join categorias cat on cat.cidade_id = c.id and cat.slug_lista = 'eletricistas'
 cross join (values
@@ -89,7 +90,7 @@ set local role authenticated;
 select is((select count(*)::int from anunciantes where slug like 'teste-%'), 1, 'anunciante vê o próprio perfil e os publicados, não o rascunho nem o em análise dos outros');
 select is(teste_linhas_alteradas($c$update anunciantes set descricao = 'Nova descrição' where slug = 'teste-a1'$c$), 1,
   'anunciante altera a descrição do próprio perfil');
-select throws_ok($$ update anunciantes set plano_id = (select id from planos where codigo = 'prof-premium') where slug = 'teste-a1' $$,
+select throws_ok($$ update anunciantes set plano_id = (select id from planos where codigo = 'prof-nivel3') where slug = 'teste-a1' $$,
   'P0001', 'Este campo só pode ser alterado pela administração.', 'anunciante não muda o próprio plano');
 select throws_ok($$ update anunciantes set fundador = true, fundador_desde = current_date where slug = 'teste-a1' $$,
   'P0001', 'Este campo só pode ser alterado pela administração.', 'anunciante não se marca como Fundador');
@@ -153,7 +154,7 @@ select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaa
 set local role authenticated;
 select is((select count(*)::int from anunciantes where slug like 'teste-%'), 4, 'administrador com segunda etapa vê todos');
 select is(teste_linhas_alteradas($c$update anunciantes set status = 'publicado', aprovado_em = now(), aprovado_por = auth.uid(),
-  plano_id = (select id from planos where codigo = 'prof-premium') where slug = 'teste-a3'$c$), 1,
+  plano_id = (select id from planos where codigo = 'prof-nivel3') where slug = 'teste-a3'$c$), 1,
   'administrador aprova o perfil e define o plano');
 select is(teste_linhas_alteradas($c$update fotos set situacao = 'removido', removida_por = auth.uid(), removida_em = now(), motivo_remocao = 'teste'
   where chave like '%f3000000-0000-0000-0000-000000000003'$c$), 1,

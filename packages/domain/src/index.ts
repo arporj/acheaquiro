@@ -8,7 +8,7 @@ export * from "./cobranca";
 export * from "./comissao";
 export * from "./assinatura";
 export * from "./precos";
-export * from "./destaque";
+export * from "./banner";
 export * from "./horario";
 export * from "./patrocinio";
 export * from "./artista";

@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
-  calcularPrecoDestaque,
+  calcularPrecoBanner,
   diasPerdidosNaConfirmacao,
   proximosDiasLivres,
   sequenciasDeDias,
-  validarReservaDestaque,
-  type RegrasDestaqueExclusivo,
-} from "./destaque";
+  validarReservaBanner,
+  type RegrasBannerExclusivo,
+} from "./banner";
 import { somarDias } from "./datas";
 
 // Valores decididos em 20/10/2026; na aplicação, vêm de extras.regras.
-const regras: RegrasDestaqueExclusivo = {
+const regras: RegrasBannerExclusivo = {
   diariaCentavos: 2490,
   valorBlocoCentavos: 50000,
   diasPorBloco: 30,
@@ -23,7 +23,7 @@ function seguidos(inicio: string, quantidade: number): string[] {
   return Array.from({ length: quantidade }, (_, i) => somarDias(inicio, i));
 }
 
-const preco = (dias: string[]) => calcularPrecoDestaque(dias, regras);
+const preco = (dias: string[]) => calcularPrecoBanner(dias, regras);
 
 describe("sequenciasDeDias", () => {
   it("agrupa dias seguidos, mesmo fora de ordem e virando o mês", () => {
@@ -80,34 +80,34 @@ describe("preço", () => {
 
   it("recusa dias repetidos e regras inválidas", () => {
     expect(() => preco(["2026-12-01", "2026-12-01"])).toThrow(RangeError);
-    expect(() => calcularPrecoDestaque(["2026-12-01"], { ...regras, minimoDiasParaBloco: 31 })).toThrow(RangeError);
-    expect(() => calcularPrecoDestaque(["2026-12-01"], { ...regras, diariaCentavos: 24.9 })).toThrow(RangeError);
+    expect(() => calcularPrecoBanner(["2026-12-01"], { ...regras, minimoDiasParaBloco: 31 })).toThrow(RangeError);
+    expect(() => calcularPrecoBanner(["2026-12-01"], { ...regras, diariaCentavos: 24.9 })).toThrow(RangeError);
   });
 });
 
-describe("validarReservaDestaque", () => {
+describe("validarReservaBanner", () => {
   const contexto = { hoje: "2026-12-01", ocupados: new Set(["2026-12-10"]), regras };
 
   it("aceita dias livres a partir de 2 dias depois de hoje e devolve o preço", () => {
-    expect(validarReservaDestaque(["2026-12-03", "2026-12-04"], contexto)).toEqual({
+    expect(validarReservaBanner(["2026-12-03", "2026-12-04"], contexto)).toEqual({
       ok: true,
       dados: { valorCentavos: 4980, blocosACompletar: [] },
     });
   });
 
   it("recusa dias antes da antecedência mínima", () => {
-    const resultado = validarReservaDestaque(["2026-12-02"], contexto);
+    const resultado = validarReservaBanner(["2026-12-02"], contexto);
     expect(resultado).toMatchObject({ ok: false, erro: { codigo: "DADOS_INVALIDOS" } });
     expect(!resultado.ok && resultado.erro.mensagem).toContain("03/12/2026");
   });
 
   it("recusa dia já reservado", () => {
-    expect(validarReservaDestaque(["2026-12-10"], contexto)).toMatchObject({ ok: false, erro: { codigo: "CONFLITO" } });
+    expect(validarReservaBanner(["2026-12-10"], contexto)).toMatchObject({ ok: false, erro: { codigo: "CONFLITO" } });
   });
 
   it("recusa escolha vazia ou com dias repetidos", () => {
-    expect(validarReservaDestaque([], contexto).ok).toBe(false);
-    expect(validarReservaDestaque(["2026-12-05", "2026-12-05"], contexto).ok).toBe(false);
+    expect(validarReservaBanner([], contexto).ok).toBe(false);
+    expect(validarReservaBanner(["2026-12-05", "2026-12-05"], contexto).ok).toBe(false);
   });
 });
 

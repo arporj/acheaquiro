@@ -14,24 +14,25 @@ function plano(
 }
 
 export const planos: Plano[] = [
-  plano({ id: "prof-basico", tipo: "profissional", nome: "Básico", nivel: 1, selo: "nenhum", valorMensalCentavos: 199, temRelatorio: false }, [1, 0, 0, 0]),
-  plano({ id: "prof-profissional", tipo: "profissional", nome: "Profissional", nivel: 2, selo: "transparente", valorMensalCentavos: 990, temRelatorio: false }, [5, 1, 0, 0]),
-  plano({ id: "prof-premium", tipo: "profissional", nome: "Premium", nivel: 3, selo: "prata", valorMensalCentavos: 2990, temRelatorio: true }, [10, 3, 0, 0]),
-  plano({ id: "prof-superpremium", tipo: "profissional", nome: "SuperPremium", nivel: 4, selo: "ouro", valorMensalCentavos: 4990, temRelatorio: true }, [30, 5, 0, 0]),
-  plano({ id: "com-gratuito", tipo: "comercio", nome: "Gratuito", nivel: 1, selo: "nenhum", valorMensalCentavos: 0, temRelatorio: false }, [0, 0, 0, 0]),
-  plano({ id: "com-basico", tipo: "comercio", nome: "Básico", nivel: 2, selo: "transparente", valorMensalCentavos: 1990, temRelatorio: false }, [5, 1, 2, 10]),
-  plano({ id: "com-vitrine", tipo: "comercio", nome: "Vitrine", nivel: 3, selo: "prata", valorMensalCentavos: 5990, temRelatorio: true }, [15, 3, 4, 30]),
-  plano({ id: "com-premium", tipo: "comercio", nome: "Premium", nivel: 4, selo: "ouro", valorMensalCentavos: 9990, temRelatorio: true }, [40, 5, 7, 200]),
+  plano({ id: "prof-nivel1", tipo: "profissional", nome: "Inicial", nivel: 1, selo: "nenhum", valorMensalCentavos: 199, temRelatorio: false }, [1, 0, 0, 0]),
+  plano({ id: "prof-nivel2", tipo: "profissional", nome: "Essencial", nivel: 2, selo: "transparente", valorMensalCentavos: 990, temRelatorio: false }, [5, 1, 0, 0]),
+  plano({ id: "prof-nivel3", tipo: "profissional", nome: "Avançado", nivel: 3, selo: "prata", valorMensalCentavos: 2990, temRelatorio: true }, [10, 3, 0, 0]),
+  plano({ id: "prof-nivel4", tipo: "profissional", nome: "Premium", nivel: 4, selo: "ouro", valorMensalCentavos: 4990, temRelatorio: true }, [30, 5, 0, 0]),
+  plano({ id: "com-nivel1", tipo: "comercio", nome: "Gratuito", nivel: 1, selo: "nenhum", valorMensalCentavos: 0, temRelatorio: false }, [0, 0, 0, 0]),
+  plano({ id: "com-nivel2", tipo: "comercio", nome: "Essencial", nivel: 2, selo: "transparente", valorMensalCentavos: 1990, temRelatorio: false }, [5, 1, 2, 10]),
+  plano({ id: "com-nivel3", tipo: "comercio", nome: "Avançado", nivel: 3, selo: "prata", valorMensalCentavos: 5990, temRelatorio: true }, [15, 3, 4, 30]),
+  plano({ id: "com-nivel4", tipo: "comercio", nome: "Premium", nivel: 4, selo: "ouro", valorMensalCentavos: 9990, temRelatorio: true }, [40, 5, 7, 200]),
 ];
 
 const mensal = { cobranca: "mensal" as const, ...anual };
-const destaque = { aceitaDescontoFundador: false, permiteAnual: true };
+/** Banner Exclusivo, Carrossel e links destacados: sem desconto de Fundador. */
+const anuncio = { aceitaDescontoFundador: false, permiteAnual: true };
 const pacote = { aceitaDescontoFundador: true, permiteAnual: true };
 
 export const extrasDisponiveis: Extra[] = [
   {
-    id: "destaque-exclusivo",
-    nome: "Destaque Exclusivo",
+    id: "banner-exclusivo",
+    nome: "Banner Exclusivo",
     descricao: "Área acima do carrossel, no topo de todas as páginas, só para você nos dias que escolher no calendário.",
     valorMensalCentavos: 50000,
     ...anual,
@@ -47,13 +48,13 @@ export const extrasDisponiveis: Extra[] = [
     permiteAnual: false,
   },
   {
-    id: "super-destaque",
-    nome: "Super Destaque",
+    id: "carrossel",
+    nome: "Carrossel",
     descricao:
       "Uma vaga no carrossel do topo de todas as páginas do site. São no máximo 8 vagas, e a ordem é sorteada a cada visita.",
     valorMensalCentavos: 8990,
     ...mensal,
-    ...destaque,
+    ...anuncio,
   },
   {
     id: "link-destacado-cidade",
@@ -63,7 +64,7 @@ export const extrasDisponiveis: Extra[] = [
     valorMensalCentavos: 7990,
     unidade: "por categoria",
     ...mensal,
-    ...destaque,
+    ...anuncio,
   },
   {
     id: "link-destacado",
@@ -73,16 +74,7 @@ export const extrasDisponiveis: Extra[] = [
     valorMensalCentavos: 3990,
     unidade: "por categoria, em 3 bairros",
     ...mensal,
-    ...destaque,
-  },
-  {
-    id: "destacado-plus",
-    nome: "Destacado Plus nos bairros",
-    descricao: "Igual ao link destacado nos bairros, com o dobro de chance no sorteio.",
-    valorMensalCentavos: 5990,
-    unidade: "por categoria, em 3 bairros",
-    ...mensal,
-    ...destaque,
+    ...anuncio,
   },
   {
     id: "categoria-adicional",

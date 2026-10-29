@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { esquemaDestaquePorDia, esquemaEscalaFundador, esquemaExtraAdmin, esquemaPlanoAdmin, esquemaQuantidadePacote } from "./catalogo";
+import { esquemaBannerPorDia, esquemaEscalaFundador, esquemaExtraAdmin, esquemaPlanoAdmin, esquemaQuantidadePacote } from "./catalogo";
 import { reaisEmCentavos } from "./comum";
 
 const mensagem = (r: { success: boolean; error?: { issues: { message: string }[] } }) => (r.success ? "" : r.error!.issues[0]!.message);
 
 const plano = {
-  nome: " Vitrine ",
+  nome: " Avançado ",
   valorMensalCentavos: "59,90",
   mesesCobradosNoAnual: "10",
   limiteFotos: "10",
@@ -34,7 +34,7 @@ describe("reaisEmCentavos", () => {
 describe("esquemaPlanoAdmin", () => {
   it("converte valores e marca o relatório", () => {
     expect(esquemaPlanoAdmin.parse(plano)).toEqual({
-      nome: "Vitrine",
+      nome: "Avançado",
       valorMensalCentavos: 5990,
       mesesCobradosNoAnual: 10,
       limiteFotos: 10,
@@ -91,15 +91,15 @@ describe("esquemaExtraAdmin", () => {
   });
 });
 
-describe("esquemaDestaquePorDia", () => {
-  const destaque = { diariaCentavos: "24,90", valorBlocoCentavos: "500,00", diasPorBloco: "30", minimoDiasParaBloco: "21", antecedenciaDias: "2" };
+describe("esquemaBannerPorDia", () => {
+  const banner = { diariaCentavos: "24,90", valorBlocoCentavos: "500,00", diasPorBloco: "30", minimoDiasParaBloco: "21", antecedenciaDias: "2" };
 
   it("converte os valores", () => {
-    expect(esquemaDestaquePorDia.parse(destaque)).toEqual({ diariaCentavos: 2490, valorBlocoCentavos: 50000, diasPorBloco: 30, minimoDiasParaBloco: 21, antecedenciaDias: 2 });
+    expect(esquemaBannerPorDia.parse(banner)).toEqual({ diariaCentavos: 2490, valorBlocoCentavos: 50000, diasPorBloco: 30, minimoDiasParaBloco: 21, antecedenciaDias: 2 });
   });
 
   it("o mínimo para pagar o bloco não passa dos dias do bloco", () => {
-    expect(mensagem(esquemaDestaquePorDia.safeParse({ ...destaque, minimoDiasParaBloco: "31" }))).toBe(
+    expect(mensagem(esquemaBannerPorDia.safeParse({ ...banner, minimoDiasParaBloco: "31" }))).toBe(
       "O mínimo de dias para pagar o bloco não pode passar dos dias do bloco.",
     );
   });

@@ -9,7 +9,7 @@ const regras = {
   aberturaAoPublico: "2026-11-27",
 };
 
-// Exemplo do item 4.12: João vendeu o Básico (R$ 19,90) mensal; no 2º mês, Maria fez o upgrade para o Vitrine (R$ 59,90).
+// Exemplo do item 4.12: João vendeu o Essencial (R$ 19,90) mensal; no 2º mês, Maria fez o upgrade para o Avançado (R$ 59,90).
 const basico = { valorMensalCentavos: 1990, mesesCobradosNoAnual: 10 };
 const vitrine = { valorMensalCentavos: 5990, mesesCobradosNoAnual: 10 };
 const faixa: FaixaUpgrade = { id: "maria", diferencaMensalCentavos: 4000, parcelasPagas: 0, concluida: false, descontoCentavos: 0 };
@@ -17,9 +17,9 @@ const faixa: FaixaUpgrade = { id: "maria", diferencaMensalCentavos: 4000, parcel
 describe("diferencaParaComissao", () => {
   it("diferença sobre o maior entre o plano atual e o maior já comissionado", () => {
     expect(diferencaParaComissao({ mensalidadeNovaCentavos: 5990, mensalidadeAtualCentavos: 1990, maiorComissionadaCentavos: 1990 })).toBe(4000);
-    // Desceu do Vitrine para o Básico e voltou ao Vitrine: nada de comissão nova.
+    // Desceu do Avançado para o Essencial e voltou ao Avançado: nada de comissão nova.
     expect(diferencaParaComissao({ mensalidadeNovaCentavos: 5990, mensalidadeAtualCentavos: 1990, maiorComissionadaCentavos: 5990 })).toBe(0);
-    // Subiu sozinho para o Vitrine e um representante vende o Premium: só a diferença sobre o Vitrine.
+    // Subiu sozinho para o Avançado e um representante vende o Premium: só a diferença sobre o Avançado.
     expect(diferencaParaComissao({ mensalidadeNovaCentavos: 9990, mensalidadeAtualCentavos: 5990, maiorComissionadaCentavos: 0 })).toBe(4000);
   });
 
@@ -100,7 +100,7 @@ describe("calcularPagamentoPlano com upgrade e desconto do representante", () =>
     faixasUpgrade: [faixa],
   };
 
-  it("S8: João recebe os 10% sobre o Básico e Maria os 100% da diferença", () => {
+  it("S8: João recebe os 10% sobre o Essencial e Maria os 100% da diferença", () => {
     const r = calcularPagamentoPlano(terceiro);
     expect(r.numero).toBe(3);
     expect(r.comissao).toEqual({ baseCentavos: 1990, percentual: 10, valorCentavos: 199 });

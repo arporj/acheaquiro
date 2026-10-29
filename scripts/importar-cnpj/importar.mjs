@@ -356,7 +356,7 @@ async function etapaEnviar() {
   const comercios = lerJson("comercios.json", null);
   if (!comercios) throw new Error("Rode a etapa preparar antes.");
   const cache = lerJson("coordenadas.json", {});
-  const { data: plano, error: ePlano } = await banco.from("planos").select("id").eq("cidade_id", cidadeId).eq("codigo", "com-gratuito").single();
+  const { data: plano, error: ePlano } = await banco.from("planos").select("id").eq("cidade_id", cidadeId).eq("codigo", "com-nivel1").single();
   if (ePlano) throw ePlano;
 
   const jaImportados = await lerTudo(() => banco.from("dados_receita").select("cnpj").order("cnpj"));

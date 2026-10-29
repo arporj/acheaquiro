@@ -36,8 +36,9 @@ from cidades c cross join (values
   ('bbbbbbbb-0000-0000-0000-000000000002', '22222222-0000-0000-0000-000000000002', 'teste-rep-2')
 ) as v (id, usuario, codigo)
 where c.slug = 'rio-das-ostras';
-insert into anunciantes (id, cidade_id, tipo, slug, nome, representante_id, status, categoria_principal_id, email_convite)
-select v.id::uuid, c.id, 'profissional', v.slug, 'Teste Assistido', 'bbbbbbbb-0000-0000-0000-000000000001', 'rascunho', cat.id, v.email
+insert into anunciantes (id, cidade_id, tipo, slug, nome, representante_id, status, categoria_principal_id, email_convite, plano_id)
+select v.id::uuid, c.id, 'profissional', v.slug, 'Teste Assistido', 'bbbbbbbb-0000-0000-0000-000000000001', 'rascunho', cat.id, v.email,
+  (select p.id from planos p where p.cidade_id = c.id and p.codigo = 'prof-nivel1')
 from cidades c join categorias cat on cat.cidade_id = c.id and cat.slug_lista = 'eletricistas'
 cross join (values
   ('a1000000-0000-0000-0000-000000000001', 'teste-assistido-1', 'novo@teste.invalid'),

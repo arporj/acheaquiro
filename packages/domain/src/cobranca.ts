@@ -119,9 +119,9 @@ export function calcularCobrancaPlano(
 }
 
 export interface ValoresExtra extends ValoresPlano {
-  /** Pacotes (fotos, categoria, encarte, produtos, endereço) têm desconto de Fundador; destaques não. */
+  /** Pacotes (fotos, categoria, encarte, produtos, endereço) têm desconto de Fundador; Banner Exclusivo, Carrossel e links destacados não. */
   aceitaDescontoFundador: boolean;
-  /** Extras sem venda no anual. O Destaque Exclusivo, vendido por dia, tem regra própria (destaque.ts). */
+  /** Extras sem venda no anual. O Banner Exclusivo, vendido por dia, tem regra própria (banner.ts). */
   permiteAnual: boolean;
 }
 

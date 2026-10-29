@@ -21,13 +21,13 @@ import { ambiente } from "@/lib/ambiente";
 import { normalizar } from "@/lib/texto";
 import { anunciantes as anunciantesFicticios } from "@/mocks/anunciantes";
 import { categorias, ordemAtalhos } from "@/mocks/categorias";
-import { destaqueExclusivoId, linksDestacados, simulacaoComercios, superDestaqueIds } from "@/mocks/extras";
+import { bannerExclusivoId, linksDestacados, simulacaoComercios, carrosselIds } from "@/mocks/extras";
 import { bairros, cidadeAtual } from "@/mocks/localidades";
 import { apresentacoes as apresentacoesFicticias, artistas as artistasFicticios, eventos as eventosFicticios } from "@/mocks/agenda";
 import { cotasPatrocinio, patrocinadores as patrocinadoresFicticios } from "@/mocks/patrocinadores";
 import { extrasDisponiveis, planos, regrasCobranca } from "@/mocks/planos";
 
-/** Anunciantes, destaques e destacados fictícios. */
+/** Anunciantes, Banner Exclusivo, Carrossel e links destacados fictícios. */
 const ficticio = ambiente === "apresentacao";
 const catalogoDoBanco = ambiente === "producao";
 
@@ -314,13 +314,13 @@ export async function buscarPorTexto(termo: string): Promise<{ categorias: Categ
   return { categorias: categoriasEncontradas, resultados: ordenarSimulado(c, encontrados).map((r) => paraItem(c, r.anunciante)) };
 }
 
-export async function destaqueExclusivo(): Promise<{ item: ItemResultado; anunciante: Anunciante } | undefined> {
+export async function bannerExclusivo(): Promise<{ item: ItemResultado; anunciante: Anunciante } | undefined> {
   const c = await catalogo();
-  const anunciante = ficticio ? anunciantes.find((a) => a.id === destaqueExclusivoId) : undefined;
+  const anunciante = ficticio ? anunciantes.find((a) => a.id === bannerExclusivoId) : undefined;
   return anunciante && { item: paraItem(c, anunciante), anunciante };
 }
 
-/** Vitrine dos Fundadores (item 4.16), em ordem alfabética. */
+/** Mural dos Fundadores (item 4.16), em ordem alfabética. */
 export async function listarFundadores(): Promise<ItemResultado[]> {
   const c = await catalogo();
   const lista = catalogoDoBanco ? await anunciantesDoBanco({ soFundadores: true }) : anunciantes;
@@ -330,9 +330,9 @@ export async function listarFundadores(): Promise<ItemResultado[]> {
     .map((a) => paraItem(c, a));
 }
 
-export async function superDestaques(): Promise<ItemResultado[]> {
+export async function anunciantesDoCarrossel(): Promise<ItemResultado[]> {
   const c = await catalogo();
-  const ids = ficticio ? superDestaqueIds : [];
+  const ids = ficticio ? carrosselIds : [];
   return ids
     .map((id) => anunciantes.find((a) => a.id === id))
     .filter((a): a is Anunciante => Boolean(a))

@@ -21,9 +21,9 @@ guardarNoCache(Astro);
 const regras = await obterRegrasCobranca();
 const [primeira, segunda, terceira, quarta] = PERCENTUAIS_COMISSAO_MENSAL;
 
-// Exemplo do item 4.12 da especificação: padaria fictícia no plano Vitrine.
-const planoExemplo = await planoPorId("com-vitrine");
-if (!planoExemplo) console.error("Página do representante: plano do exemplo (com-vitrine) não encontrado.");
+// Exemplo do item 4.12 da especificação: padaria fictícia no plano de nível 3 de comércio (hoje, Avançado).
+const planoExemplo = await planoPorId("com-nivel3");
+if (!planoExemplo) console.error("Página do representante: plano do exemplo (com-nivel3) não encontrado.");
 const exemplo = planoExemplo && {
   plano: planoExemplo,
   mensalidade: valorPlano(planoExemplo, "mensal", false, regras),
