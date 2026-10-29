@@ -1,0 +1,203 @@
+---
+// Carregamento ao clicar (decisão de 29/10/2026). Ao clicar num link deste
+// site, a tela troca na hora por um esqueleto da página seguinte; ao enviar um
+// formulário, o botão mostra "Enviando…" e um segundo envio é bloqueado. O
+// navegador continua carregando normalmente: nada aqui busca a página.
+// Regras em src/lib/carregamento.ts.
+const bloco = "rounded-lg bg-slate-200";
+---
+
+<div
+  id="carregando-pagina"
+  class="fixed inset-0 z-[100] overflow-hidden bg-fundo"
+  role="status"
+  aria-live="polite"
+  hidden
+>
+  <span class="sr-only">Carregando a página…</span>
+  <div class="animate-pulse motion-reduce:animate-none" aria-hidden="true">
+    <div class="fundo-raios">
+      <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 lg:h-[4.5rem]">
+        <div class="h-9 w-32 rounded-lg bg-white/25"></div>
+        <div class="flex gap-2">
+          <div class="h-9 w-28 rounded-full bg-amarelo-400/70"></div>
+          <div class="hidden h-9 w-24 rounded-full bg-white/20 md:block"></div>
+        </div>
+      </div>
+    </div>
+
+    <div data-esqueleto="lista" hidden class="mx-auto max-w-6xl px-4 pt-4">
+      <div class={`h-4 w-48 ${bloco}`}></div>
+      <div class="mt-4 flex items-center gap-3">
+        <div class="size-14 rounded-2xl bg-slate-200"></div>
+        <div class={`h-7 w-56 ${bloco}`}></div>
+      </div>
+      <div class="mt-5 h-12 rounded-2xl bg-white ring-1 ring-black/5"></div>
+      <div class="mt-3 flex gap-2">
+        <div class="h-9 w-40 rounded-full bg-slate-200"></div>
+        <div class="h-9 w-32 rounded-full bg-slate-200"></div>
+      </div>
+      <div class="mt-4 grid gap-3 lg:grid-cols-[1fr_20rem]">
+        <div class="flex flex-col gap-3">
+          {
+            [1, 2, 3, 4].map(() => (
+              <div class="flex gap-3 rounded-2xl bg-white p-3 ring-1 ring-black/5 sm:p-4">
+                <div class="size-20 shrink-0 rounded-xl bg-slate-200 sm:size-24" />
+                <div class="flex-1 space-y-2 pt-1">
+                  <div class={`h-5 w-3/4 ${bloco}`} />
+                  <div class={`h-4 w-1/3 ${bloco}`} />
+                  <div class={`h-4 w-2/3 ${bloco}`} />
+                  <div class="h-10 rounded-full bg-slate-200" />
+                </div>
+              </div>
+            ))
+          }
+        </div>
+        <div class="hidden h-80 rounded-3xl bg-white ring-1 ring-black/5 lg:block"></div>
+      </div>
+    </div>
+
+    <div data-esqueleto="perfil" hidden class="mx-auto max-w-6xl px-4 pt-4">
+      <div class={`h-4 w-56 ${bloco}`}></div>
+      <div class="mt-4 h-40 rounded-3xl bg-slate-200 sm:h-56"></div>
+      <div class="-mt-10 ml-4 size-24 rounded-2xl border-4 border-fundo bg-slate-300"></div>
+      <div class="mt-3 space-y-2">
+        <div class={`h-8 w-2/3 max-w-md ${bloco}`}></div>
+        <div class={`h-4 w-40 ${bloco}`}></div>
+      </div>
+      <div class="mt-4 flex gap-2">
+        <div class="h-12 flex-1 rounded-full bg-slate-200 sm:max-w-60"></div>
+        <div class="h-12 w-28 rounded-full bg-slate-200"></div>
+      </div>
+      <div class="mt-6 space-y-2 rounded-3xl bg-white p-5 ring-1 ring-black/5">
+        <div class={`h-4 w-full ${bloco}`}></div>
+        <div class={`h-4 w-11/12 ${bloco}`}></div>
+        <div class={`h-4 w-4/5 ${bloco}`}></div>
+      </div>
+    </div>
+
+    <div data-esqueleto="painel" hidden class="mx-auto grid max-w-6xl gap-6 px-4 pt-6 lg:grid-cols-[15rem_1fr]">
+      <div class="hidden flex-col gap-2 lg:flex">
+        {[1, 2, 3, 4, 5, 6].map(() => <div class="h-10 rounded-2xl bg-slate-200" />)}
+      </div>
+      <div>
+        <div class={`h-8 w-56 ${bloco}`}></div>
+        <div class={`mt-2 h-4 w-80 max-w-full ${bloco}`}></div>
+        <div class="mt-6 space-y-3 rounded-3xl bg-white p-4 ring-1 ring-black/5">
+          {[1, 2, 3, 4, 5].map(() => <div class={`h-10 ${bloco}`} />)}
+        </div>
+      </div>
+    </div>
+
+    <div data-esqueleto="pagina" hidden>
+      <div class="fundo-raios">
+        <div class="mx-auto max-w-6xl space-y-3 px-4 pt-6 pb-12">
+          <div class="h-9 w-4/5 max-w-xl rounded-lg bg-white/25"></div>
+          <div class="h-9 w-3/5 max-w-md rounded-lg bg-white/25"></div>
+          <div class="h-5 w-2/3 max-w-lg rounded-lg bg-white/15"></div>
+        </div>
+      </div>
+      <div class="mx-auto grid max-w-6xl gap-3 px-4 pt-6 sm:grid-cols-3">
+        {[1, 2, 3].map(() => <div class="h-36 rounded-3xl bg-white ring-1 ring-black/5" />)}
+      </div>
+    </div>
+  </div>
+  <p
+    data-demora
+    hidden
+    class="absolute inset-x-4 bottom-8 mx-auto max-w-xs rounded-full bg-azul-900 px-4 py-2 text-center text-sm font-bold text-white shadow-lg"
+  >
+    Ainda carregando…
+  </p>
+</div>
+
+<script>
+  import { cliqueTrocaDePagina, tipoDeEsqueleto } from "@/lib/carregamento";
+
+  /** Depois disso, avisa que a página ainda está carregando (internet lenta). */
+  const AVISO_DE_DEMORA_MS = 8000;
+
+  const tela = document.getElementById("carregando-pagina");
+  const demora = tela?.querySelector<HTMLElement>("[data-demora]");
+  const esqueletos = tela ? [...tela.querySelectorAll<HTMLElement>("[data-esqueleto]")] : [];
+  const conteudoDosBotoes = new Map<HTMLButtonElement, string>();
+  let temporizador: number | undefined;
+
+  function mostrarEsqueleto(destino: URL) {
+    if (!tela || !demora) return;
+    const tipo = tipoDeEsqueleto(destino);
+    for (const esqueleto of esqueletos) esqueleto.hidden = esqueleto.dataset.esqueleto !== tipo;
+    demora.hidden = true;
+    tela.hidden = false;
+    window.clearTimeout(temporizador);
+    temporizador = window.setTimeout(() => (demora.hidden = false), AVISO_DE_DEMORA_MS);
+  }
+
+  function marcarEnvio(formulario: HTMLFormElement, botao: HTMLButtonElement | null) {
+    formulario.dataset.enviando = "";
+    if (!botao) return;
+    conteudoDosBotoes.set(botao, botao.innerHTML);
+    // O botão não é desabilitado: o navegador deixaria de mandar o nome e o valor dele.
+    botao.setAttribute("aria-disabled", "true");
+    botao.classList.add("pointer-events-none", "opacity-80");
+    botao.innerHTML =
+      '<svg class="size-4 shrink-0 animate-spin motion-reduce:animate-none" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" opacity="0.3"/>' +
+      '<path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>' +
+      "<span>Enviando…</span>";
+  }
+
+  /** Volta tudo ao normal (o navegador pode reaproveitar a página ao voltar). */
+  function restaurar() {
+    window.clearTimeout(temporizador);
+    if (tela) tela.hidden = true;
+    for (const [botao, conteudo] of conteudoDosBotoes) {
+      botao.innerHTML = conteudo;
+      botao.removeAttribute("aria-disabled");
+      botao.classList.remove("pointer-events-none", "opacity-80");
+    }
+    conteudoDosBotoes.clear();
+    for (const formulario of document.querySelectorAll<HTMLFormElement>("form[data-enviando]")) delete formulario.dataset.enviando;
+  }
+
+  if (!tela || !demora) {
+    console.error("Carregamento ao clicar: tela de carregamento não encontrada.");
+  } else {
+    // Na fase de bolha da janela, depois dos scripts da página: quem cancelou o clique fica de fora.
+    window.addEventListener("click", (evento) => {
+      const link = evento.target instanceof Element ? evento.target.closest<HTMLAnchorElement>("a[href]") : null;
+      if (!link) return;
+      const destino = cliqueTrocaDePagina(evento, link, new URL(location.href));
+      if (destino) mostrarEsqueleto(destino);
+    });
+
+    // Um segundo envio do mesmo formulário é barrado antes de qualquer script da página.
+    window.addEventListener(
+      "submit",
+      (evento) => {
+        if (evento.target instanceof HTMLFormElement && "enviando" in evento.target.dataset) evento.preventDefault();
+      },
+      true,
+    );
+
+    window.addEventListener("submit", (evento) => {
+      const formulario = evento.target;
+      if (evento.defaultPrevented || !(formulario instanceof HTMLFormElement)) return;
+      const alvo = evento.submitter?.getAttribute("formtarget") ?? formulario.target;
+      if (alvo && alvo !== "_self") return;
+      const metodo = (evento.submitter?.getAttribute("formmethod") ?? formulario.method).toLowerCase();
+      if (metodo === "dialog") return;
+      if (metodo === "get") {
+        const acao = evento.submitter?.getAttribute("formaction") ?? formulario.action;
+        mostrarEsqueleto(new URL(acao, location.href));
+        return;
+      }
+      const botao = evento.submitter instanceof HTMLButtonElement ? evento.submitter : formulario.querySelector<HTMLButtonElement>("button[type=submit], button:not([type])");
+      marcarEnvio(formulario, botao);
+    });
+
+    window.addEventListener("pageshow", (evento) => {
+      if (evento.persisted) restaurar();
+    });
+  }
+</script>

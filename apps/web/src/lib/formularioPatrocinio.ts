@@ -134,22 +134,30 @@ export function ligarConfirmacoes(): void {
   if (!modal) return;
   const texto = modal.querySelector<HTMLElement>("[data-confirmar-texto]")!;
   const sim = modal.querySelector<HTMLButtonElement>("[data-confirmar-sim]")!;
-  let pendente: HTMLFormElement | null = null;
+  let pendente: { form: HTMLFormElement; botao: HTMLElement | null } | null = null;
 
   for (const form of document.querySelectorAll<HTMLFormElement>("form[data-confirmar]")) {
     form.addEventListener("submit", (evento) => {
+      if ("confirmado" in form.dataset) return; // já confirmado: segue o envio
       evento.preventDefault();
-      pendente = form;
+      pendente = { form, botao: evento.submitter };
       texto.textContent = form.dataset.confirmar ?? "Confirmar?";
       modal.showModal();
     });
   }
   sim.addEventListener("click", () => {
-    const form = pendente;
+    const confirmado = pendente;
     pendente = null;
     modal.close();
-    // submit() não dispara o evento "submit", então não volta a pedir confirmação.
-    form?.submit();
+    if (!confirmado) return;
+    // requestSubmit dispara o evento "submit" (o botão mostra "Enviando…") e manda o botão clicado.
+    confirmado.form.dataset.confirmado = "";
+    confirmado.form.requestSubmit(confirmado.botao);
+  });
+  // Ao voltar pelo navegador, a página reaproveitada volta a pedir confirmação.
+  window.addEventListener("pageshow", (evento) => {
+    if (!evento.persisted) return;
+    for (const form of document.querySelectorAll<HTMLFormElement>("form[data-confirmado]")) delete form.dataset.confirmado;
   });
 }
 
