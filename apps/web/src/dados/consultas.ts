@@ -17,7 +17,7 @@ import {
 } from "@acheaqui/supabase-client";
 import { ENDERECO_ARQUIVOS } from "@/lib/arquivos";
 import { enderecoParaRota, linkComoChegar } from "@/lib/contato";
-import { ambiente } from "@/lib/ambiente";
+import { ABERTURA, ambiente } from "@/lib/ambiente";
 import { normalizar } from "@/lib/texto";
 import { anunciantes as anunciantesFicticios } from "@/mocks/anunciantes";
 import { categorias, ordemAtalhos } from "@/mocks/categorias";
@@ -41,7 +41,7 @@ const catalogoFicticio: CatalogoPublico = {
   planos,
   extras: extrasDisponiveis,
   regras: regrasCobranca,
-  aberturaAoPublico: "2026-11-27",
+  aberturaAoPublico: ABERTURA,
 };
 
 const anunciantes: Anunciante[] = ficticio ? anunciantesFicticios : [];

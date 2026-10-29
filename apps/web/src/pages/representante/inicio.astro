@@ -7,6 +7,8 @@ import { normalizarChavePix } from "@acheaqui/validation";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
 import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
+import { hojeNaCidade, obterAberturaAoPublico } from "@/dados/consultas";
+import { textoAbertura } from "@/lib/abertura";
 import { DIAS_INDICACAO } from "@/lib/indicacao";
 import { ROTULO_TIPO_PIX, lerMeuCadastro, salvarChavePix } from "@/lib/representante";
 
@@ -31,7 +33,9 @@ const cadastro = await lerMeuCadastro(supabase, usuario.id);
 const meu = cadastro.ok ? cadastro.dados : null;
 // Endereço fixo do site, mesmo antes da abertura: o aviso "em breve" já guarda a indicação.
 const link = meu ? `https://acheaquiro.com.br/r/${meu.codigo}` : "";
-const mensagemCompartilhar = `Conheça o Ache Aqui RO, o site dos profissionais e comércios de Rio das Ostras: ${link}`;
+// A data de abertura vai junto até o dia da abertura (decisão de 29/10/2026).
+const abertura = textoAbertura(await obterAberturaAoPublico(), hojeNaCidade());
+const mensagemCompartilhar = `Conheça o Ache Aqui RO, o site dos profissionais e comércios de Rio das Ostras${abertura ? `. ${abertura}` : ""}: ${link}`;
 const tipoPix = meu?.chavePix ? normalizarChavePix(meu.chavePix)?.tipo : undefined;
 ---
 

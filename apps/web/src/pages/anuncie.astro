@@ -6,10 +6,11 @@ import BotaoContato from "@/components/institucional/BotaoContato.astro";
 import ListaExtras from "@/components/institucional/ListaExtras.astro";
 import Passos from "@/components/institucional/Passos.astro";
 import TabelaPlanos from "@/components/institucional/TabelaPlanos.astro";
-import { listarExtras, listarPlanos, obterRegrasCobranca } from "@/dados/consultas";
+import { hojeNaCidade, listarExtras, listarPlanos, obterAberturaAoPublico, obterRegrasCobranca } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
 import { descricaoDescontoFundador, formatarCentavos, percentualInicialFundador } from "@/lib/precos";
+import { textoAbertura } from "@/lib/abertura";
 import { formatarData } from "@/lib/texto";
 
 guardarNoCache(Astro);
@@ -19,6 +20,7 @@ const regras = await obterRegrasCobranca();
 const menorPrecoProfissional = Math.min(...planos.profissional.map((p) => p.valorMensalCentavos));
 const temGratuito = planos.comercio.some((p) => p.valorMensalCentavos === 0);
 const prazo = formatarData(regras.prazoFundador);
+const abertura = textoAbertura(await obterAberturaAoPublico(), hojeNaCidade());
 const mesesAnual = planos.profissional[0]?.mesesCobradosNoAnual ?? 10;
 
 const vantagens: { icone: NomeIcone; titulo: string; texto: string }[] = [
@@ -54,6 +56,15 @@ const passos = [
 ];
 
 const perguntas = [
+  // Some a partir do dia da abertura (decisão de 29/10/2026).
+  ...(abertura
+    ? [
+        {
+          pergunta: "Quando o site abre?",
+          resposta: `${abertura}. Até ${prazo}, a equipe e os representantes fazem o cadastro de quem quer anunciar, e quem paga a assinatura anual nesse prazo vira Fundador.`,
+        },
+      ]
+    : []),
   {
     pergunta: "Pago comissão pelos clientes que chegarem?",
     resposta: "Não. O cliente fala direto com você e você paga só o valor fixo do plano, sem taxa por contato ou por venda.",
@@ -96,6 +107,7 @@ const perguntas = [
 
   <main>
     <Abertura
+      comAbertura
       chamada="Anuncie no Ache Aqui RO"
       subtitulo={`Profissional autônomo a partir de ${formatarCentavos(menorPrecoProfissional)} por mês.${
         temGratuito ? " Comércio pode começar no plano Gratuito." : ""

@@ -1,0 +1,19 @@
+---
+// Selo com a data de abertura ao público, no topo das páginas de venda (decisão
+// de 29/10/2026). Some a partir do dia da abertura. Regra em src/lib/abertura.ts.
+import { Icone } from "@acheaqui/ui";
+import { hojeNaCidade, obterAberturaAoPublico } from "@/dados/consultas";
+import { textoAbertura } from "@/lib/abertura";
+
+const abertura = await obterAberturaAoPublico();
+const texto = textoAbertura(abertura, hojeNaCidade());
+---
+
+{
+  texto && (
+    <p class="mb-3 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-sm font-bold text-white ring-1 ring-white/25">
+      <Icone nome="relogio" class="size-4 shrink-0 text-amarelo-400" strokeWidth={2.5} />
+      <time datetime={abertura}>{texto}</time>
+    </p>
+  )
+}

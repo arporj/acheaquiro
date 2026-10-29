@@ -5,16 +5,18 @@ import Abertura from "@/components/institucional/Abertura.astro";
 import BotaoContato from "@/components/institucional/BotaoContato.astro";
 import CardResultado from "@/components/resultados/CardResultado.astro";
 import { anoSemDescontoFundador } from "@acheaqui/domain";
-import { listarFundadores, listarPlanos, obterRegrasCobranca } from "@/dados/consultas";
+import { hojeNaCidade, listarFundadores, listarPlanos, obterAberturaAoPublico, obterRegrasCobranca } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
 import { descricaoDescontoFundador, formatarCentavos, percentualInicialFundador, valorPlano } from "@/lib/precos";
+import { textoAbertura } from "@/lib/abertura";
 import { formatarData } from "@/lib/texto";
 
 guardarNoCache(Astro);
 
 const regras = await obterRegrasCobranca();
 const prazo = formatarData(regras.prazoFundador);
+const abertura = textoAbertura(await obterAberturaAoPublico(), hojeNaCidade());
 const desconto = `${percentualInicialFundador(regras)}%`;
 const escala = descricaoDescontoFundador(regras.escalaDescontoFundador);
 const semDesconto = anoSemDescontoFundador(regras.escalaDescontoFundador);
@@ -83,6 +85,7 @@ const chip =
 
   <main>
     <Abertura
+      comAbertura
       chamada="Fundadores do Ache Aqui RO"
       subtitulo={`Pague a assinatura anual de um plano pago até ${prazo}. Desconto de ${escala}. Não há limite de vagas.`}
     >
@@ -202,7 +205,9 @@ const chip =
         <h2 class="font-display text-3xl font-extrabold md:text-4xl">
           O prazo termina em <span class="text-amarelo-400">{prazo}</span>
         </h2>
-        <p class="mx-auto mt-2 max-w-xl text-white/90">Fale com a equipe do Ache Aqui e garanta o seu lugar entre os Fundadores.</p>
+        <p class="mx-auto mt-2 max-w-xl text-white/90">
+          {abertura && <>{abertura}. </>}Fale com a equipe do Ache Aqui e garanta o seu lugar entre os Fundadores.
+        </p>
         <BotaoContato rotulo="Quero ser Fundador" class="mt-6" />
       </div>
     </section>

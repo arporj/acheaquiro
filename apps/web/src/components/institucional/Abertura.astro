@@ -1,16 +1,22 @@
 ---
 // Faixa de abertura das páginas institucionais. O título vem pelo slot, para
-// poder destacar palavras em amarelo; o slot "acoes" recebe os botões.
+// poder destacar palavras em amarelo; o slot "acoes" recebe os botões. As
+// páginas de venda mostram a data de abertura (decisão de 29/10/2026).
+import SeloAbertura from "./SeloAbertura.astro";
+
 interface Props {
   chamada: string;
   subtitulo: string;
+  /** Mostra a data de abertura ao público, até o dia da abertura. */
+  comAbertura?: boolean;
 }
 
-const { chamada, subtitulo } = Astro.props;
+const { chamada, subtitulo, comAbertura = false } = Astro.props;
 ---
 
 <section class="fundo-raios text-white">
   <div class="mx-auto max-w-6xl px-4 py-10 md:py-14">
+    {comAbertura && <SeloAbertura />}
     <p class="font-display text-lg font-bold text-amarelo-400">{chamada}</p>
     <h1 class="mt-1 max-w-3xl font-display text-[2rem] leading-[1.05] font-extrabold sm:text-5xl">
       <slot />
