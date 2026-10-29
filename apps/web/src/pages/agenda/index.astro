@@ -5,10 +5,13 @@ import { Icone } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
 import AgendaCalendario from "@/components/agenda/AgendaCalendario.astro";
 import AvatarArtista from "@/components/agenda/AvatarArtista.astro";
+import { mostraConvitePatrocinio } from "@acheaqui/domain";
+import ConvitePatrocinio from "@/components/patrocinadores/ConvitePatrocinio.astro";
 import LinhaPatrocinio from "@/components/patrocinadores/LinhaPatrocinio.astro";
-import { agendaDosMeses, bairrosDaAgenda, listarArtistas, listarEventos, mesesNaPagina, nomeBairro, patrocinadorDaAgenda } from "@/dados/consultas";
+import { agendaDosMeses, bairrosDaAgenda, listarArtistas, listarCotasPatrocinio, listarEventos, mesesNaPagina, nomeBairro, patrocinadorDaAgenda } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
+import { linkConvitePatrocinio } from "@/lib/convitePatrocinio";
 import { dataLonga, normalizar } from "@/lib/texto";
 
 const artistas = await listarArtistas();
@@ -16,7 +19,8 @@ if (artistas.length === 0) return Astro.rewrite("/404");
 guardarNoCache(Astro);
 
 const meses = mesesNaPagina();
-const [itens, bairros, eventos, patrocinador] = await Promise.all([agendaDosMeses(meses), bairrosDaAgenda(), listarEventos(), patrocinadorDaAgenda()]);
+const [itens, bairros, eventos, patrocinador, cotas] = await Promise.all([agendaDosMeses(meses), bairrosDaAgenda(), listarEventos(), patrocinadorDaAgenda(), listarCotasPatrocinio()]);
+const convite = mostraConvitePatrocinio(cotas.find((c) => c.cota === "agenda"), patrocinador !== undefined);
 const eventosComBairro = await Promise.all(eventos.map(async (e) => ({ ...e, bairro: await nomeBairro(e.bairroId) })));
 ---
 
@@ -33,6 +37,7 @@ const eventosComBairro = await Promise.all(eventos.map(async (e) => ({ ...e, bai
     <div class="mt-2 mb-5 flex flex-wrap items-baseline gap-x-2">
       <h1 class="font-display text-2xl leading-tight font-extrabold text-azul-900 sm:text-3xl">Agenda</h1>
       {patrocinador && <LinhaPatrocinio patrocinador={patrocinador} />}
+      {convite && <ConvitePatrocinio href={linkConvitePatrocinio("agenda")} />}
     </div>
 
     <div class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">

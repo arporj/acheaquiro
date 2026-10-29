@@ -4,16 +4,27 @@
 // do outro e os de Apoio dois por linha, todos visíveis, sem revezamento. No
 // celular, as três partes ficam uma embaixo da outra, na mesma ordem, com o
 // Master mais estreito para não ocupar a tela inteira.
-// Só aparece com pelo menos um patrocinador dessas três cotas.
+// Cada coluna com vaga termina num convite "Quer seu nome aqui?", um por
+// cota e não por vaga (decisão de 29/10/2026); cota esgotada não convida. Só
+// aparece com algum patrocinador ou convite nessas três cotas.
+import type { CotaPatrocinio } from "@acheaqui/types";
+import { mostraConvitePatrocinio } from "@acheaqui/domain";
 import CartaoPatrocinador from "./CartaoPatrocinador.astro";
-import { listarPatrocinadores } from "@/dados/consultas";
+import { listarCotasPatrocinio, listarPatrocinadores } from "@/dados/consultas";
+import { TEXTO_CONVITE, linkConvitePatrocinio } from "@/lib/convitePatrocinio";
 
-const todos = await listarPatrocinadores();
+const [todos, cotas] = await Promise.all([listarPatrocinadores(), listarCotasPatrocinio()]);
+const coluna = (cota: CotaPatrocinio, titulo: string, grade: string) => {
+  const itens = todos.filter((p) => p.cota === cota);
+  const daCota = cotas.find((c) => c.cota === cota);
+  const convite = mostraConvitePatrocinio(daCota, daCota !== undefined && itens.length >= daCota.vagasTotais) ? daCota : undefined;
+  return { cota, titulo, grade, itens, convite };
+};
 const colunas = [
-  { titulo: "Master", itens: todos.filter((p) => p.cota === "master"), grade: "grid-cols-1 max-md:mx-auto max-md:w-3/5" },
-  { titulo: "Ouro", itens: todos.filter((p) => p.cota === "ouro"), grade: "grid-cols-1" },
-  { titulo: "Apoio", itens: todos.filter((p) => p.cota === "apoio"), grade: "grid-cols-2" },
-].filter((c) => c.itens.length > 0);
+  coluna("master", "Master", "grid-cols-1 max-md:mx-auto max-md:w-3/5"),
+  coluna("ouro", "Ouro", "grid-cols-1"),
+  coluna("apoio", "Apoio", "grid-cols-2"),
+].filter((c) => c.itens.length > 0 || c.convite);
 ---
 
 {
@@ -25,7 +36,7 @@ const colunas = [
             Oferecimento
           </h2>
           <span class="flex gap-4 text-sm font-bold">
-            <a href="/patrocinadores" class="text-azul-600 hover:underline">Conheça os patrocinadores</a>
+            {todos.length > 0 && <a href="/patrocinadores" class="text-azul-600 hover:underline">Conheça os patrocinadores</a>}
             <a href="/patrocine" class="text-azul-600 hover:underline">Patrocine</a>
           </span>
         </div>
@@ -37,6 +48,17 @@ const colunas = [
                 {coluna.itens.map((p) => (
                   <CartaoPatrocinador patrocinador={p} />
                 ))}
+                {coluna.convite && (
+                  <a
+                    href={linkConvitePatrocinio(coluna.cota)}
+                    class={`grid place-items-center rounded-xl border-2 border-dashed border-slate-300 p-2 text-center text-xs font-bold text-azul-700 transition hover:border-azul-400 hover:bg-azul-50 ${
+                      coluna.cota === "master" ? "md:w-3/5" : ""
+                    }`}
+                    style={`aspect-ratio: ${coluna.convite.formatoLogo.largura} / ${coluna.convite.formatoLogo.altura}`}
+                  >
+                    {TEXTO_CONVITE}
+                  </a>
+                )}
               </div>
             </div>
           ))}

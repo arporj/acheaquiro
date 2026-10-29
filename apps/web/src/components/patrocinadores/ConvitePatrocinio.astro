@@ -1,0 +1,15 @@
+---
+// Convite nos espaços de patrocínio sem patrocinador, no lugar do
+// "patrocinado por" (decisão de 29/10/2026). Regras em src/lib/convitePatrocinio.ts.
+import { TEXTO_CONVITE } from "@/lib/convitePatrocinio";
+
+interface Props {
+  href: string;
+}
+
+const { href } = Astro.props;
+---
+
+<a {href} class="text-xs font-bold text-azul-700 underline decoration-azul-200 underline-offset-2 hover:decoration-azul-700">
+  {TEXTO_CONVITE}
+</a>

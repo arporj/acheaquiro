@@ -36,6 +36,17 @@ export function novaVagaAPartirDe(fins: DataISO[]): DataISO | undefined {
 }
 
 /**
+ * Convite "Quer seu nome aqui? Seja um patrocinador" num espaço que recebe
+ * patrocínio (decisão de 29/10/2026): aparece quando o espaço ainda tem lugar
+ * (categoria ou grupo sem patrocinador; coluna do rodapé com menos logos que
+ * as vagas da cota) e a cota está no catálogo com vaga livre. Cota esgotada ou
+ * fora do catálogo não convida.
+ */
+export function mostraConvitePatrocinio(cota: { vagasLivres: number } | undefined, espacoCheio: boolean): boolean {
+  return !espacoCheio && cota !== undefined && cota.vagasLivres > 0;
+}
+
+/**
  * Último dia do patrocínio: 12 meses contados do dia em que o logo entrou no
  * ar, mais os dias somados por site fora do ar. Entrou em 27/11/2026, vai até
  * 26/11/2027.

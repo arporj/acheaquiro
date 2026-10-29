@@ -3,12 +3,15 @@
 import { Icone, IconeCategoria } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
 import BotaoCompartilhar from "@/components/BotaoCompartilhar.astro";
+import { mostraConvitePatrocinio } from "@acheaqui/domain";
+import ConvitePatrocinio from "@/components/patrocinadores/ConvitePatrocinio.astro";
 import LinhaPatrocinio from "@/components/patrocinadores/LinhaPatrocinio.astro";
 import LateralResultados from "@/components/resultados/LateralResultados.astro";
 import ListaResultados from "@/components/resultados/ListaResultados.astro";
-import { buscarPorCategoria, categoriaPorSlugLista, listarBairros, obterCidade, listarCategorias, patrocinadoresDaCategoria } from "@/dados/consultas";
+import { buscarPorCategoria, categoriaPorSlugLista, listarBairros, obterCidade, listarCategorias, listarCotasPatrocinio, patrocinadoresDaCategoria } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
+import { linkConvitePatrocinio } from "@/lib/convitePatrocinio";
 
 const categoria = await categoriaPorSlugLista(Astro.params.categoria ?? "");
 if (!categoria) return Astro.rewrite("/404");
@@ -21,16 +24,21 @@ const totalAnunciantes = itens.filter((i) => !i.destacado).length;
 const relacionadas = (await listarCategorias()).filter((c) => c.grupo === categoria.grupo && c.id !== categoria.id);
 const titulo = `${categoria.nomePlural} em ${cidade.nome}`;
 const patrocinio = await patrocinadoresDaCategoria(categoria);
+const cotas = await listarCotasPatrocinio();
+const cota = (nome: string) => cotas.find((c) => c.cota === nome);
+const conviteGrupo = mostraConvitePatrocinio(cota("grupo"), patrocinio.grupo !== undefined);
+const conviteCategoria = mostraConvitePatrocinio(cota("categoria"), patrocinio.categoria !== undefined);
 ---
 
 <Layout titulo={titulo} descricao={`Encontre ${categoria.nomePlural.toLowerCase()} em ${cidade.nome} e fale direto pelo WhatsApp.`}>
   <Topo pagina="interna" />
   <main class="mx-auto w-full max-w-6xl px-4 pt-4 pb-12">
-    <nav aria-label="Você está em" class="flex items-center gap-1 text-sm font-semibold text-slate-500">
+    <nav aria-label="Você está em" class="flex flex-wrap items-center gap-1 text-sm font-semibold text-slate-500">
       <a href="/" class="hover:text-azul-600">Início</a>
       <Icone nome="direita" class="size-3.5" />
       <span>{categoria.grupo}</span>
       {patrocinio.grupo && <span class="ml-1"><LinhaPatrocinio patrocinador={patrocinio.grupo} /></span>}
+      {conviteGrupo && <span class="ml-1"><ConvitePatrocinio href={linkConvitePatrocinio("grupo", { grupo: categoria.grupo })} /></span>}
     </nav>
 
     {/* O site é só da cidade: o título da tela é só a categoria; a aba e o Google continuam com o nome da cidade. */}
@@ -47,6 +55,7 @@ const patrocinio = await patrocinadoresDaCategoria(categoria);
           <div class="flex flex-wrap items-baseline gap-x-2">
             <h1 class="font-display text-2xl leading-tight font-extrabold text-azul-900 sm:text-3xl">{categoria.nomePlural}</h1>
             {patrocinio.categoria && <LinhaPatrocinio patrocinador={patrocinio.categoria} />}
+            {conviteCategoria && <ConvitePatrocinio href={linkConvitePatrocinio("categoria", { categoria })} />}
           </div>
           <p class="text-sm font-semibold text-slate-500">
             {totalAnunciantes} {totalAnunciantes === 1 ? "anunciante" : "anunciantes"}

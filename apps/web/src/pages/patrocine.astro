@@ -6,9 +6,10 @@ import { Icone, classesBotao } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
 import Abertura from "@/components/institucional/Abertura.astro";
 import BotaoContato from "@/components/institucional/BotaoContato.astro";
-import { hojeNaCidade, listarCotasPatrocinio, obterRegrasCobranca } from "@/dados/consultas";
+import { hojeNaCidade, listarCategorias, listarCotasPatrocinio, obterRegrasCobranca } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
+import { lerCotaPedida } from "@/lib/convitePatrocinio";
 import { formatarCentavos } from "@/lib/precos";
 import { formatarData } from "@/lib/texto";
 
@@ -17,6 +18,8 @@ if (cotas.length === 0) return Astro.rewrite("/404");
 guardarNoCache(Astro);
 
 const regras = await obterRegrasCobranca();
+// Vindo do convite "Quer seu nome aqui?" (decisão de 29/10/2026).
+const pedida = lerCotaPedida(Astro.url, cotas.map((c) => c.cota), await listarCategorias());
 const prazo = formatarData(regras.prazoFundador);
 const precoFundadorValendo = hojeNaCidade() <= regras.prazoFundador;
 const menorValor = Math.min(...cotas.map((c) => (precoFundadorValendo ? c.valorFundadorCentavos : c.valorCentavos)));
@@ -84,10 +87,18 @@ const regrasCombinadas = [
             cotas.map((c) => {
               const esgotada = c.vagasLivres === 0;
               const formato = c.formatoLogo;
+              const escolhida = pedida?.cota === c.cota;
+              const alvo = escolhida ? pedida?.alvo : undefined;
               return (
-                <li class={`flex flex-col rounded-3xl bg-white p-5 shadow-sm ring-1 ${esgotada ? "opacity-70 ring-slate-200" : "ring-black/5"}`}>
+                <li
+                  id={`cota-${c.cota}`}
+                  class={`flex scroll-mt-24 flex-col rounded-3xl bg-white p-5 shadow-sm ${escolhida ? "ring-4 ring-amarelo-400" : "ring-1"} ${esgotada ? "opacity-70 ring-slate-200" : "ring-black/5"}`}
+                >
                   <div class="flex items-start justify-between gap-2">
-                    <h3 class="font-display text-xl font-extrabold text-azul-900">{c.nome}</h3>
+                    <h3 class="font-display text-xl font-extrabold text-azul-900">
+                      {c.nome}
+                      {alvo && <span class="block text-base text-slate-500">{alvo}</span>}
+                    </h3>
                     <span
                       class={`rounded-full px-2.5 py-0.5 text-xs font-extrabold ${
                         esgotada ? "bg-slate-100 text-slate-500" : "bg-zap-50 text-zap-700"
@@ -123,7 +134,7 @@ const regrasCombinadas = [
                     Logo: {formato.largura} × {formato.altura} pixels
                     {(c.cota === "grupo" || c.cota === "categoria") && ` · uma empresa por ${c.cota === "grupo" ? "grupo" : "categoria"}`}
                   </p>
-                  {!esgotada && <BotaoContato rotulo="Quero esta cota" mensagem={`Olá! Vim pelo site do Ache Aqui RO. Quero a cota de patrocínio ${c.nome}.`} variante="azul" class="mt-4 w-full" />}
+                  {!esgotada && <BotaoContato rotulo="Quero esta cota" mensagem={`Olá! Vim pelo site do Ache Aqui RO. Quero a cota de patrocínio ${c.nome}${alvo ? ` (${alvo})` : ""}.`} variante="azul" class="mt-4 w-full" />}
                 </li>
               );
             })

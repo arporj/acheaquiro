@@ -3,6 +3,7 @@ import {
   diasASomarPorSiteForaDoAr,
   fimDoPatrocinio,
   impedimentoParaEntrarNoAr,
+  mostraConvitePatrocinio,
   novaVagaAPartirDe,
   valorDoPatrocinio,
   type PatrocinioParaRegra,
@@ -92,5 +93,23 @@ describe("impedimentoParaEntrarNoAr", () => {
   it("uma empresa por categoria", () => {
     const cat = (id: string, c: string, ramo: string): PatrocinioParaRegra => ({ id, cota: "categoria", categoriaId: c, ramo });
     expect(impedimentoParaEntrarNoAr(cat("n", "pizzaria", "Laticínios"), [cat("a", "pizzaria", "Bebidas")], null)).toMatch(/categoria/);
+  });
+});
+
+describe("mostraConvitePatrocinio", () => {
+  it("convida no espaço livre de uma cota com vaga", () => {
+    expect(mostraConvitePatrocinio({ vagasLivres: 1 }, false)).toBe(true);
+  });
+
+  it("não convida no espaço já ocupado", () => {
+    expect(mostraConvitePatrocinio({ vagasLivres: 3 }, true)).toBe(false);
+  });
+
+  it("não convida com a cota esgotada", () => {
+    expect(mostraConvitePatrocinio({ vagasLivres: 0 }, false)).toBe(false);
+  });
+
+  it("não convida com a cota fora do catálogo", () => {
+    expect(mostraConvitePatrocinio(undefined, false)).toBe(false);
   });
 });
