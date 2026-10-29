@@ -107,25 +107,28 @@ const copias = [0, 1];
   }
   {
     carrossel.length > 0 && compacta && (
-      <div class="overflow-hidden pt-2 [mask-image:linear-gradient(90deg,transparent,black_4%,black_96%,transparent)]">
-        <div data-carrossel class="flex w-max animate-carrossel gap-2 hover:[animation-play-state:paused] focus-within:[animation-play-state:paused]">
-          {copias.map((copia) => (
-            <ul class="flex gap-2" aria-hidden={copia === 1 ? "true" : undefined}>
-              {carrossel.map((item) => (
-                <li>
-                  <a
-                    href={`/perfil/${item.slug}`}
-                    tabindex={copia === 1 ? -1 : undefined}
-                    class="flex h-10 items-center gap-2 rounded-full bg-fundo py-1 pr-4 pl-1 ring-1 ring-azul-100 hover:bg-azul-50"
-                  >
-                    <FotoMarcador foto={item.foto} icone={item.icone} cor={item.cor} class="size-8 rounded-full" tamanhoIcone="text-base" />
-                    <span class="text-sm font-bold whitespace-nowrap">{item.nome}</span>
-                    <Selo selo={item.selo} class="text-sm" />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          ))}
+      <div class="flex items-center gap-2 pt-2 pl-4">
+        <span class="shrink-0 text-[0.65rem] font-extrabold tracking-wider text-azul-700 uppercase">Anúncios</span>
+        <div class="min-w-0 flex-1 overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_4%,black_96%,transparent)]">
+          <div data-carrossel class="flex w-max animate-carrossel gap-2 hover:[animation-play-state:paused] focus-within:[animation-play-state:paused]">
+            {copias.map((copia) => (
+              <ul class="flex gap-2" aria-hidden={copia === 1 ? "true" : undefined}>
+                {carrossel.map((item) => (
+                  <li>
+                    <a
+                      href={`/perfil/${item.slug}`}
+                      tabindex={copia === 1 ? -1 : undefined}
+                      class="flex h-10 items-center gap-2 rounded-full bg-fundo py-1 pr-4 pl-1 ring-1 ring-azul-100 hover:bg-azul-50"
+                    >
+                      <FotoMarcador foto={item.foto} icone={item.icone} cor={item.cor} class="size-8 rounded-full" tamanhoIcone="text-base" />
+                      <span class="text-sm font-bold whitespace-nowrap">{item.nome}</span>
+                      <Selo selo={item.selo} class="text-sm" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ))}
+          </div>
         </div>
       </div>
     )

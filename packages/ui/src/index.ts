@@ -3,7 +3,6 @@ export { type NomeIcone } from "./desenhos";
 export { classesBotao, type VarianteBotao, type TamanhoBotao } from "./botao";
 export { default as Selo } from "./Selo.astro";
 export { default as EtiquetaFundador } from "./EtiquetaFundador.astro";
-export { default as EtiquetaDestacado } from "./EtiquetaDestacado.astro";
 export { default as EtiquetaAberto } from "./EtiquetaAberto.astro";
 export { default as FotoMarcador } from "./FotoMarcador.astro";
 export { default as IconeCategoria } from "./IconeCategoria.astro";

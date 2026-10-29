@@ -2,7 +2,6 @@
 import {
   EtiquetaAberto,
   EtiquetaFundador,
-  EtiquetaDestacado,
   FotoMarcador,
   Icone,
   Selo,
@@ -21,19 +20,14 @@ const { item } = Astro.props;
 const perfil = `/perfil/${item.slug}`;
 ---
 
-<article
-  class={`rounded-2xl bg-white p-3 shadow-sm transition hover:shadow-md sm:p-4 ${
-    item.destacado ? "ring-2 ring-amarelo-400" : "ring-1 ring-black/5"
-  }`}
->
+<article class="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5 transition hover:shadow-md sm:p-4">
   <a href={perfil} class="flex gap-3 sm:gap-4">
     <FotoMarcador foto={item.foto} icone={item.icone} cor={item.cor} class="size-20 shrink-0 rounded-xl sm:size-24" />
     <div class="min-w-0 flex-1">
       {
-        (item.destacado || item.fundador) && (
+        item.fundador && (
           <div class="mb-1 flex flex-wrap gap-1">
-            {item.destacado && <EtiquetaDestacado />}
-            {item.fundador && <EtiquetaFundador />}
+            <EtiquetaFundador />
           </div>
         )
       }

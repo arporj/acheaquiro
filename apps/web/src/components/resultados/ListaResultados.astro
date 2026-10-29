@@ -2,6 +2,8 @@
 // Abas Profissionais/Comércios e filtros. Todos os cartões vêm do servidor;
 // o script só esconde, mostra e reordena (sem buscar nada de novo). A lista usa
 // gap, e não space-y, porque a margem do space-y conta os cartões ocultos.
+// Os links destacados do topo ficam no box "Anúncios" (identificação da
+// publicidade, decisão de 29/10/2026), que some quando nenhum deles aparece.
 import { Icone, IconeCategoria, classesBotao } from "@acheaqui/ui";
 import type { Bairro } from "@acheaqui/types";
 import type { ItemResultado } from "@/dados/consultas";
@@ -26,7 +28,8 @@ const abas: { id: Aba; rotulo: string; total: number }[] = [
   { id: "comercio", rotulo: "Comércios", total: unicos.length - totalProfissionais },
 ];
 
-const visiveis = dados.filter((d) => passaNoFiltro(d, estado)).length;
+const visiveis = dados.filter((d) => !d.destacado && passaNoFiltro(d, estado)).length;
+const anunciosVisiveis = dados.some((d) => d.destacado && passaNoFiltro(d, estado));
 const totalDaAba = abas.find((a) => a.id === estado.aba)?.total ?? 0;
 const vazioPorFiltro = Boolean(estado.bairro) && totalDaAba > 0;
 const filtroBotao =
@@ -102,16 +105,40 @@ const filtroBotao =
     perto para o mais longe. Sem ela, eles seguem a ordem dos planos.
   </p>
 
+  <section
+    aria-labelledby="titulo-anuncios"
+    class="mt-4 rounded-2xl bg-amarelo-50 p-2.5 ring-1 ring-amarelo-200 sm:p-3"
+    data-anuncios
+    hidden={!anunciosVisiveis}
+  >
+    <h2 id="titulo-anuncios" class="mb-2 px-1 text-xs font-extrabold tracking-wider text-azul-700 uppercase">Anúncios</h2>
+    <div class="flex flex-col gap-3">
+      {
+        itens.map(
+          (item, i) =>
+            item.destacado && (
+              <div data-item={JSON.stringify(dados[i])} data-posicao={i} hidden={!passaNoFiltro(dados[i], estado)}>
+                <CardResultado item={item} />
+              </div>
+            ),
+        )
+      }
+    </div>
+  </section>
+
   <div class="mt-4 flex flex-col gap-3" data-lista>
     <h3 class="mt-2 font-display text-lg font-bold text-azul-900" data-separador-bairro hidden>
       Em outros bairros, do mais perto para o mais longe
     </h3>
     {
-      itens.map((item, i) => (
-        <div data-item={JSON.stringify(dados[i])} hidden={!passaNoFiltro(dados[i], estado)}>
-          <CardResultado item={item} />
-        </div>
-      ))
+      itens.map(
+        (item, i) =>
+          !item.destacado && (
+            <div data-item={JSON.stringify(dados[i])} data-posicao={i} hidden={!passaNoFiltro(dados[i], estado)}>
+              <CardResultado item={item} />
+            </div>
+          ),
+      )
     }
   </div>
 
@@ -140,6 +167,7 @@ const filtroBotao =
 
   function iniciar(raiz: HTMLElement) {
     const lista = raiz.querySelector<HTMLElement>("[data-lista]");
+    const boxAnuncios = raiz.querySelector<HTMLElement>("[data-anuncios]");
     const selectBairro = raiz.querySelector<HTMLSelectElement>("[data-filtro-bairro]");
     const botaoPerto = raiz.querySelector<HTMLButtonElement>("[data-filtro-perto]");
     const botaoAbertos = raiz.querySelector<HTMLButtonElement>("[data-filtro-abertos]");
@@ -150,12 +178,14 @@ const filtroBotao =
     const notaPerto = raiz.querySelector<HTMLElement>("[data-nota-perto]");
     const notaBairro = raiz.querySelector<HTMLElement>("[data-nota-bairro]");
     const separador = raiz.querySelector<HTMLElement>("[data-separador-bairro]");
-    if (!lista || !selectBairro || !botaoPerto || !botaoAbertos || !vazio || !vazioFiltro || !vazioNenhum || !vazioTipo || !notaPerto || !notaBairro || !separador) {
+    if (!lista || !boxAnuncios || !selectBairro || !botaoPerto || !botaoAbertos || !vazio || !vazioFiltro || !vazioNenhum || !vazioTipo || !notaPerto || !notaBairro || !separador) {
       console.error("Lista de resultados: elementos da página não encontrados.");
       return;
     }
 
-    const cartoes = [...lista.querySelectorAll<HTMLElement>("[data-item]")];
+    // Cartões do box e da lista, na posição da lista original (data-posicao).
+    const cartoes: HTMLElement[] = [];
+    for (const cartao of raiz.querySelectorAll<HTMLElement>("[data-item]")) cartoes[Number(cartao.dataset.posicao)] = cartao;
     const dados = cartoes.map((c) => JSON.parse(c.dataset.item ?? "{}") as DadosFiltro);
     const botoesAba = [...raiz.querySelectorAll<HTMLButtonElement>("[data-aba-botao]")];
     const estado: EstadoLista = {
@@ -178,7 +208,16 @@ const filtroBotao =
 
       let visiveis = 0;
       let separadorPosto = false;
-      const { ordem, inicioOutrosBairros } = ordemDeExibicao(dados, estado);
+      const { anuncios, ordem, inicioOutrosBairros } = ordemDeExibicao(dados, estado);
+      let anunciosVisiveis = 0;
+      for (const posicao of anuncios) {
+        const cartao = cartoes[posicao];
+        cartao.hidden = !passaNoFiltro(dados[posicao], estado);
+        if (!cartao.hidden) anunciosVisiveis++;
+        for (const distancia of cartao.querySelectorAll<HTMLElement>("[data-distancia]")) distancia.hidden = !estado.maisPerto;
+      }
+      boxAnuncios!.hidden = anunciosVisiveis === 0;
+
       ordem.forEach((posicao, indice) => {
         const cartao = cartoes[posicao];
         cartao.hidden = !passaNoFiltro(dados[posicao], estado);
