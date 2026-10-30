@@ -1,5 +1,6 @@
 ---
 // Links curtos da busca (item 4.5): /eletricistas, /farmacias...
+import { compararNomes } from "@acheaqui/domain";
 import { Icone, IconeCategoria } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
 import BotaoCompartilhar from "@/components/BotaoCompartilhar.astro";
@@ -21,7 +22,9 @@ const itens = await buscarPorCategoria(categoria.id);
 const bairros = await listarBairros();
 const cidade = await obterCidade();
 const totalAnunciantes = itens.filter((i) => !i.destacado).length;
-const relacionadas = (await listarCategorias()).filter((c) => c.grupo === categoria.grupo && c.id !== categoria.id);
+const relacionadas = (await listarCategorias())
+  .filter((c) => c.grupo === categoria.grupo && c.id !== categoria.id)
+  .sort((a, b) => compararNomes(a.nome, b.nome));
 const titulo = `${categoria.nomePlural} em ${cidade.nome}`;
 const patrocinio = await patrocinadoresDaCategoria(categoria);
 const cotas = await listarCotasPatrocinio();

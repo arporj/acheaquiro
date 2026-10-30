@@ -9,6 +9,7 @@ export * from "./comissao";
 export * from "./assinatura";
 export * from "./precos";
 export * from "./banner";
+export * from "./categorias";
 export * from "./horario";
 export * from "./patrocinio";
 export * from "./artista";

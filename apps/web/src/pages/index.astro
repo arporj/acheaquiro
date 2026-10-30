@@ -133,11 +133,11 @@ const passos: { icone: NomeIcone; titulo: string; texto: string }[] = [
       <h2 class="mb-5 font-display text-3xl font-extrabold text-azul-900">Todas as categorias</h2>
       <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {
-          grupos.map(({ grupo, categorias }) => (
+          grupos.map(({ grupo, icone, categorias }) => (
             <details class="group rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 open:shadow-md">
               <summary class="flex cursor-pointer list-none items-center justify-between gap-2 font-display text-lg font-bold text-azul-900">
                 <span class="flex items-center gap-2">
-                  <IconeCategoria nome={categorias[0].icone} class="size-5 text-azul-600" />
+                  <IconeCategoria nome={icone} class="size-5 text-azul-600" />
                   {grupo}
                   <span class="text-sm font-semibold text-slate-400">({categorias.length})</span>
                 </span>

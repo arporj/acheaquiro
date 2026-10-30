@@ -4,7 +4,7 @@
 // anunciantes existirem (etapa 2), mostra a lista de anunciantes vazia. A
 // página "em breve" não acessa o banco: usa as regras de src/mocks/planos.ts.
 import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, CotaPatrocinio, CotaPatrocinioVenda, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
-import { dadosPublicosDoArtista, novaVagaAPartirDe, somarDias } from "@acheaqui/domain";
+import { agruparCategorias, dadosPublicosDoArtista, novaVagaAPartirDe, somarDias } from "@acheaqui/domain";
 import {
   codigoRepresentanteValido,
   criarClientePublico,
@@ -148,12 +148,17 @@ export async function categoriasAtalho(): Promise<Categoria[]> {
   return c.ordemAtalhos.map((id) => c.categorias.find((categoria) => categoria.id === id)).filter((x): x is Categoria => Boolean(x));
 }
 
-export async function categoriasPorGrupo(): Promise<{ grupo: string; categorias: Categoria[] }[]> {
-  const grupos = new Map<string, Categoria[]>();
-  for (const categoria of (await catalogo()).categorias) {
-    grupos.set(categoria.grupo, [...(grupos.get(categoria.grupo) ?? []), categoria]);
-  }
-  return [...grupos].map(([grupo, lista]) => ({ grupo, categorias: lista }));
+/**
+ * Grupos na ordem do catálogo, com as categorias em ordem alfabética (decisão
+ * de 29/10/2026). O ícone do grupo continua o da primeira categoria do
+ * catálogo, para não mudar com a ordem alfabética.
+ */
+export async function categoriasPorGrupo(): Promise<{ grupo: string; icone: string; categorias: Categoria[] }[]> {
+  const { categorias } = await catalogo();
+  return agruparCategorias(categorias, (c) => c.nome).map((g) => ({
+    ...g,
+    icone: categorias.find((c) => c.grupo === g.grupo)!.icone,
+  }));
 }
 
 function nomeBairroEm(c: CatalogoPublico, id: string): string {

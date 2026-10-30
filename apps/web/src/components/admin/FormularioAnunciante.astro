@@ -3,6 +3,7 @@
 // e /representante/anunciantes/novo) e na edição (as telas [id] das duas áreas). O servidor valida tudo de novo
 // (lerFormulario, em src/lib/anunciantesAdmin.ts). Os blocos de autônomo e de
 // comércio ficam desligados quando não servem, para não serem enviados.
+import { agruparCategorias } from "@acheaqui/domain";
 import { classesBotao } from "@acheaqui/ui";
 import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
 import { textoValorPlano } from "@/lib/precos";
@@ -24,7 +25,7 @@ interface Props {
 const { opcoes, valores: v, erros, tipoFixo, emailTravado = false, textoBotao, escolherRepresentante = true } = Astro.props;
 const tipo = tipoFixo ?? v.tipo;
 
-const grupos = [...new Set(opcoes.categorias.map((c) => c.grupo))];
+const grupos = agruparCategorias(opcoes.categorias, (c) => c.nome);
 const FORMAS = [
   { id: "pix", rotulo: "Pix" },
   { id: "cartao", rotulo: "Cartão" },
@@ -74,10 +75,8 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
         <option value="">Escolha</option>
         {
           grupos.map((g) => (
-            <optgroup label={g}>
-              {opcoes.categorias
-                .filter((c) => c.grupo === g)
-                .map((c) => (
+            <optgroup label={g.grupo}>
+              {g.categorias.map((c) => (
                   <option value={c.id} data-tipo-categoria={c.tipo} selected={c.id === v.categoriaPrincipalId}>
                     {c.nome}
                   </option>
@@ -97,10 +96,8 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
         {
           grupos.map((g) => (
             <div class="mb-2" data-grupo-categoria>
-              <p class="text-xs font-extrabold tracking-wide text-slate-400 uppercase">{g}</p>
-              {opcoes.categorias
-                .filter((c) => c.grupo === g)
-                .map((c) => (
+              <p class="text-xs font-extrabold tracking-wide text-slate-400 uppercase">{g.grupo}</p>
+              {g.categorias.map((c) => (
                   <label class={opcaoMarcavel} data-tipo-categoria={c.tipo}>
                     <input type="checkbox" name="categoriasAdicionais" value={c.id} checked={v.categoriasAdicionais.includes(c.id)} />
                     {c.nome}

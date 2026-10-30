@@ -6,6 +6,7 @@
 // mesmo comércio. O representante registra o contato e, ao fechar a venda,
 // faz o cadastro completo num rascunho próprio: os outros veem "Em cadastro"
 // e não pegam o comércio por 7 dias, ou enquanto o convite estiver enviado.
+import { compararNomes } from "@acheaqui/domain";
 import { Icone, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo } from "@/components/conta/estilos";
@@ -61,7 +62,9 @@ const [lista, categorias, bairros] = await Promise.all([
   supabase.from("bairros").select("id, nome").eq("ativo", true).order("nome"),
 ]);
 if (bairros.error) console.error("prospeccao: bairros falharam", { codigo: bairros.error.code, mensagem: bairros.error.message });
-const categoriasComercio = categorias.ok ? categorias.dados.filter((c) => c.tipo !== "profissional") : [];
+const categoriasComercio = categorias.ok
+  ? categorias.dados.filter((c) => c.tipo !== "profissional").sort((a, b) => compararNomes(a.nome, b.nome))
+  : [];
 const total = lista.ok ? lista.dados.total : 0;
 const paginas = Math.max(1, Math.ceil(total / POR_PAGINA_PROSPECCAO));
 const linkPagina = (n: number) => {

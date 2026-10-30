@@ -2,6 +2,7 @@
 // CNAE → categoria da importação pela Receita (D5). Sem categoria, o CNAE fica
 // fora da importação. A mudança vale para a próxima importação; os comércios
 // já importados continuam na categoria em que estão.
+import { agruparCategorias } from "@acheaqui/domain";
 import { classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
@@ -41,7 +42,7 @@ const cnaes = (cnaesR.ok ? cnaesR.dados : []).filter(
       normalizar(nomeCategoria.get(c.categoria_id ?? "") ?? "").includes(termo)),
 );
 const editando = cnaes.find((c) => c.cnae === parametros.get("editar"));
-const grupos = [...new Set(categorias.map((c) => c.grupo))];
+const grupos = agruparCategorias(categorias, (c) => c.nome);
 const formatarCnae = (c: string) => c.replace(/^(\d{4})(\d)(\d{2})$/, "$1-$2/$3");
 const consulta = (extra: string) => `/admin/cnaes?q=${encodeURIComponent(busca)}&filtro=${filtro}${extra}`;
 ---
@@ -78,10 +79,8 @@ const consulta = (extra: string) => `/admin/cnaes?q=${encodeURIComponent(busca)}
           <select name="categoria" class={classesCampo}>
             <option value="" selected={!editando.categoria_id}>Fora da importação</option>
             {grupos.map((g) => (
-              <optgroup label={g}>
-                {categorias
-                  .filter((c) => c.grupo === g)
-                  .map((c) => (
+              <optgroup label={g.grupo}>
+                {g.categorias.map((c) => (
                     <option value={c.id} selected={c.id === editando.categoria_id}>
                       {c.nome}
                     </option>

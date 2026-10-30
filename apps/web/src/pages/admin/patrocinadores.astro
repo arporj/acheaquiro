@@ -2,6 +2,7 @@
 // Patrocinadores (administração): cotas (valores, vagas, tamanho do logo) e
 // patrocínios (cadastro, logo, entrada no ar, pagamento, prazo e encerramento).
 // Regras em packages/domain; travas repetidas no banco; tudo auditado.
+import { agruparCategorias } from "@acheaqui/domain";
 import { Icone, Modal, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
@@ -461,7 +462,7 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
       <label class={classesRotulo} data-for="categoria">Categoria</label>
       <select name="categoria" data-campo="categoria_id" class={classesCampo}>
         <option value="">Escolha</option>
-        {categorias.map((c) => <option value={c.id}>{c.nome} ({c.grupo})</option>)}
+        {agruparCategorias(categorias, (c) => c.nome).flatMap((g) => g.categorias).map((c) => <option value={c.id}>{c.nome} ({c.grupo})</option>)}
       </select>
     </div>
     <label class={classesRotulo} data-for="nome">Nome da empresa</label>
