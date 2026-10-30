@@ -79,7 +79,8 @@ const perfil = `/perfil/${item.slug}`;
       (item.telefone ?? item.whatsapp) && (
         <a href={linkTelefone(item.telefone ?? item.whatsapp ?? "")} class={classesBotao("contorno", "m", "px-4")}>
           <Icone nome="telefone" class="size-4" />
-          Ligar
+          {/* Em telas de menos de 360 px, só o ícone, para os três botões caberem na linha. */}
+          <span class="max-[359px]:sr-only">Ligar</span>
         </a>
       )
     }

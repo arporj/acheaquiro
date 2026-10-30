@@ -168,6 +168,8 @@ const campo =
       widget = global.turnstile.render(caixaTurnstile, {
         sitekey: secao.dataset.turnstile,
         language: "pt-br",
+        // O quadro normal tem 300 px fixos; em telas estreitas, o compacto cabe sem rolagem lateral.
+        size: caixaTurnstile.clientWidth < 300 ? "compact" : "normal",
         callback: (t: string) => (token = t),
         "expired-callback": () => (token = ""),
         "error-callback": () => {

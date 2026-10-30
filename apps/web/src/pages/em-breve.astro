@@ -34,7 +34,8 @@ const regras = await obterRegrasCobranca();
         <h1 class="mt-4 font-display text-3xl leading-tight font-extrabold text-azul-900 md:text-4xl">
           O Ache Aqui RO abre em
         </h1>
-        <p class="mt-1 font-display text-6xl leading-none font-extrabold text-azul-600 md:text-8xl">
+        {/* A data acompanha a largura da tela (13vw), para caber em 320 px sem rolagem lateral. */}
+        <p class="mt-1 font-display text-[min(13vw,3.75rem)] leading-none font-extrabold text-azul-600 md:text-8xl">
           <time datetime={ABERTURA}>{abertura}</time>
         </p>
         <p class="mt-4 font-display text-xl font-bold text-vermelho-600" data-contagem={ABERTURA} hidden></p>

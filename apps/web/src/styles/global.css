@@ -44,6 +44,11 @@
 body {
   background: var(--color-fundo);
   color: var(--color-tinta);
+  /* Rede de proteção (decisão L1, 30/10/2026): um elemento mais largo que a
+     tela fica cortado em vez de criar rolagem lateral e empurrar o botão
+     flutuante para fora. "clip", e não "hidden", para o sticky continuar
+     funcionando. A varredura com o Playwright continua achando a causa. */
+  overflow-x: clip;
 }
 
 /* Faixa diagonal amarela do flyer. */

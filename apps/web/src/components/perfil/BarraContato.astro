@@ -12,7 +12,9 @@ interface Props {
 
 const { anunciante, comoChegar } = Astro.props;
 const l = linksContato(anunciante, comoChegar);
-const icone = "grid size-12 shrink-0 place-items-center rounded-full border-2 border-azul-100 bg-white text-azul-700";
+// Em telas de menos de 360 px, botões de 44 px (o mínimo para o toque) e o
+// "Pedir orçamento" curto, sem o ícone, para a barra caber na largura.
+const icone = "grid size-12 max-[359px]:size-11 shrink-0 place-items-center rounded-full border-2 border-azul-100 bg-white text-azul-700";
 ---
 
 <div
@@ -22,8 +24,9 @@ const icone = "grid size-12 shrink-0 place-items-center rounded-full border-2 bo
     {
       l.orcamento && (
         <a href={l.orcamento} target="_blank" rel="noopener noreferrer" class={classesBotao("zap", "g", "flex-1 px-3")}>
-          <Icone nome="mensagem" class="size-5" />
-          Pedir orçamento
+          <Icone nome="mensagem" class="size-5 max-[359px]:hidden" />
+          <span class="max-[359px]:hidden">Pedir orçamento</span>
+          <span class="min-[360px]:hidden">Orçamento</span>
         </a>
       )
     }

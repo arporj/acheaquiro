@@ -7,4 +7,11 @@ if (!chave) throw new Error("PUBLIC_TURNSTILE_SITE_KEY não definida.");
 ---
 
 <div class="cf-turnstile mt-4 min-h-[65px]" data-sitekey={chave} data-language="pt-br" data-response-field-name="tokenRobo"></div>
+<script is:inline>
+  // O quadro normal tem 300 px fixos; em telas estreitas (320 px), o compacto
+  // cabe sem rolagem lateral. Roda antes de o script do Turnstile ler o data-size.
+  for (const caixa of document.querySelectorAll(".cf-turnstile")) {
+    if (caixa.clientWidth < 300) caixa.dataset.size = "compact";
+  }
+</script>
 <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
