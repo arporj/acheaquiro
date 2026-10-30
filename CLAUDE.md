@@ -83,7 +83,8 @@ Carro de som, cartazes e panfletos e prêmio de fim de ano (decisão de 29/10/20
 
 ## Marca
 
-- Logo e ícones em apps/web/public/marca (decisão de 26/10/2026): logo-principal (para fundo branco), logo-principal-fundo-azul (a que o site usa no cabeçalho, no rodapé e na "em breve", nos três sites), logo-horizontal, simbolo-fundo-azul (só a lupa com a seta, no cabeçalho pelo celular, onde a logo completa não cabe ao lado dos botões), favicon.svg, icone-512 e og-image-1200x630 (prévia dos links). O favicon.ico e o apple-touch-icon.png (sem cantos transparentes, porque o iPhone pinta de preto o canto transparente) ficam na raiz de public, gerados do favicon.svg.
+- Logo e ícones em apps/web/public/marca (decisão de 26/10/2026): logo-principal (para fundo branco), logo-principal-fundo-azul (a que o site usa no cabeçalho, no rodapé e na "em breve", nos três sites), logo-horizontal, simbolo-fundo-azul (só a lupa com a seta; fora do cabeçalho desde a decisão M1), favicon.svg, icone-512 e og-image-1200x630 (prévia dos links). O favicon.ico e o apple-touch-icon.png (sem cantos transparentes, porque o iPhone pinta de preto o canto transparente) ficam na raiz de public, gerados do favicon.svg.
+- Cabeçalho (decisão M1 de 30/10/2026): no celular, a logo completa reduzida (30 px de altura, Logo reduzidaNoCelular), no lugar de só o símbolo, também nas áreas com login. Abaixo de 1024 px, os links e o "Patrocine" ficam no menu; o botão diz "Anuncie" abaixo de 360 px e "Anuncie aqui" a partir daí. Conferido de 320 a 1280 px.
 
 ## Prévia dos links compartilhados
 

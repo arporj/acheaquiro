@@ -3,26 +3,18 @@
 // rodapé, "em breve"); a versão para fundo branco fica em /marca/logo-principal.svg.
 interface Props {
   tamanho?: "m" | "g";
-  /** Só a lupa com a seta no celular, onde a logo completa não cabe ao lado dos botões (cabeçalhos). */
-  simboloNoCelular?: boolean;
+  /**
+   * Logo completa reduzida no celular, para caber ao lado dos botões nos
+   * cabeçalhos (decisão M1 de 30/10/2026, no lugar de só o símbolo).
+   */
+  reduzidaNoCelular?: boolean;
 }
 
-const { tamanho = "m", simboloNoCelular = false } = Astro.props;
+const { tamanho = "m", reduzidaNoCelular = false } = Astro.props;
 const grande = tamanho === "g";
-const altura = grande ? "h-14 sm:h-16" : "h-10 sm:h-12";
+const altura = grande ? "h-14 sm:h-16" : reduzidaNoCelular ? "h-[30px] sm:h-12" : "h-10 sm:h-12";
 ---
 
 <a href="/" class="inline-flex shrink-0 items-center" aria-label="Ache Aqui RO, página inicial">
-  {
-    simboloNoCelular && (
-      <img src="/marca/simbolo-fundo-azul.svg" alt="" width="227" height="267" class={`w-auto sm:hidden ${altura}`} />
-    )
-  }
-  <img
-    src="/marca/logo-principal-fundo-azul.svg"
-    alt=""
-    width="1671"
-    height="436"
-    class:list={["w-auto", altura, simboloNoCelular && "hidden sm:block"]}
-  />
+  <img src="/marca/logo-principal-fundo-azul.svg" alt="" width="1671" height="436" class={`w-auto ${altura}`} />
 </a>

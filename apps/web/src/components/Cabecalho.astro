@@ -14,56 +14,59 @@ const { comBusca = false } = Astro.props;
 const patrocinioDisponivel = await temPatrocinioDisponivel();
 
 // Uma lista só para o computador e para o menu do celular (decisão de 23/10/2026).
-// "desde": a partir de que largura o link aparece na barra do computador.
+// Os links ficam na barra a partir de 1024 px (lg); abaixo disso, no menu, que
+// aparece até essa mesma largura (antes, entre 768 e 1023 px, a barra não cabia
+// e "Artistas" ficava sem acesso).
 const links = [
-  { href: "/#categorias", rotulo: "Categorias", desde: "md" },
+  { href: "/#categorias", rotulo: "Categorias" },
   // Agenda e Artistas: por enquanto só no site de apresentação (módulo de eventos).
   ...(ambiente === "apresentacao"
     ? [
-        { href: "/agenda", rotulo: "Agenda", desde: "md" },
-        { href: "/artistas", rotulo: "Artistas", desde: "lg" },
+        { href: "/agenda", rotulo: "Agenda" },
+        { href: "/artistas", rotulo: "Artistas" },
       ]
     : []),
-  { href: "/sobre", rotulo: "Como funciona", desde: "md" },
-  { href: "/fundadores", rotulo: "Fundadores", desde: "md" },
+  { href: "/sobre", rotulo: "Como funciona" },
+  { href: "/fundadores", rotulo: "Fundadores" },
   // Entrada de anunciantes, representantes e equipe (decisão de 22/10/2026). O site de apresentação não tem login.
-  ...(ambiente === "producao" ? [{ href: "/entrar", rotulo: "Entrar", desde: "md" }] : []),
+  ...(ambiente === "producao" ? [{ href: "/entrar", rotulo: "Entrar" }] : []),
 ];
 ---
 
 <header class="fundo-raios text-white">
   <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 lg:py-4">
-    <Logo simboloNoCelular />
+    <Logo reduzidaNoCelular />
     <nav class="flex items-center gap-1 sm:gap-2" aria-label="Principal">
       {
         links.map((l) => (
           <a
             href={l.href}
-            class={`hidden rounded-full px-4 py-2 text-sm font-bold text-white/90 hover:bg-white/10 ${l.desde === "lg" ? "lg:inline-flex" : "md:inline-flex"}`}
+            class="hidden rounded-full px-3 py-2 text-sm font-bold whitespace-nowrap text-white/90 hover:bg-white/10 lg:inline-flex xl:px-4"
           >
             {l.rotulo}
           </a>
         ))
       }
+      {/* Abaixo de 1024 px, "Patrocine" fica só no menu, para a logo completa caber (decisão M1 de 30/10/2026). */}
       {
         patrocinioDisponivel && (
           <a
             href="/patrocine"
-            class="inline-flex items-center gap-1.5 rounded-full border-2 border-amarelo-400 px-3 py-1.5 text-sm font-bold text-amarelo-400 hover:bg-amarelo-400 hover:text-azul-900 sm:px-4"
-            aria-label="Patrocine"
+            class="hidden items-center gap-1.5 rounded-full border-2 border-amarelo-400 px-4 py-1.5 text-sm font-bold text-amarelo-400 hover:bg-amarelo-400 hover:text-azul-900 lg:inline-flex"
           >
             <Icone nome="estrela" class="size-4" />
-            <span class="hidden sm:inline">Patrocine</span>
+            Patrocine
           </a>
         )
       }
       <a href="/anuncie" class={classesBotao("amarelo", "p", "shadow-none")}>
         <Icone nome="megafone" class="size-4" />
-        Anuncie aqui
+        <span class="whitespace-nowrap max-[359px]:hidden">Anuncie aqui</span>
+        <span class="min-[360px]:hidden">Anuncie</span>
       </a>
       <button
         type="button"
-        class="grid size-10 place-items-center rounded-full hover:bg-white/10 md:hidden"
+        class="grid size-10 place-items-center rounded-full hover:bg-white/10 lg:hidden"
         aria-label="Abrir o menu"
         aria-expanded="false"
         aria-controls="menu-celular"
@@ -74,7 +77,7 @@ const links = [
       </button>
     </nav>
   </div>
-  <nav id="menu-celular" class="hidden border-t border-white/15 md:hidden" aria-label="Menu">
+  <nav id="menu-celular" class="hidden border-t border-white/15 lg:hidden" aria-label="Menu">
     <ul class="mx-auto max-w-6xl px-4 py-2">
       {
         links.map((l) => (
