@@ -1,5 +1,6 @@
 ---
-import { IconeCategoria } from "@acheaqui/ui";
+import { agruparCategorias } from "@acheaqui/domain";
+import { Icone, IconeCategoria } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
 import LateralResultados from "@/components/resultados/LateralResultados.astro";
 import ListaResultados from "@/components/resultados/ListaResultados.astro";
@@ -13,11 +14,25 @@ const bairro = Astro.url.searchParams.get("bairro")?.trim() ?? "";
 const { categorias, resultados } = await buscarPorTexto(termo);
 const bairros = await listarBairros();
 const nomeDoBairro = bairro ? await nomeBairro(bairro) : "";
+// Grupo das categorias encontradas (decisão de 29/10/2026): com um grupo só, a
+// trilha "Início › Grupo", como na página da categoria; com vários, cada grupo
+// numa linha, com as suas categorias.
+const grupos = agruparCategorias(categorias, (c) => c.nomePlural);
+const umGrupo = grupos.length === 1;
 ---
 
 <Layout titulo="Busca">
   <Topo pagina="interna" />
   <main class="mx-auto w-full max-w-6xl px-4 pt-4 pb-12">
+    {
+      umGrupo && (
+        <nav aria-label="Você está em" class="mb-2 flex flex-wrap items-center gap-1 text-sm font-semibold text-slate-500">
+          <a href="/" class="hover:text-azul-600">Início</a>
+          <Icone nome="direita" class="size-3.5" />
+          <span>{grupos[0]!.grupo}</span>
+        </nav>
+      )
+    }
     <h1 class="font-display text-2xl leading-tight font-extrabold text-azul-900 sm:text-3xl">
       {termo ? `Resultados para “${termo}”` : "Todos os anunciantes"}
       {bairro && <span class="text-slate-500"> no {nomeDoBairro}</span>}
@@ -27,17 +42,21 @@ const nomeDoBairro = bairro ? await nomeBairro(bairro) : "";
     </p>
 
     {
-      categorias.length > 0 && (
-        <div class="mt-3 flex flex-wrap items-center gap-2">
-          <span class="text-sm font-bold text-slate-500">Categorias:</span>
-          {categorias.map((categoria) => (
-            <a
-              href={`/${categoria.slugLista}`}
-              class="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm font-bold text-azul-700 ring-1 ring-azul-100 hover:bg-azul-50"
-            >
-              <IconeCategoria nome={categoria.icone} class="size-4" />
-              {categoria.nomePlural}
-            </a>
+      grupos.length > 0 && (
+        <div class="mt-3 flex flex-col gap-2">
+          {grupos.map((g) => (
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-sm font-bold text-slate-500">{umGrupo ? "Categorias:" : `${g.grupo} ›`}</span>
+              {g.categorias.map((categoria) => (
+                <a
+                  href={`/${categoria.slugLista}`}
+                  class="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm font-bold text-azul-700 ring-1 ring-azul-100 hover:bg-azul-50"
+                >
+                  <IconeCategoria nome={categoria.icone} class="size-4" />
+                  {categoria.nomePlural}
+                </a>
+              ))}
+            </div>
           ))}
         </div>
       )
