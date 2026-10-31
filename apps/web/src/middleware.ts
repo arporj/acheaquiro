@@ -2,7 +2,7 @@
 // produção, cria a sessão das páginas com login e confere quem pode entrar em
 // cada área. As políticas de RLS do banco conferem de novo em cada consulta.
 import { defineMiddleware } from "astro:middleware";
-import { ambiente } from "@/lib/ambiente";
+import { ambiente, ENDERECO_EXEMPLO, HOST_TESTE_ANTIGO } from "@/lib/ambiente";
 import { termoAceito } from "@/lib/representante";
 import { clienteDaRequisicao, destinoDepoisDeEntrar, lerUsuario, type UsuarioLogado } from "@/lib/sessao";
 
@@ -48,6 +48,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
     if (pathname.startsWith("/r/")) return next();
     // Temporário (302): depois da abertura, esses endereços passam a existir.
     return context.redirect("/", 302);
+  }
+
+  // Links do site de apresentação já enviados com o endereço antigo (decisão de 30/10/2026).
+  if (ambiente === "apresentacao" && hostname === HOST_TESTE_ANTIGO) {
+    return context.redirect(`${ENDERECO_EXEMPLO}${pathname}${search}`, 301);
   }
 
   if (pathname === "/em-breve") return context.rewrite("/404");

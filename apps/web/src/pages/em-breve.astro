@@ -6,7 +6,7 @@ import BotaoContato from "@/components/institucional/BotaoContato.astro";
 import Logo from "@/components/Logo.astro";
 import { obterRegrasCobranca } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
-import { ABERTURA } from "@/lib/ambiente";
+import { ABERTURA, ENDERECO_EXEMPLO } from "@/lib/ambiente";
 import { guardarNoCache } from "@/lib/cache";
 import { percentualInicialFundador } from "@/lib/precos";
 import { formatarData } from "@/lib/texto";
@@ -43,11 +43,22 @@ const regras = await obterRegrasCobranca();
           Os profissionais autônomos e os comércios de Rio das Ostras, num lugar só. Você busca, escolhe e fala direto pelo
           WhatsApp, sem cadastro.
         </p>
+        {/* Site de apresentação, com anunciantes fictícios (decisão de 30/10/2026). */}
+        <a
+          href={ENDERECO_EXEMPLO}
+          class="mt-4 inline-flex min-h-11 items-center gap-1.5 font-bold text-azul-600 underline underline-offset-4 hover:text-azul-800"
+        >
+          Veja como o site vai ficar
+          <Icone nome="direita" class="size-4 shrink-0" strokeWidth={2.5} />
+        </a>
         <div class="mx-auto mt-8 flex max-w-xl gap-3 rounded-2xl bg-amarelo-200 p-4 text-left text-azul-900">
           <Icone nome="medalha" class="mt-0.5 size-6 shrink-0" />
           <p>
             <strong>Quer anunciar?</strong> Quem paga a assinatura anual até {formatarData(regras.prazoFundador)} vira
-            Fundador e tem {percentualInicialFundador(regras)}% de desconto já no primeiro ano.
+            Fundador e tem {percentualInicialFundador(regras)}% de desconto já no primeiro ano.{" "}
+            <a href={`${ENDERECO_EXEMPLO}/seu-anuncio`} class="font-bold underline underline-offset-2 hover:text-azul-700">
+              Veja como fica o seu anúncio
+            </a>
           </p>
         </div>
         <BotaoContato rotulo="Quero ser Fundador" class="mt-6" />

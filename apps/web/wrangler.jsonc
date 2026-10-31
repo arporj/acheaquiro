@@ -25,9 +25,14 @@
 	"env": {
 		// Site de apresentação para anunciantes, com dados fictícios e sem login.
 		// Publicar com: npm run deploy:teste -w web
+		// Em exemplo.acheaquiro.com.br (decisão de 30/10/2026); teste. continua
+		// ligado só para o middleware redirecionar os links já enviados.
 		"teste": {
 			"name": "acheaqui-teste",
-			"routes": [{ "pattern": "teste.acheaquiro.com.br", "custom_domain": true }],
+			"routes": [
+				{ "pattern": "exemplo.acheaquiro.com.br", "custom_domain": true },
+				{ "pattern": "teste.acheaquiro.com.br", "custom_domain": true }
+			],
 			"version_metadata": { "binding": "CF_VERSION_METADATA" },
 			"secrets": { "required": [] }
 		},
