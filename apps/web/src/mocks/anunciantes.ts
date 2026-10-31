@@ -1,6 +1,7 @@
 // DADOS FICTÍCIOS para o layout. Nomes, telefones, endereços e registros
-// profissionais são inventados. Os números de WhatsApp são inválidos de
-// propósito (900000-0XX), para nenhum clique no protótipo chegar a alguém.
+// profissionais são inventados. Os números de WhatsApp (90000-00XX) e os fixos
+// (0000-00XX: nenhum número de assinante começa com 0) são inválidos de
+// propósito, para nenhum clique no protótipo chegar a alguém.
 // As fotos foram geradas por IA (FLUX.1 schnell, no Workers AI) e ficam em
 // public/mock/fotos, com o nome igual ao id da foto.
 import type {
@@ -47,6 +48,7 @@ const almocoEJantar: IntervaloHorario[] = [{ abre: "11:30", fecha: "15:00" }, { 
 const restaurante = horario({ 0: almocoEJantar, 2: almocoEJantar, 3: almocoEJantar, 4: almocoEJantar, 5: almocoEJantar, 6: almocoEJantar });
 
 const zap = (n: number) => `55229000000${String(n).padStart(2, "0")}`;
+const fixo = (n: number) => `55220000${String(n).padStart(4, "0")}`;
 const cidadeId = cidadeAtual.id;
 
 const profissionais: AnuncianteProfissional[] = [
@@ -295,7 +297,7 @@ const comercios: AnuncianteComercio[] = [
     nome: "Pet Shop Amigo Fiel", categoriaId: "pet-shop", categoriasAdicionais: ["banho-e-tosa", "agropecuaria"],
     planoId: "com-nivel4", fundador: true,
     descricao: "Rações, petiscos, acessórios e farmácia veterinária. Banho e tosa com hora marcada. Entregamos em toda a cidade.",
-    whatsapp: zap(21), telefone: "552227000021",
+    whatsapp: zap(21), telefone: fixo(21),
     fotoPerfil: fotoPerfil("c01-perfil"),
     galeria: fotos("c01-g", ["Fachada", "Corredor de rações", "Área de banho e tosa", "Acessórios"]),
     horario: horario({ 1: h("08:00", "19:00"), 2: h("08:00", "19:00"), 3: h("08:00", "19:00"), 4: h("08:00", "19:00"), 5: h("08:00", "19:00"), 6: h("08:00", "17:00"), 0: h("09:00", "13:00") }),
@@ -333,7 +335,7 @@ const comercios: AnuncianteComercio[] = [
     nome: "Pousada Mar Azul", categoriaId: "pousada", categoriasAdicionais: [],
     planoId: "com-nivel4", fundador: true,
     descricao: "A 100 metros da Praia do Centro. Quartos com ar-condicionado, café da manhã incluído, piscina e estacionamento. Pacotes especiais para o verão.",
-    whatsapp: zap(23), telefone: "552227000023",
+    whatsapp: zap(23), telefone: fixo(23),
     fotoPerfil: fotoPerfil("c03-perfil"),
     galeria: fotos("c03-g", ["Piscina", "Quarto casal", "Café da manhã", "Varanda com vista", "Recepção", "Quarto família"]),
     horario: todosOsDias("00:00", "23:59"),
@@ -351,7 +353,7 @@ const comercios: AnuncianteComercio[] = [
     nome: "Restaurante Sabor do Mar", categoriaId: "restaurante", categoriasAdicionais: [],
     planoId: "com-nivel3", fundador: false,
     descricao: "Frutos do mar, moquecas e peixe frito na beira da praia. Ambiente familiar.",
-    whatsapp: zap(24), telefone: "552227000024",
+    whatsapp: zap(24), telefone: fixo(24),
     fotoPerfil: fotoPerfil("c04-perfil"),
     galeria: fotos("c04-g", ["Moqueca de peixe", "Salão", "Camarão na moranga"]),
     horario: restaurante,
@@ -383,7 +385,7 @@ const comercios: AnuncianteComercio[] = [
     nome: "Pizzaria Bella Ostras", categoriaId: "pizzaria", categoriasAdicionais: ["restaurante", "lanchonete"],
     planoId: "com-nivel4", fundador: true,
     descricao: "Pizza no forno a lenha, massa de fermentação natural. Rodízio às sextas e sábados. Peça pelo WhatsApp e receba em casa.",
-    whatsapp: zap(26), telefone: "552227000026",
+    whatsapp: zap(26), telefone: fixo(26),
     fotoPerfil: fotoPerfil("c06-perfil"),
     galeria: fotos("c06-g", ["Forno a lenha", "Pizza marguerita", "Salão", "Pizza de camarão"]),
     horario: horario({ 0: h("18:00", "23:30"), 2: h("18:00", "23:30"), 3: h("18:00", "23:30"), 4: h("18:00", "23:30"), 5: h("18:00", "00:00"), 6: h("18:00", "00:00") }),
@@ -404,7 +406,7 @@ const comercios: AnuncianteComercio[] = [
     nome: "Mercado Boa Compra", categoriaId: "mercado", categoriasAdicionais: ["acougue", "hortifruti", "padaria"],
     planoId: "com-nivel4", fundador: false,
     descricao: "Mercado de bairro com açougue, hortifrúti e padaria. Ofertas novas toda semana.",
-    whatsapp: zap(27), telefone: "552227000027",
+    whatsapp: zap(27), telefone: fixo(27),
     fotoPerfil: fotoPerfil("c07-perfil"),
     galeria: fotos("c07-g", ["Fachada", "Hortifrúti", "Açougue", "Padaria"]),
     horario: todosOsDias("07:00", "21:00"),
@@ -430,7 +432,7 @@ const comercios: AnuncianteComercio[] = [
     nome: "Farmácia Saúde Total", categoriaId: "farmacia", categoriasAdicionais: [],
     planoId: "com-nivel3", fundador: false,
     descricao: "Medicamentos, perfumaria e aferição de pressão. Duas lojas na cidade, com entrega rápida.",
-    whatsapp: zap(28), telefone: "552227000028",
+    whatsapp: zap(28), telefone: fixo(28),
     fotoPerfil: fotoPerfil("c08-perfil"),
     galeria: fotos("c08-g", ["Loja do Centro", "Loja do Recreio"]),
     horario: todosOsDias("07:00", "22:00"),
@@ -451,7 +453,7 @@ const comercios: AnuncianteComercio[] = [
     nome: "Casa do Construtor RO", categoriaId: "material-de-construcao", categoriasAdicionais: ["loja-de-tintas", "ferragens"],
     planoId: "com-nivel3", fundador: true,
     descricao: "Material básico, elétrico, hidráulico, tintas e ferragens. Entrega com caminhão próprio.",
-    whatsapp: zap(29), telefone: "552227000029",
+    whatsapp: zap(29), telefone: fixo(29),
     fotoPerfil: fotoPerfil("c09-perfil"),
     galeria: fotos("c09-g", ["Fachada", "Setor de tintas", "Pátio"]),
     horario: comercial,
