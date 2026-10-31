@@ -25,7 +25,6 @@ type Falha = { ok: false; erro: { codigo: CodigoFalha; mensagem: string; campos?
 const falha = (codigo: CodigoFalha, mensagem: string, campos?: Record<string, string>): Falha => ({ ok: false, erro: { codigo, mensagem, campos } });
 const ERRO_INTERNO = falha("ERRO_INTERNO", "Não foi possível concluir agora. Tente de novo em instantes.");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const CIDADE = "rio-das-ostras";
 
 function mensagemDoBanco(erro: { code?: string; message: string }, contexto: string): Falha {
   if (erro.code === "P0001") return falha("SEM_PERMISSAO", erro.message);
