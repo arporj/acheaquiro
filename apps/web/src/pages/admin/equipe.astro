@@ -7,6 +7,7 @@ import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
 import { convidar, listarEquipe, mudarPapel, mudarSituacao, reenviarConvite, transferirSupraAdmin, type PapelEquipe } from "@/lib/equipe";
+import { normalizar } from "@/lib/texto";
 
 const supabase = Astro.locals.supabase!;
 const usuario = Astro.locals.usuario!;
@@ -14,7 +15,9 @@ const usuario = Astro.locals.usuario!;
 const AVISOS: Record<string, string> = {
   "convite-enviado": "Convite enviado. O link vale por 1 hora; se vencer, use \"Reenviar convite\".",
   "convite-reenviado": "Convite reenviado.",
-  "situacao-alterada": "Situação alterada.",
+  reativado:
+    "Esta pessoa estava desativada e foi reativada. Enviamos um link de acesso para o e-mail dela; no primeiro acesso, ela cadastra o aplicativo autenticador de novo.",
+  "situacao-alterada": "Pessoa desativada. Ela sai da lista principal e fica em \"Ver desativados\".",
   "papel-alterado": "Papel alterado.",
   "supra-transferido": "Marcação de SupraAdmin transferida. Você continua administrador.",
 };
@@ -37,7 +40,7 @@ if (Astro.request.method === "POST") {
         codigoRepresentante: campo("codigo_representante").trim().toLowerCase(),
         codigoAutenticador: campo("codigo"),
       });
-      chaveAviso = "convite-enviado";
+      chaveAviso = resultado.ok && resultado.dados === "reativado" ? "reativado" : "convite-enviado";
       break;
     case "reenviar":
       resultado = await reenviarConvite(campo("email"));
@@ -45,7 +48,7 @@ if (Astro.request.method === "POST") {
       break;
     case "situacao":
       resultado = await mudarSituacao(supabase, usuario.id, alvo, campo("ativo") === "sim", campo("codigo"));
-      chaveAviso = "situacao-alterada";
+      chaveAviso = campo("ativo") === "sim" ? "reativado" : "situacao-alterada";
       break;
     case "papel":
       resultado = await mudarPapel(supabase, usuario.id, alvo, papel, {
@@ -71,6 +74,21 @@ if (!lista.ok) erro ||= lista.erro.mensagem;
 const equipe = lista.ok ? lista.dados : [];
 const euSupra = equipe.some((m) => m.usuario_id === usuario.id && m.supra_admin);
 
+// Lista principal só com os ativos; os desativados ficam em ?situacao=desativados (decisão de 02/11/2026).
+const parametros = Astro.url.searchParams;
+const verDesativados = parametros.get("situacao") === "desativados";
+const busca = (parametros.get("busca") ?? "").trim().slice(0, 100);
+const filtroPapel = ["administrador", "representante"].includes(parametros.get("papel") ?? "") ? parametros.get("papel")! : "";
+const termo = normalizar(busca);
+const totalDesativados = equipe.filter((m) => !m.ativo).length;
+const daSituacao = equipe.filter((m) => m.ativo !== verDesativados);
+const visiveis = daSituacao.filter(
+  (m) =>
+    (!filtroPapel || m.papel === filtroPapel) &&
+    (!termo || [m.nome, m.email, m.codigo_representante ?? ""].some((texto) => normalizar(texto).includes(termo))),
+);
+const filtrando = Boolean(busca || filtroPapel);
+
 const dataHora = (iso: string | null) =>
   iso
     ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(iso))
@@ -82,16 +100,66 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
   {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
   {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
-  <div class="mt-5">
-    <button type="button" data-abrir-modal="modal-convidar" class={classesBotao("azul", "m")}>
-      <Icone nome="usuarios" class="size-4" />
-      Convidar pessoa
-    </button>
+  <div class="mt-5 flex flex-wrap items-center gap-3">
+    {
+      verDesativados ? (
+        <a href="/admin/equipe" class={classesBotao("contorno", "m")}>
+          <Icone nome="esquerda" class="size-4" />
+          Voltar para a equipe ativa
+        </a>
+      ) : (
+        <button type="button" data-abrir-modal="modal-convidar" class={classesBotao("azul", "m")}>
+          <Icone nome="usuarios" class="size-4" />
+          Convidar pessoa
+        </button>
+      )
+    }
   </div>
+
+  {verDesativados && <h2 class="mt-6 font-display text-xl font-bold text-azul-900">Desativados</h2>}
+
+  <form method="get" class="mt-5 flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5" role="search">
+    {verDesativados && <input type="hidden" name="situacao" value="desativados" />}
+    <div class="min-w-0 flex-1 basis-56">
+      <label class={classesRotulo} for="filtro-busca">Buscar</label>
+      <input id="filtro-busca" name="busca" type="search" value={busca} maxlength="100" placeholder="Nome, e-mail ou código" class={classesCampo} />
+    </div>
+    <div class="basis-44">
+      <label class={classesRotulo} for="filtro-papel">Papel</label>
+      <select id="filtro-papel" name="papel" class={classesCampo}>
+        <option value="">Todos</option>
+        <option value="administrador" selected={filtroPapel === "administrador"}>Administradores</option>
+        <option value="representante" selected={filtroPapel === "representante"}>Representantes</option>
+      </select>
+    </div>
+    <button type="submit" class={classesBotao("azul", "m")}>
+      <Icone nome="filtro" class="size-4" />
+      Filtrar
+    </button>
+    {
+      filtrando && (
+        <a href={verDesativados ? "/admin/equipe?situacao=desativados" : "/admin/equipe"} class={classesBotao("contorno", "m")}>
+          Limpar
+        </a>
+      )
+    }
+  </form>
+
+  {
+    visiveis.length === 0 && (
+      <p class="mt-5 rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm ring-1 ring-black/5">
+        {filtrando
+          ? "Ninguém encontrado com esse filtro. Confira a busca ou clique em Limpar."
+          : verDesativados
+            ? "Nenhuma pessoa desativada."
+            : "Ninguém na equipe ativa. Use \"Convidar pessoa\" para chamar um representante ou administrador."}
+      </p>
+    )
+  }
 
   <ul class="mt-5 space-y-3">
     {
-      equipe.map((m) => {
+      visiveis.map((m) => {
         const eu = m.usuario_id === usuario.id;
         const idModal = `modal-${m.usuario_id}`;
         return (
@@ -141,7 +209,18 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
                     {!m.codigo_representante && (
                       <>
                         <label class={classesRotulo} for={`rep-${m.usuario_id}`}>Código do representante (se virar representante)</label>
-                        <input id={`rep-${m.usuario_id}`} name="codigo_representante" class={classesCampo} placeholder="ex.: joao" />
+                        <input
+                          id={`rep-${m.usuario_id}`}
+                          name="codigo_representante"
+                          maxlength="30"
+                          autocomplete="off"
+                          class={classesCampo}
+                          placeholder="ex.: joao"
+                          data-verificar-codigo
+                          data-usuario={m.usuario_id}
+                          aria-describedby={`rep-${m.usuario_id}-situacao`}
+                        />
+                        <p id={`rep-${m.usuario_id}-situacao`} class="mt-1 text-sm" aria-live="polite" hidden />
                       </>
                     )}
                     <label class={classesRotulo} for={`cod-papel-${m.usuario_id}`}>Seu código do aplicativo (se envolver administrador)</label>
@@ -158,7 +237,7 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
                     <p class="text-sm text-slate-600">
                       {m.ativo
                         ? "Desativar tira o acesso na hora e impede novas entradas. Nada é apagado."
-                        : "Reativar devolve o acesso com o mesmo papel."}
+                        : "Reativar devolve o acesso com o mesmo papel e envia um link de acesso para o e-mail. A pessoa cadastra o aplicativo autenticador de novo."}
                     </p>
                     {m.papel === "administrador" && (
                       <>
@@ -200,13 +279,34 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
     }
   </ul>
 
+  {
+    !verDesativados && totalDesativados > 0 && (
+      <p class="mt-5">
+        <a href="/admin/equipe?situacao=desativados" class="text-sm font-bold text-azul-600 underline underline-offset-2 hover:text-azul-800">
+          Ver desativados ({totalDesativados})
+        </a>
+      </p>
+    )
+  }
+
   <Modal id="modal-convidar" titulo="Convidar pessoa">
     <form method="post" data-convite>
       <input type="hidden" name="acao" value="convidar" />
       <label class={classesRotulo} for="convite-nome">Nome</label>
       <input id="convite-nome" name="nome" required maxlength="120" class={classesCampo} />
       <label class={classesRotulo} for="convite-email">E-mail</label>
-      <input id="convite-email" name="email" type="email" required maxlength="254" class={classesCampo} />
+      <input id="convite-email" name="email" type="email" required maxlength="254" autocomplete="off" class={classesCampo} data-verificar-email aria-describedby="convite-email-situacao" />
+      <p id="convite-email-situacao" class="mt-1 flex items-center gap-1.5 text-sm" aria-live="polite" hidden>
+        <span data-texto></span>
+        <button
+          type="button"
+          data-abrir-modal="modal-email-ajuda"
+          class="grid size-7 shrink-0 place-items-center rounded-full font-extrabold text-azul-600 ring-1 ring-azul-200 hover:bg-azul-50"
+          aria-label="O que acontece se eu continuar com este e-mail?"
+        >
+          ?
+        </button>
+      </p>
       <fieldset class="mt-4">
         <legend class="text-sm font-bold text-azul-900">Papel</legend>
         <label class="mt-2 flex items-center gap-2"><input type="radio" name="papel" value="representante" checked /> Representante</label>
@@ -214,7 +314,18 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
       </fieldset>
       <div data-so-representante>
         <label class={classesRotulo} for="convite-rep">Código do representante</label>
-        <input id="convite-rep" name="codigo_representante" maxlength="30" class={classesCampo} placeholder="ex.: joao" />
+        <input
+          id="convite-rep"
+          name="codigo_representante"
+          maxlength="30"
+          autocomplete="off"
+          class={classesCampo}
+          placeholder="ex.: joao"
+          data-verificar-codigo
+          data-email-do="convite-email"
+          aria-describedby="convite-rep-situacao"
+        />
+        <p id="convite-rep-situacao" class="mt-1 text-sm" aria-live="polite" hidden></p>
         <p class="mt-1 text-xs text-slate-500">Forma o link dele: acheaquiro.com.br/r/codigo. Letras minúsculas, números e hífens.</p>
       </div>
       <div data-so-administrador hidden>
@@ -223,23 +334,207 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
         <p class="mt-1 text-xs text-slate-500">Criar administrador é uma ação sensível: confirme com o código do celular.</p>
       </div>
       <p class="mt-4 text-sm text-slate-600">
-        A pessoa recebe um e-mail para criar a senha. Administradores também cadastram o aplicativo autenticador no primeiro acesso.
+        A pessoa recebe um e-mail para criar a senha e, no primeiro acesso, cadastra o aplicativo autenticador (obrigatório para administradores e
+        representantes).
       </p>
       <button type="submit" class={classesBotao("azul", "m", "mt-4 w-full")}>Enviar convite</button>
     </form>
   </Modal>
+
+  {/* O que acontece com cada situação do e-mail; o script mostra só o trecho da situação encontrada. */}
+  <Modal id="modal-email-ajuda" titulo="O que acontece com este e-mail">
+    <div class="space-y-3 text-sm text-slate-700">
+      <div data-ajuda="livre" hidden>
+        <p>Nenhuma conta usa este e-mail. Ao enviar, a pessoa recebe o convite para criar a senha (o link vale 1 hora).</p>
+        <p>No primeiro acesso, ela cadastra o aplicativo autenticador e, se for representante, aceita o termo de confidencialidade.</p>
+      </div>
+      <div data-ajuda="equipe_ativo" hidden>
+        <p>Esta pessoa já está na equipe e ativa. O convite não é enviado.</p>
+        <p>Para mudar o papel ou o código, feche esta janela e use "Gerenciar" na linha dela.</p>
+      </div>
+      <div data-ajuda="equipe_desativado" hidden>
+        <p>Esta pessoa já foi da equipe e está desativada. Ao enviar, a mesma conta é reativada, com o nome, o papel e o código deste formulário.</p>
+        <p>Ela recebe um link por e-mail: o convite, se nunca criou a senha, ou o de nova senha, se já tinha. O aplicativo autenticador antigo é apagado e ela cadastra de novo no primeiro acesso.</p>
+        <p>Se era representante, não recupera os anunciantes que eram dela: a carteira acabou quando foi desativada. As comissões já geradas continuam valendo.</p>
+      </div>
+      <div data-ajuda="anunciante" hidden>
+        <p>Este e-mail é de uma conta de anunciante. Cada e-mail tem uma conta só, com um papel só, então o convite não é enviado.</p>
+        <p>Convide a pessoa com outro e-mail. A conta de anunciante continua como está.</p>
+      </div>
+      <div data-ajuda="cadastro_anunciante" hidden>
+        <p>Este e-mail foi informado num cadastro de anunciante que ainda está em andamento (o comerciante não aceitou o convite). O convite da equipe não é enviado, para não atrapalhar esse cadastro.</p>
+        <p>Convide a pessoa com outro e-mail.</p>
+      </div>
+      <div data-ajuda="outra_conta" hidden>
+        <p>Já existe uma conta com este e-mail, sem perfil no sistema. O convite não é enviado. Fale com o suporte técnico para conferir essa conta.</p>
+      </div>
+    </div>
+  </Modal>
 </PaginaAdmin>
 
 <script>
-  // Mostra só os campos do papel escolhido no convite.
+  // Verificação enquanto digita (decisão de 02/11/2026): situação do e-mail no
+  // convite e código do representante livre. É só ajuda: o envio confere tudo
+  // de novo no servidor.
+  import { codigoValido } from "@/lib/indicacao";
+
+  type Situacao = "livre" | "equipe_ativo" | "equipe_desativado" | "anunciante" | "cadastro_anunciante" | "outra_conta";
+  type Tom = "ok" | "alerta" | "erro";
+  interface RespostaEmail {
+    ok: boolean;
+    dados?: { situacao: Situacao; nome?: string | null; codigo_representante?: string | null };
+  }
+  interface RespostaCodigo {
+    ok: boolean;
+    dados?: { disponivel: boolean; mensagem: string };
+  }
+
+  const ESPERA_MS = 400;
+  const CLASSES_TOM: Record<Tom, string> = { ok: "text-zap-700", alerta: "text-azul-800", erro: "text-vermelho-600" };
+  const comNome = (nome: string) => (nome ? ` (${nome})` : "");
+  const AVISO_EMAIL: Record<Situacao, { texto: (nome: string) => string; tom: Tom }> = {
+    livre: { texto: () => "E-mail livre: a pessoa recebe o convite.", tom: "ok" },
+    equipe_ativo: { texto: (n) => `Membro ativo da equipe${comNome(n)}. O convite não é enviado.`, tom: "erro" },
+    equipe_desativado: { texto: (n) => `Membro desativado${comNome(n)}. Ao enviar, a conta é reativada.`, tom: "alerta" },
+    anunciante: { texto: (n) => `E-mail de um anunciante${comNome(n)}. O convite não é enviado.`, tom: "erro" },
+    cadastro_anunciante: { texto: (n) => `E-mail de um cadastro de anunciante em andamento${comNome(n)}. O convite não é enviado.`, tom: "erro" },
+    outra_conta: { texto: () => "Já existe uma conta com este e-mail. O convite não é enviado.", tom: "erro" },
+  };
+
+  function mostrar(aviso: HTMLElement, texto: string, tom: Tom): void {
+    aviso.classList.remove(...Object.values(CLASSES_TOM));
+    aviso.classList.add(CLASSES_TOM[tom]);
+    (aviso.querySelector("[data-texto]") ?? aviso).textContent = texto;
+    aviso.hidden = false;
+  }
+
+  async function buscar<T>(parametros: URLSearchParams): Promise<T | null> {
+    try {
+      const resposta = await fetch(`/admin/equipe/verificar?${parametros}`, { headers: { accept: "application/json" } });
+      return (await resposta.json()) as T;
+    } catch (erro) {
+      console.error("Verificação da equipe falhou", erro);
+      return null;
+    }
+  }
+
+  /** Verifica quando a pessoa para de digitar ou sai do campo, sem repetir o mesmo valor. */
+  function aoDigitar(campo: HTMLInputElement, verificar: (valor: string) => void): void {
+    let espera: number | undefined;
+    let ultimo = "";
+    const rodar = () => {
+      const valor = campo.value.trim();
+      if (valor === ultimo) return;
+      ultimo = valor;
+      verificar(valor);
+    };
+    campo.addEventListener("input", () => {
+      window.clearTimeout(espera);
+      espera = window.setTimeout(rodar, ESPERA_MS);
+    });
+    campo.addEventListener("blur", () => {
+      window.clearTimeout(espera);
+      rodar();
+    });
+  }
+
+  // Código do representante: no convite e no "Gerenciar" de cada pessoa.
+  for (const campo of document.querySelectorAll<HTMLInputElement>("[data-verificar-codigo]")) {
+    const aviso = document.getElementById(campo.getAttribute("aria-describedby") ?? "");
+    if (!aviso) continue;
+    let pedido = 0;
+    const verificar = async (bruto: string) => {
+      const meu = ++pedido;
+      const codigo = bruto.toLowerCase();
+      campo.setCustomValidity("");
+      if (!codigo) {
+        aviso.hidden = true;
+        return;
+      }
+      if (!codigoValido(codigo)) {
+        const texto = "Use de 3 a 30 letras minúsculas, números e hífens, sem espaço nem acento (ex.: joao-silva).";
+        mostrar(aviso, texto, "erro");
+        campo.setCustomValidity(texto);
+        return;
+      }
+      const parametros = new URLSearchParams({ codigo });
+      if (campo.dataset.usuario) parametros.set("usuario", campo.dataset.usuario);
+      const email = campo.dataset.emailDo ? document.getElementById(campo.dataset.emailDo) : null;
+      if (email instanceof HTMLInputElement && email.value.trim()) parametros.set("email", email.value.trim());
+      const corpo = await buscar<RespostaCodigo>(parametros);
+      if (meu !== pedido) return;
+      if (!corpo?.ok || !corpo.dados) {
+        mostrar(aviso, "Não foi possível conferir o código agora. O sistema confere de novo ao enviar.", "alerta");
+        return;
+      }
+      mostrar(aviso, corpo.dados.mensagem, corpo.dados.disponivel ? "ok" : "erro");
+      if (!corpo.dados.disponivel) campo.setCustomValidity(corpo.dados.mensagem);
+    };
+    aoDigitar(campo, (valor) => void verificar(valor));
+    // Outro campo pede nova conferência (o e-mail mudou, ou o papel voltou a ser representante).
+    campo.addEventListener("verificar", () => void verificar(campo.value.trim()));
+  }
+
+  // Convite: campos do papel escolhido e situação do e-mail.
   const formulario = document.querySelector<HTMLFormElement>("[data-convite]");
   if (formulario) {
+    const campoCodigo = formulario.querySelector<HTMLInputElement>("[data-verificar-codigo]");
     const atualizar = () => {
       const papel = new FormData(formulario).get("papel");
       formulario.querySelector<HTMLElement>("[data-so-representante]")!.hidden = papel !== "representante";
       formulario.querySelector<HTMLElement>("[data-so-administrador]")!.hidden = papel !== "administrador";
+      // Campo escondido com erro travaria o envio sem mostrar o motivo.
+      if (papel !== "representante") campoCodigo?.setCustomValidity("");
+      else campoCodigo?.dispatchEvent(new Event("verificar"));
     };
-    formulario.addEventListener("change", atualizar);
+    formulario.addEventListener("change", (evento) => {
+      if ((evento.target as HTMLInputElement).name === "papel") atualizar();
+    });
     atualizar();
+
+    const campoEmail = formulario.querySelector<HTMLInputElement>("[data-verificar-email]");
+    const aviso = document.getElementById("convite-email-situacao");
+    const botaoAjuda = aviso?.querySelector<HTMLElement>("button");
+    const blocosAjuda = document.querySelectorAll<HTMLElement>("#modal-email-ajuda [data-ajuda]");
+    const escolherAjuda = (situacao: Situacao | null) => {
+      if (botaoAjuda) botaoAjuda.hidden = situacao === null;
+      for (const bloco of blocosAjuda) bloco.hidden = bloco.dataset.ajuda !== situacao;
+    };
+    if (campoEmail && aviso) {
+      let pedido = 0;
+      const verificar = async (email: string) => {
+        const meu = ++pedido;
+        campoEmail.setCustomValidity("");
+        if (!email) {
+          aviso.hidden = true;
+          return;
+        }
+        if (!campoEmail.validity.valid) {
+          mostrar(aviso, "Confira o e-mail: ele parece incompleto.", "erro");
+          escolherAjuda(null);
+          return;
+        }
+        const corpo = await buscar<RespostaEmail>(new URLSearchParams({ email }));
+        if (meu !== pedido) return;
+        if (!corpo?.ok || !corpo.dados) {
+          mostrar(aviso, "Não foi possível conferir o e-mail agora. Você pode enviar: o sistema confere de novo.", "alerta");
+          escolherAjuda(null);
+          return;
+        }
+        const { situacao, nome, codigo_representante } = corpo.dados;
+        const { texto, tom } = AVISO_EMAIL[situacao];
+        mostrar(aviso, texto(nome ?? ""), tom);
+        escolherAjuda(situacao);
+        if (tom === "erro") campoEmail.setCustomValidity(texto(nome ?? ""));
+        // Reativação: completa o que estiver vazio com os dados atuais da pessoa.
+        if (situacao === "equipe_desativado") {
+          const campoNome = formulario.querySelector<HTMLInputElement>("#convite-nome");
+          if (campoNome && !campoNome.value.trim() && nome) campoNome.value = nome;
+          if (campoCodigo && !campoCodigo.value.trim() && codigo_representante) campoCodigo.value = codigo_representante;
+        }
+        campoCodigo?.dispatchEvent(new Event("verificar"));
+      };
+      aoDigitar(campoEmail, (valor) => void verificar(valor));
+    }
   }
 </script>
