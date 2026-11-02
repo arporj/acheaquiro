@@ -47,6 +47,13 @@ describe("agruparCategorias", () => {
     expect(agruparCategorias(lista, (c) => c.plural)[0]!.categorias.map((c) => c.nome)).toEqual(["Z", "B"]);
   });
 
+  it("com gruposEmOrdemAlfabetica, põe também os grupos em ordem alfabética (formulários e listas internas)", () => {
+    const lista = [cat("Pizzarias", "Comer e beber"), cat("Eletricistas", "Serviços para casa"), cat("Academias", "Beleza e saúde"), cat("Ótica", "Áreas comerciais")];
+    const grupos = agruparCategorias(lista, (c) => c.nome, { gruposEmOrdemAlfabetica: true });
+    expect(grupos.map((g) => g.grupo)).toEqual(["Áreas comerciais", "Beleza e saúde", "Comer e beber", "Serviços para casa"]);
+    expect(agruparCategorias(lista, (c) => c.nome).map((g) => g.grupo)).toEqual(["Comer e beber", "Serviços para casa", "Beleza e saúde", "Áreas comerciais"]);
+  });
+
   it("não altera a lista recebida e devolve vazio sem categorias", () => {
     const lista = [cat("B", "G"), cat("A", "G")];
     agruparCategorias(lista, (c) => c.nome);

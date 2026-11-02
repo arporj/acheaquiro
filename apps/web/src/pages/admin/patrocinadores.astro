@@ -462,7 +462,7 @@ const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font
       <label class={classesRotulo} data-for="categoria">Categoria</label>
       <select name="categoria" data-campo="categoria_id" class={classesCampo}>
         <option value="">Escolha</option>
-        {agruparCategorias(categorias, (c) => c.nome).flatMap((g) => g.categorias).map((c) => <option value={c.id}>{c.nome} ({c.grupo})</option>)}
+        {agruparCategorias(categorias, (c) => c.nome, { gruposEmOrdemAlfabetica: true }).flatMap((g) => g.categorias).map((c) => <option value={c.id}>{c.nome} ({c.grupo})</option>)}
       </select>
     </div>
     <label class={classesRotulo} data-for="nome">Nome da empresa</label>

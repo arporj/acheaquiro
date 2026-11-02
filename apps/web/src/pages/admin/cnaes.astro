@@ -42,7 +42,7 @@ const cnaes = (cnaesR.ok ? cnaesR.dados : []).filter(
       normalizar(nomeCategoria.get(c.categoria_id ?? "") ?? "").includes(termo)),
 );
 const editando = cnaes.find((c) => c.cnae === parametros.get("editar"));
-const grupos = agruparCategorias(categorias, (c) => c.nome);
+const grupos = agruparCategorias(categorias, (c) => c.nome, { gruposEmOrdemAlfabetica: true });
 const formatarCnae = (c: string) => c.replace(/^(\d{4})(\d)(\d{2})$/, "$1-$2/$3");
 const consulta = (extra: string) => `/admin/cnaes?q=${encodeURIComponent(busca)}&filtro=${filtro}${extra}`;
 ---

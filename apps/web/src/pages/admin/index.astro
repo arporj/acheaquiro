@@ -6,7 +6,8 @@
 import { Icone, type NomeIcone } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
-import { listarEquipe } from "@/lib/equipe";
+import { ABAS } from "@/lib/anunciantesAdmin";
+import { listarEquipe, type MembroEquipe } from "@/lib/equipe";
 import { listarEmAtraso } from "@/lib/pagamentos";
 
 const supabase = Astro.locals.supabase!;
@@ -25,8 +26,9 @@ const [equipe, pedidos, publicados, importados, emAnalise, emAndamento, bairrosP
   contar("pedidos_perfil", { situacao: "aberto" }),
   contar("anunciantes", { status: "publicado" }),
   contar("anunciantes", { status: "publicado", origem: "receita" }),
-  contar("anunciantes", { status: "em_analise" }),
-  contar("anunciantes", { status: ["rascunho", "aguardando_anunciante"] }),
+  // As mesmas situações das abas da lista de anunciantes, para o número bater com o que o link abre.
+  contar("anunciantes", { status: [...ABAS.analisar.situacoes] }),
+  contar("anunciantes", { status: [...ABAS.andamento.situacoes] }),
   supabase.from("apelidos_bairro").select("comercios").is("bairro_id", null).eq("ignorar", false),
   listarEmAtraso(supabase),
 ]);
@@ -38,7 +40,20 @@ const listaBairros = (bairrosPendentes.data ?? []) as { comercios: number }[];
 const comerciosParados = listaBairros.reduce((soma, b) => soma + b.comercios, 0);
 
 const membros = equipe.ok ? equipe.dados : [];
-const convites = membros.filter((m) => !m.convite_aceito).length;
+const convites = membros.filter((m) => m.ativo && !m.convite_aceito).length;
+
+/** Ativos de um papel: só quem já aceitou o convite; os convites pendentes vão no detalhe. */
+function cartaoEquipe(papel: MembroEquipe["papel"], rotulo: string, icone: NomeIcone): Cartao {
+  const doPapel = membros.filter((m) => m.papel === papel && m.ativo);
+  const pendentes = doPapel.filter((m) => !m.convite_aceito).length;
+  return {
+    rotulo,
+    valor: doPapel.length - pendentes,
+    icone,
+    href: "/admin/equipe",
+    detalhe: pendentes === 0 ? undefined : pendentes === 1 ? "1 convite pendente" : `${pendentes} convites pendentes`,
+  };
+}
 
 interface Cartao {
   rotulo: string;
@@ -64,14 +79,14 @@ const pendencias: Cartao[] = [
     href: "/admin/bairros-importacao",
     detalhe: comerciosParados > 0 ? `${comerciosParados} comércios esperando para entrar` : undefined,
   },
-  { rotulo: "Perfis em análise", valor: emAnalise, icone: "megafone" },
+  { rotulo: "Perfis em análise", valor: emAnalise, icone: "megafone", href: "/admin/anunciantes?aba=analisar" },
   { rotulo: "Convites da equipe não aceitos", valor: convites, icone: "relogio", href: "/admin/equipe" },
 ];
 const resumo: Cartao[] = [
   { rotulo: "Perfis publicados", valor: publicados, icone: "megafone", detalhe: importados > 0 ? `${importados} vindos da Receita` : undefined },
-  { rotulo: "Cadastros em andamento", valor: emAndamento, icone: "etiqueta" },
-  { rotulo: "Administradores ativos", valor: membros.filter((m) => m.papel === "administrador" && m.ativo).length, icone: "escudo", href: "/admin/equipe" },
-  { rotulo: "Representantes ativos", valor: membros.filter((m) => m.papel === "representante" && m.ativo).length, icone: "usuarios", href: "/admin/equipe" },
+  { rotulo: "Cadastros em andamento", valor: emAndamento, icone: "etiqueta", href: "/admin/anunciantes?aba=andamento" },
+  cartaoEquipe("administrador", "Administradores ativos", "escudo"),
+  cartaoEquipe("representante", "Representantes ativos", "usuarios"),
 ];
 const totalPendencias = pendencias.reduce((soma, c) => soma + c.valor, 0);
 ---

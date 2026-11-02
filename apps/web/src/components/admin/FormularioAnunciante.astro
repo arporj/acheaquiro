@@ -25,7 +25,7 @@ interface Props {
 const { opcoes, valores: v, erros, tipoFixo, emailTravado = false, textoBotao, escolherRepresentante = true } = Astro.props;
 const tipo = tipoFixo ?? v.tipo;
 
-const grupos = agruparCategorias(opcoes.categorias, (c) => c.nome);
+const grupos = agruparCategorias(opcoes.categorias, (c) => c.nome, { gruposEmOrdemAlfabetica: true });
 const FORMAS = [
   { id: "pix", rotulo: "Pix" },
   { id: "cartao", rotulo: "Cartão" },

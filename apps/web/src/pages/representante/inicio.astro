@@ -4,6 +4,7 @@
 // As comissões entram na etapa 2, com os pagamentos.
 import { Icone, classesBotao } from "@acheaqui/ui";
 import { normalizarChavePix } from "@acheaqui/validation";
+import { renderSVG } from "uqr";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
 import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
@@ -37,6 +38,9 @@ const link = meu ? `https://acheaquiro.com.br/r/${meu.codigo}` : "";
 const abertura = textoAbertura(await obterAberturaAoPublico(), hojeNaCidade());
 const mensagemCompartilhar = `Conheça o Ache Aqui RO, o site dos profissionais e comércios de Rio das Ostras${abertura ? `. ${abertura}` : ""}: ${link}`;
 const tipoPix = meu?.chavePix ? normalizarChavePix(meu.chavePix)?.tipo : undefined;
+// QR Code do mesmo link (decisão de 02/11/2026), gerado no servidor: na tela, na cor do texto; o arquivo baixado sai preto no branco, para imprimir.
+const qrNaTela = link ? renderSVG(link, { ecc: "M", border: 2, blackColor: "currentColor", whiteColor: "transparent" }) : "";
+const qrParaBaixar = link ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(renderSVG(link, { ecc: "M", border: 4 }))}` : "";
 ---
 
 <PaginaRepresentante titulo={meu?.nome ? `Olá, ${meu.nome.split(" ")[0]}` : "Área do representante"}>
@@ -69,6 +73,18 @@ const tipoPix = meu?.chavePix ? normalizarChavePix(meu.chavePix)?.tipo : undefin
             </a>
           </div>
           <p class="mt-1 h-5 text-sm font-semibold text-zap-700" data-copiado role="status"></p>
+          <div class="mt-3 flex flex-wrap items-center gap-4 rounded-2xl bg-fundo p-4">
+            <div class="size-36 shrink-0 rounded-xl bg-white p-1 text-azul-900 [&>svg]:size-full" role="img" aria-label={`QR Code do link ${link}`} set:html={qrNaTela} />
+            <div class="min-w-0 flex-1 basis-48">
+              <p class="text-sm text-slate-600">
+                Quem aponta a câmera do celular para o QR Code abre o seu link, com a sua indicação. Bom para cartão de visita, panfleto e
+                atendimento no balcão.
+              </p>
+              <a href={qrParaBaixar} download={`qrcode-ache-aqui-${meu.codigo}.svg`} class={classesBotao("contorno", "m", "mt-3")} data-sem-carregamento>
+                Baixar QR Code
+              </a>
+            </div>
+          </div>
           <p class="mt-3 text-sm text-slate-600">
             Seu código: <strong class="text-tinta">{meu.codigo}</strong>. Quem não abriu o link pode dizer o código à equipe.
           </p>

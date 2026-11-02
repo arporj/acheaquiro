@@ -1,0 +1,64 @@
+---
+// Lista de contatos registrados, do mais recente: dia, comércio, etapa de hoje,
+// observação e (na administração) quem registrou. O link leva aonde quem está
+// vendo pode abrir o comércio.
+import { COR_ETAPA, LIMITE_CONTATOS, ROTULO_ETAPA, type ContatoRegistrado } from "@/lib/contatos";
+import { formatarData } from "@/lib/texto";
+
+interface Props {
+  contatos: ContatoRegistrado[];
+  modo: "representante" | "administracao";
+  /** Texto quando a lista está vazia. */
+  vazio: string;
+}
+
+const { contatos, modo, vazio } = Astro.props;
+const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-extrabold";
+
+function link(c: ContatoRegistrado): string | null {
+  if (modo === "administracao") return `/admin/anunciantes/${c.cadastro_id}`;
+  if (c.do_meu_representante) return `/representante/anunciantes/${c.cadastro_id}`;
+  if (c.etapa === "prospeccao") return `/representante/prospeccao?q=${encodeURIComponent(c.anunciante_nome)}`;
+  return null;
+}
+---
+
+{
+  contatos.length === 0 ? (
+    <p class="mt-5 rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm ring-1 ring-black/5">{vazio}</p>
+  ) : (
+    <>
+      {contatos.length >= LIMITE_CONTATOS && (
+        <p class="mt-5 text-sm font-semibold text-azul-800">
+          Mostrando os {LIMITE_CONTATOS} contatos mais recentes do período. Para ver os mais antigos, diminua o período.
+        </p>
+      )}
+      <ul class="mt-5 space-y-3">
+        {contatos.map((c) => {
+          const destino = link(c);
+          return (
+            <li class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <span class="text-sm font-bold text-slate-500">{formatarData(c.dia)}</span>
+                {destino ? (
+                  <a href={destino} class="font-bold break-words text-azul-700 underline-offset-2 hover:underline">
+                    {c.anunciante_nome}
+                  </a>
+                ) : (
+                  <span class="font-bold break-words text-azul-900">{c.anunciante_nome}</span>
+                )}
+                <span class={`${etiqueta} ${COR_ETAPA[c.etapa]}`}>{ROTULO_ETAPA[c.etapa]}</span>
+              </div>
+              {c.observacao && <p class="mt-2 text-sm break-words text-slate-700">{c.observacao}</p>}
+              <p class="mt-2 text-xs text-slate-500">
+                {modo === "administracao" && <>Registrado por {c.autor_nome ?? "pessoa sem nome"}. </>}
+                {c.fechado_por && (c.etapa === "em_cadastro" || c.etapa === "convite_enviado") && <>Em cadastro por {c.fechado_por}. </>}
+                {c.anunciante_tipo === "profissional" ? "Autônomo." : "Comércio."}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  )
+}

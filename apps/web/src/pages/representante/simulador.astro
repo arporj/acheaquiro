@@ -1,0 +1,144 @@
+---
+// Simulador de desconto (decisão de 02/11/2026): durante a negociação com quem
+// ainda não tem conta (por exemplo, um comércio da prospecção), o representante
+// vê o primeiro pagamento, a comissão dele e até quanto pode dar de desconto,
+// pelas mesmas contas da proposta (packages/domain). Para quem já tem conta, a
+// conta exata (com o histórico do anunciante) fica em "Nova proposta".
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
+import { obterRegrasCobranca } from "@/dados/consultas";
+import { formatarCentavos, percentualInicialFundador } from "@/lib/precos";
+import { lerReais, planosParaSimular, simularAssinatura } from "@/lib/propostas";
+import { lerMeuCadastro } from "@/lib/representante";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+const parametros = Astro.url.searchParams;
+const tipo = parametros.get("tipo") === "profissional" ? "profissional" : "comercio";
+const periodicidade = parametros.get("periodicidade") === "anual" ? "anual" : "mensal";
+const planoId = parametros.get("plano") ?? "";
+const descontoTexto = (parametros.get("desconto") ?? "").slice(0, 12);
+const desconto = lerReais(descontoTexto);
+
+const [cadastro, planos, regras] = await Promise.all([lerMeuCadastro(supabase, usuario.id), planosParaSimular(supabase, tipo), obterRegrasCobranca()]);
+let erro = (!cadastro.ok && cadastro.erro.mensagem) || (!planos.ok && planos.erro.mensagem) || "";
+const recebeComissao = cadastro.ok && cadastro.dados.recebeComissao;
+const lista = planos.ok ? planos.dados : [];
+const plano = lista.find((p) => p.id === planoId);
+const simulacao = plano ? await simularAssinatura(lista, { tipo, plano, periodicidade, recebeComissao }) : null;
+if (simulacao && !simulacao.ok) erro ||= simulacao.erro.mensagem;
+const v = simulacao?.ok ? simulacao.dados : null;
+if (descontoTexto && desconto === null) erro ||= "Desconto inválido: use reais e centavos, como 10,00.";
+const descontoAcima = v !== null && desconto !== null && desconto > v.descontoMaximoCentavos;
+const descontoUsado = v && desconto !== null && !descontoAcima ? desconto : 0;
+const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
+---
+
+<PaginaRepresentante titulo="Simulador de desconto" descricao="Para negociar com quem ainda não tem conta no site.">
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <section class={secao}>
+    <form method="get" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[auto_1fr_auto_auto_auto] lg:items-end" data-calcular-ao-mudar>
+      <div>
+        <label for="tipo" class={classesRotulo}>Público</label>
+        <select id="tipo" name="tipo" class={classesCampo}>
+          <option value="comercio" selected={tipo === "comercio"}>Comércio</option>
+          <option value="profissional" selected={tipo === "profissional"}>Autônomo</option>
+        </select>
+      </div>
+      <div>
+        <label for="plano" class={classesRotulo}>Plano</label>
+        <select id="plano" name="plano" class={classesCampo}>
+          <option value="" disabled selected={!plano}>Escolha o plano</option>
+          {
+            lista.map((p) => (
+              <option value={p.id} selected={p.id === plano?.id}>
+                {p.nome} ({formatarCentavos(p.valorMensalCentavos)} por mês)
+              </option>
+            ))
+          }
+        </select>
+      </div>
+      <div>
+        <label for="periodicidade" class={classesRotulo}>Período</label>
+        <select id="periodicidade" name="periodicidade" class={classesCampo}>
+          <option value="mensal" selected={periodicidade === "mensal"}>Mensal</option>
+          <option value="anual" selected={periodicidade === "anual"}>Anual</option>
+        </select>
+      </div>
+      <div>
+        <label for="desconto" class={classesRotulo}>Seu desconto (R$)</label>
+        <input id="desconto" name="desconto" inputmode="decimal" placeholder="0,00" value={descontoTexto} class={classesCampo} />
+      </div>
+      <button type="submit" class={classesBotao("azul", "m")}>Calcular</button>
+    </form>
+    <p class="mt-3 text-xs text-slate-500">
+      Conta para um anunciante novo, pagando hoje. Para quem já tem conta (upgrade ou renovação), use "Nova proposta" em Propostas: a conta leva em
+      conta o histórico dele.
+    </p>
+  </section>
+
+  {
+    v && (
+      <section class={secao}>
+        <p class="font-display text-lg font-bold text-azul-900">
+          Desconto máximo: {v.descontoMaximoCentavos > 0 ? formatarCentavos(v.descontoMaximoCentavos) : "sem desconto"}
+        </p>
+        <p class="text-sm text-slate-600">
+          {v.descontoMaximoCentavos > 0
+            ? "O desconto vale só no primeiro pagamento e vai até a sua comissão nele: o que você dá de desconto sai da sua comissão."
+            : recebeComissao
+              ? "Este pagamento não gera comissão, então não há desconto para dar."
+              : "Você não recebe comissão por enquanto, então não há desconto para dar."}
+        </p>
+        {descontoAcima && (
+          <p class="mt-2 text-sm font-bold text-vermelho-600" role="alert">
+            O desconto de {formatarCentavos(desconto!)} passa do máximo. Use até {formatarCentavos(v.descontoMaximoCentavos)}.
+          </p>
+        )}
+        <ul class="mt-4 space-y-1.5 text-sm text-slate-700">
+          <li>
+            Primeiro pagamento ({v.periodicidade === "anual" ? "o ano inteiro" : "o primeiro mês"}): <strong>{formatarCentavos(v.agora.valorCentavos - descontoUsado)}</strong>
+            {descontoUsado > 0 && ` (${formatarCentavos(v.agora.valorCentavos)} menos o seu desconto de ${formatarCentavos(descontoUsado)})`}
+          </li>
+          {v.viraFundador && (
+            <li class="flex items-start gap-1.5">
+              <Icone nome="medalha" class="mt-0.5 size-4 shrink-0 text-azul-600" />
+              <span>
+                Vira Fundador: o valor já tem {percentualInicialFundador(regras)}% de desconto de Fundador no 1º ano (anual pago até{" "}
+                {formatarData(regras.prazoFundador)}).
+              </span>
+            </li>
+          )}
+          <li>
+            Renovação, pelo preço cheio: <strong>{formatarCentavos(v.renovacaoCentavos)}</strong> {v.periodicidade === "anual" ? "por ano" : "por mês"}
+          </li>
+          <li>
+            Sua comissão neste pagamento: <strong>{formatarCentavos(v.comissaoCentavos - descontoUsado)}</strong>
+            {descontoUsado > 0 && ` (${formatarCentavos(v.comissaoCentavos)} menos o desconto)`}
+          </li>
+        </ul>
+        <p class="mt-3 text-xs text-slate-500">
+          {v.periodicidade === "mensal" && "No mensal, as mensalidades seguintes também rendem comissão, sem desconto. "}Os valores seguem o catálogo
+          de hoje.
+        </p>
+      </section>
+    )
+  }
+</PaginaRepresentante>
+
+<script>
+  // Mudou o público, o plano ou o período: recalcula na hora, para o máximo aparecer antes de digitar o desconto.
+  for (const formulario of document.querySelectorAll<HTMLFormElement>("[data-calcular-ao-mudar]")) {
+    formulario.addEventListener("change", (evento) => {
+      const campo = evento.target as HTMLElement;
+      if (!(campo instanceof HTMLSelectElement)) return;
+      // Trocar o público troca a lista de planos: o plano escolhido não vale mais.
+      if (campo.name === "tipo") formulario.querySelector<HTMLSelectElement>("[name=plano]")!.value = "";
+      formulario.requestSubmit();
+    });
+  }
+</script>

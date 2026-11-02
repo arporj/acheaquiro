@@ -1,0 +1,89 @@
+---
+// Contatos e acompanhamento (decisão de 02/11/2026): o resumo por pessoa no
+// período (contatos, comércios, cadastros iniciados, vendas e valor vendido) e
+// a lista de todos os contatos registrados, com a etapa de cada comércio hoje.
+// "Venda" é o 1º pagamento de plano válido atendido pelo representante.
+import Aviso from "@/components/conta/Aviso.astro";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import FiltroContatos from "@/components/contatos/FiltroContatos.astro";
+import ListaContatos from "@/components/contatos/ListaContatos.astro";
+import { lerFiltroContatos, listarContatos, resumirContatos } from "@/lib/contatos";
+import { listarEquipe } from "@/lib/equipe";
+import { formatarCentavos } from "@/lib/precos";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const filtro = lerFiltroContatos(Astro.url.searchParams);
+const [lista, resumo, equipe] = await Promise.all([listarContatos(supabase, filtro), resumirContatos(supabase, filtro), listarEquipe(supabase)]);
+const erro = (!lista.ok && lista.erro.mensagem) || (!resumo.ok && resumo.erro.mensagem) || (!equipe.ok && equipe.erro.mensagem) || "";
+const linhas = resumo.ok ? resumo.dados : [];
+const pessoas = (equipe.ok ? equipe.dados : []).map((m) => ({ id: m.usuario_id, nome: `${m.nome || m.email}${m.ativo ? "" : " (desativado)"}` }));
+const total = linhas.reduce(
+  (soma, r) => ({ contatos: soma.contatos + r.contatos, vendas: soma.vendas + r.vendas, valor: soma.valor + r.valor_vendido_centavos }),
+  { contatos: 0, vendas: 0, valor: 0 },
+);
+
+/** Mesmo filtro, com outra pessoa. */
+function linkPessoa(autorId: string): string {
+  const p = new URLSearchParams(Astro.url.searchParams);
+  p.set("autor", autorId);
+  return `/admin/contatos?${p}`;
+}
+const celula = "px-3 py-2 text-right tabular-nums";
+---
+
+<PaginaAdmin titulo="Contatos" descricao="Como os contatos dos representantes estão acontecendo e o que está sendo fechado.">
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+  <FiltroContatos filtro={filtro} limpar="/admin/contatos" pessoas={pessoas} />
+
+  <section class="mt-6">
+    <h2 class="font-display text-xl font-bold text-azul-900">Resumo de {formatarData(filtro.inicio)} a {formatarData(filtro.fim)}</h2>
+    <p class="mt-1 text-sm text-slate-600">
+      {total.contatos} contatos, {total.vendas} {total.vendas === 1 ? "venda" : "vendas"} ({formatarCentavos(total.valor)}). Venda é o 1º pagamento de plano
+      atendido pelo representante; cadastro iniciado é um anunciante criado com ele (cadastro assistido ou "Fechei com este comércio").
+    </p>
+    {
+      linhas.length === 0 ? (
+        <p class="mt-3 rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm ring-1 ring-black/5">Nenhum contato, cadastro ou venda neste período.</p>
+      ) : (
+        <div class="relative mt-3 overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+          <table class="w-full min-w-[40rem] text-sm">
+            <thead class="bg-fundo text-xs font-bold text-slate-600 uppercase">
+              <tr>
+                <th scope="col" class="px-3 py-2 text-left">Pessoa</th>
+                <th scope="col" class={celula}>Contatos</th>
+                <th scope="col" class={celula}>Comércios</th>
+                <th scope="col" class={celula}>Cadastros iniciados</th>
+                <th scope="col" class={celula}>Vendas</th>
+                <th scope="col" class={celula}>Valor vendido</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {linhas.map((r) => (
+                <tr class:list={[filtro.autorId === r.autor_id && "bg-azul-50"]}>
+                  <th scope="row" class="px-3 py-2 text-left font-semibold">
+                    <a href={linkPessoa(r.autor_id)} class="text-azul-700 hover:underline">
+                      {r.nome || "Sem nome"}
+                    </a>
+                    {r.papel === "administrador" && <span class="ml-1 text-xs font-normal text-slate-500">(administrador)</span>}
+                    {r.ativo === false && <span class="ml-1 text-xs font-normal text-slate-500">(desativado)</span>}
+                  </th>
+                  <td class={celula}>{r.contatos}</td>
+                  <td class={celula}>{r.comercios}</td>
+                  <td class={celula}>{r.cadastros_iniciados}</td>
+                  <td class={celula}>{r.vendas}</td>
+                  <td class={celula}>{formatarCentavos(r.valor_vendido_centavos)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
+  </section>
+
+  <section class="mt-8">
+    <h2 class="font-display text-xl font-bold text-azul-900">Contatos registrados</h2>
+    <ListaContatos contatos={lista.ok ? lista.dados : []} modo="administracao" vazio="Nenhum contato com esse filtro." />
+  </section>
+</PaginaAdmin>

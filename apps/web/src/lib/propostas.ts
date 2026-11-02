@@ -96,6 +96,8 @@ export interface ValoresProposta {
   descontoMaximoCentavos: number;
   /** Pagamento em que sai a 1ª parcela da comissão (e o desconto). */
   comissaoEm: "agora" | "proximo" | null;
+  /** Vira Fundador com este pagamento (assinatura anual paga até o prazo); o valor já vem com o desconto de Fundador. */
+  viraFundador: boolean;
 }
 
 /**
@@ -155,6 +157,7 @@ export async function calcularProposta(
           comissaoCentavos: comissao,
           descontoMaximoCentavos: maximo,
           comissaoEm: comissao > 0 ? "agora" : null,
+          viraFundador: primeiro.fundador.tornou,
         },
       };
     }
@@ -222,12 +225,57 @@ export async function calcularProposta(
         comissaoCentavos: comissao,
         descontoMaximoCentavos: maximo,
         comissaoEm,
+        viraFundador: false,
       },
     };
   } catch (e) {
     if (e instanceof RangeError) return falha("DADOS_INVALIDOS", e.message);
     throw e;
   }
+}
+
+/** Planos pagos e ativos de um público, para o simulador (o gratuito não tem comissão nem desconto). */
+export async function planosParaSimular(supabase: SupabaseClient, tipo: "profissional" | "comercio"): Promise<Resultado<PlanoDaProposta[]>> {
+  const { data, error } = await supabase
+    .from("planos")
+    .select("id, nome, nivel, valor_mensal_centavos, meses_cobrados_no_anual")
+    .eq("tipo", tipo)
+    .eq("ativo", true)
+    .gt("valor_mensal_centavos", 0)
+    .order("nivel");
+  if (error) return mensagemDoBanco(error, "planosParaSimular");
+  return {
+    ok: true,
+    dados: (data ?? []).map((p) => ({
+      id: p.id as string,
+      nome: p.nome as string,
+      nivel: p.nivel as number,
+      valorMensalCentavos: p.valor_mensal_centavos as number,
+      mesesCobradosNoAnual: p.meses_cobrados_no_anual as number,
+    })),
+  };
+}
+
+/**
+ * Simulador de desconto (decisão de 02/11/2026): a assinatura de um anunciante
+ * novo, sem conta nem histórico (por exemplo, um comércio da prospecção),
+ * pelas mesmas contas da proposta. Sem desconto: a tela tira o desconto
+ * digitado do primeiro pagamento e da comissão.
+ */
+export async function simularAssinatura(
+  planos: PlanoDaProposta[],
+  escolha: { tipo: "profissional" | "comercio"; plano: PlanoDaProposta; periodicidade: "mensal" | "anual"; recebeComissao: boolean },
+  hoje = hojeNaCidade(),
+): Promise<Resultado<ValoresProposta>> {
+  const ctx: ContextoProposta = {
+    anunciante: { id: "", nome: "", slug: "", tipo: escolha.tipo, status: "rascunho", temConta: false, fundadorDesde: null, planoId: null },
+    assinatura: null,
+    pagamentosValidos: 0,
+    algumAnual: false,
+    maiorComissionadaCentavos: 0,
+    planos,
+  };
+  return calcularProposta(ctx, { plano: escolha.plano, periodicidade: escolha.periodicidade, descontoCentavos: 0, recebeComissao: escolha.recebeComissao }, hoje);
 }
 
 const descontoAcima = (maximo: number) =>

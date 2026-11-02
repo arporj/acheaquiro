@@ -63,11 +63,14 @@ const porPeriodo = (p: "mensal" | "anual") => (p === "anual" ? "por ano" : "por 
           </p>
           {opcoes.length === 0 && <p class="mt-2 font-bold text-azul-900">O anunciante já está no maior plano.</p>}
           {opcoes.length > 0 && (
-            <form method="get" class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] sm:items-end">
+            <form method="get" class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] sm:items-end" data-calcular-ao-mudar>
               <input type="hidden" name="anunciante" value={ctx.anunciante.id} />
               <div>
                 <label for="plano" class={classesRotulo}>Plano</label>
                 <select id="plano" name="plano" required class={classesCampo}>
+                  <option value="" disabled selected={!plano}>
+                    Escolha o plano
+                  </option>
                   {opcoes.map((p) => (
                     <option value={p.id} selected={p.id === planoId}>
                       {p.nome} ({formatarCentavos(p.valorMensalCentavos)} por mês)
@@ -90,6 +93,11 @@ const porPeriodo = (p: "mensal" | "anual") => (p === "anual" ? "por ano" : "por 
               </div>
               <button type="submit" class={classesBotao("contorno", "m")}>Calcular</button>
             </form>
+          )}
+          {v && (
+            <p class="mt-3 font-display text-lg font-bold text-azul-900">
+              Desconto máximo: {v.descontoMaximoCentavos > 0 ? formatarCentavos(v.descontoMaximoCentavos) : "sem desconto"}
+            </p>
           )}
         </section>
 
@@ -135,3 +143,12 @@ const porPeriodo = (p: "mensal" | "anual") => (p === "anual" ? "por ano" : "por 
     )
   }
 </PaginaRepresentante>
+
+<script>
+  // Mudou o plano ou o período: recalcula na hora, para o desconto máximo aparecer antes de digitar o desconto.
+  for (const formulario of document.querySelectorAll<HTMLFormElement>("[data-calcular-ao-mudar]")) {
+    formulario.addEventListener("change", (evento) => {
+      if (evento.target instanceof HTMLSelectElement) formulario.requestSubmit();
+    });
+  }
+</script>
