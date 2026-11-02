@@ -26,7 +26,8 @@
 		// Site de apresentação para anunciantes, com dados fictícios e sem login.
 		// Publicar com: npm run deploy:teste -w web
 		// Em exemplo.acheaquiro.com.br (decisão de 30/10/2026); teste. continua
-		// ligado só para o middleware redirecionar os links já enviados.
+		// ligado para os links já enviados, que a regra "teste para exemplo" da
+		// Cloudflare redireciona antes do cache (ver CLAUDE.md).
 		"teste": {
 			"name": "acheaqui-teste",
 			"routes": [

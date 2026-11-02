@@ -51,6 +51,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   // Links do site de apresentação já enviados com o endereço antigo (decisão de 30/10/2026).
+  // Reserva: quem redireciona é a regra "teste para exemplo" da Cloudflare, que roda antes do cache.
   if (ambiente === "apresentacao" && hostname === HOST_TESTE_ANTIGO) {
     return context.redirect(`${ENDERECO_EXEMPLO}${pathname}${search}`, 301);
   }
