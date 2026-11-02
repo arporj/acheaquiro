@@ -7,6 +7,7 @@
 import { Icone, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import ContaDaComissao from "@/components/representante/ContaDaComissao.astro";
 import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
 import { obterRegrasCobranca } from "@/dados/consultas";
 import { formatarCentavos, percentualInicialFundador } from "@/lib/precos";
@@ -121,6 +122,15 @@ const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
             {descontoUsado > 0 && ` (${formatarCentavos(v.comissaoCentavos)} menos o desconto)`}
           </li>
         </ul>
+        {v.conta?.comissao && (
+          <ContaDaComissao
+            periodicidade={v.periodicidade}
+            cobranca={v.conta.cobranca}
+            comissao={v.conta.comissao}
+            numeroPagamento={v.conta.numeroPagamento}
+            mesesCobradosNoAnual={v.plano.mesesCobradosNoAnual}
+          />
+        )}
         <p class="mt-3 text-xs text-slate-500">
           {v.periodicidade === "mensal" && "No mensal, as mensalidades seguintes também rendem comissão, sem desconto. "}Os valores seguem o catálogo
           de hoje.

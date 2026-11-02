@@ -1,0 +1,75 @@
+---
+// A conta da comissão do 1º pagamento, passo a passo (decisão de 02/11/2026):
+// o representante vê por que a comissão do anual de Fundador é menor. Os
+// números vêm prontos do domínio (calcularPagamentoPlano); aqui só a exibição.
+import { PERCENTUAIS_COMISSAO_MENSAL, PERCENTUAL_COMISSAO_ANUAL, aplicarPercentual, type Cobranca, type Comissao } from "@acheaqui/domain";
+import { formatarCentavos } from "@/lib/precos";
+
+interface Props {
+  periodicidade: "mensal" | "anual";
+  cobranca: Cobranca;
+  comissao: Comissao;
+  /** Qual pagamento da assinatura este é: no mensal, define o percentual da parcela. */
+  numeroPagamento: number;
+  mesesCobradosNoAnual: number;
+}
+
+const { periodicidade, cobranca, comissao, numeroPagamento, mesesCobradosNoAnual } = Astro.props;
+const percentualFundador = cobranca.valorCheioCentavos > 0 ? Math.round((cobranca.descontoFundadorCentavos * 100) / cobranca.valorCheioCentavos) : 0;
+const pct = (n: number) => `${n.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
+const seguintes = PERCENTUAIS_COMISSAO_MENSAL.slice(numeroPagamento);
+---
+
+<details class="mt-3 rounded-xl bg-fundo p-3 text-sm text-slate-700" open>
+  <summary class="cursor-pointer font-bold text-azul-900">Como a sua comissão é calculada</summary>
+  <ol class="mt-2 list-decimal space-y-1 pl-5">
+    {
+      periodicidade === "anual" ? (
+        <>
+          <li>
+            Anual: {mesesCobradosNoAnual} mensalidades de {formatarCentavos(Math.round(cobranca.valorCheioCentavos / mesesCobradosNoAnual))} ={" "}
+            {formatarCentavos(cobranca.valorCheioCentavos)}.
+          </li>
+          {cobranca.descontoFundadorCentavos > 0 && (
+            <li>
+              Desconto de Fundador de {pct(percentualFundador)}: − {formatarCentavos(cobranca.descontoFundadorCentavos)}. O anunciante paga{" "}
+              {formatarCentavos(cobranca.valorDevidoCentavos)}.
+            </li>
+          )}
+          <li>
+            A comissão é sobre o valor pago: {formatarCentavos(comissao.baseCentavos)} ÷ {mesesCobradosNoAnual} ={" "}
+            {formatarCentavos(Math.round(comissao.baseCentavos / mesesCobradosNoAnual))} por mês.
+          </li>
+          <li>
+            {pct(PERCENTUAL_COMISSAO_ANUAL)} de uma mensalidade, de uma vez: <strong>{formatarCentavos(comissao.valorCentavos)}</strong>. Na renovação do
+            anual não há nova comissão de venda.
+          </li>
+        </>
+      ) : (
+        <>
+          <li>Mensal: o anunciante paga {formatarCentavos(cobranca.valorDevidoCentavos)} por mês (o desconto de Fundador é só no anual).</li>
+          <li>
+            {pct(comissao.percentual)} desta mensalidade: <strong>{formatarCentavos(comissao.valorCentavos)}</strong>.
+          </li>
+          {seguintes.length > 0 && (
+            <li>
+              {`Nas mensalidades seguintes, se ele continuar pagando: ${seguintes
+                .map((p) => `${pct(p)} (${formatarCentavos(aplicarPercentual(cobranca.valorDevidoCentavos, p))})`)
+                .join(", ")}, sem desconto.`}
+              {numeroPagamento === 1 && ` Total da venda: ${pct(PERCENTUAL_COMISSAO_ANUAL)} de uma mensalidade.`}
+            </li>
+          )}
+        </>
+      )
+    }
+    <li>O desconto que você dá sai desta comissão, só neste 1º pagamento.</li>
+  </ol>
+  {
+    periodicidade === "anual" && cobranca.descontoFundadorCentavos > 0 && (
+      <p class="mt-2 text-xs text-slate-600">
+        Por isso a comissão do anual de Fundador fica menor que a do mensal: ela é calculada sobre o valor já com o desconto de Fundador (regra da
+        comissão sobre o valor efetivamente pago).
+      </p>
+    )
+  }
+</details>

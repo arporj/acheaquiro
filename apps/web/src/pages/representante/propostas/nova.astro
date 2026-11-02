@@ -5,6 +5,7 @@
 import { Icone, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import ContaDaComissao from "@/components/representante/ContaDaComissao.astro";
 import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
 import { formatarCentavos } from "@/lib/precos";
 import { calcularProposta, criarProposta, lerContextoProposta, lerReais, tipoDaProposta } from "@/lib/propostas";
@@ -127,6 +128,15 @@ const porPeriodo = (p: "mensal" | "anual") => (p === "anual" ? "por ano" : "por 
                   ? "Esta proposta não gera comissão de venda (o anunciante já pagou um plano igual ou maior com atendimento)."
                   : "Você não recebe comissão por enquanto."}
             </p>
+            {v.conta?.comissao && (
+              <ContaDaComissao
+                periodicidade={v.periodicidade}
+                cobranca={v.conta.cobranca}
+                comissao={v.conta.comissao}
+                numeroPagamento={v.conta.numeroPagamento}
+                mesesCobradosNoAnual={v.plano.mesesCobradosNoAnual}
+              />
+            )}
             <p class="mt-1 text-xs text-slate-500">A proposta vale 7 dias para o anunciante aceitar e pagar, com este preço.</p>
             <form method="post" class="mt-4">
               <input type="hidden" name="plano" value={v.plano.id} />

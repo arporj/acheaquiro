@@ -12,6 +12,8 @@ import {
   diferencaParaComissao,
   percentualFundadorNoAno,
   situacaoCobranca,
+  type Cobranca,
+  type Comissao,
   type DataISO,
 } from "@acheaqui/domain";
 import type { Resultado } from "@acheaqui/types";
@@ -98,6 +100,8 @@ export interface ValoresProposta {
   comissaoEm: "agora" | "proximo" | null;
   /** Vira Fundador com este pagamento (assinatura anual paga até o prazo); o valor já vem com o desconto de Fundador. */
   viraFundador: boolean;
+  /** Só na assinatura: a conta do domínio, para a tela mostrar de onde vem a comissão (decisão de 02/11/2026). */
+  conta: { cobranca: Cobranca; comissao: Comissao | null; numeroPagamento: number } | null;
 }
 
 /**
@@ -158,6 +162,7 @@ export async function calcularProposta(
           descontoMaximoCentavos: maximo,
           comissaoEm: comissao > 0 ? "agora" : null,
           viraFundador: primeiro.fundador.tornou,
+          conta: { cobranca: primeiro.cobranca, comissao: primeiro.comissao, numeroPagamento: primeiro.numero },
         },
       };
     }
@@ -226,6 +231,7 @@ export async function calcularProposta(
         descontoMaximoCentavos: maximo,
         comissaoEm,
         viraFundador: false,
+        conta: null,
       },
     };
   } catch (e) {
