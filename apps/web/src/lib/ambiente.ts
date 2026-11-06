@@ -22,6 +22,12 @@ export const ambiente: Ambiente = lerAmbiente(import.meta.env.PUBLIC_AMBIENTE);
 /** Site de apresentação, com os anunciantes fictícios; a página "em breve" leva até ele. */
 export const ENDERECO_EXEMPLO = "https://exemplo.acheaquiro.com.br";
 
+/**
+ * Texto do contador de visitas, no site que tem o token. Na abertura, a produção
+ * passa para acheaquiro.com.br: trocar aqui.
+ */
+export const ENDERECO_VISITAS = "https://prod.acheaquiro.com.br/api/visitas";
+
 /** Endereço antigo do site de apresentação, que só redireciona para ENDERECO_EXEMPLO. */
 export const HOST_TESTE_ANTIGO = "teste.acheaquiro.com.br";
 

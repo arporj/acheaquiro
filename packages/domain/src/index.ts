@@ -16,3 +16,4 @@ export * from "./artista";
 export * from "./upgrade";
 export * from "./previa";
 export * from "./negociacao";
+export * from "./visitas";

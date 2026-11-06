@@ -37,6 +37,8 @@ declare module "cloudflare:workers" {
     readonly TURNSTILE_SECRET_KEY?: string;
     /** Token da Cloudflare só com permissão de limpar o cache do domínio (remoção de fotos). */
     readonly CLOUDFLARE_LIMPEZA_CACHE_TOKEN?: string;
+    /** Token da Cloudflare só para ler as estatísticas (Account Analytics Read), para o contador de visitas. */
+    readonly CLOUDFLARE_ANALYTICS_TOKEN?: string;
     /** Só na produção. */
     readonly MIDIA?: BucketR2;
     readonly DOCUMENTOS?: BucketR2;

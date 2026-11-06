@@ -2,9 +2,11 @@
 import { Font } from "astro:assets";
 import BotaoDuvidas from "@/components/BotaoDuvidas.astro";
 import CarregandoPagina from "@/components/CarregandoPagina.astro";
+import ContadorVisitas from "@/components/ContadorVisitas.astro";
 import FaixaApresentacao from "@/components/FaixaApresentacao.astro";
 import Rodape from "@/components/Rodape.astro";
 import { ambiente } from "@/lib/ambiente";
+import { exigeLogin } from "@/lib/rotas";
 import "@/styles/global.css";
 
 interface Props {
@@ -67,6 +69,7 @@ const imagemPrevia = previa?.imagem ? new URL(previa.imagem, Astro.url).href : u
     <slot />
     <Rodape />
     {ambiente === "apresentacao" && <BotaoDuvidas />}
+    {!exigeLogin(Astro.url.pathname) && <ContadorVisitas />}
     <CarregandoPagina />
   </body>
 </html>

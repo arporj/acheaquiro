@@ -4,21 +4,10 @@
 import { defineMiddleware } from "astro:middleware";
 import { ambiente, ENDERECO_EXEMPLO, HOST_TESTE_ANTIGO } from "@/lib/ambiente";
 import { termoAceito } from "@/lib/representante";
+import { comecaCom, exigeLogin } from "@/lib/rotas";
 import { clienteDaRequisicao, destinoDepoisDeEntrar, lerUsuario, type UsuarioLogado } from "@/lib/sessao";
 
 const DOMINIO_PRINCIPAL = "acheaquiro.com.br";
-
-/** Páginas que dependem de login. O site de apresentação não as tem, porque não acessa o banco real. */
-const PAGINAS_COM_LOGIN = ["/entrar", "/recuperar-senha", "/nova-senha", "/auth", "/sair", "/conta", "/anunciante", "/admin", "/api/fotos"];
-
-function comecaCom(caminho: string, pagina: string): boolean {
-  return caminho === pagina || caminho.startsWith(`${pagina}/`);
-}
-
-function exigeLogin(caminho: string): boolean {
-  // "/representante" é a página pública; a área do representante fica nas subpáginas.
-  return PAGINAS_COM_LOGIN.some((pagina) => comecaCom(caminho, pagina)) || caminho.startsWith("/representante/");
-}
 
 /**
  * Quem pode abrir cada página. Vazio: a página está liberada (entrar,

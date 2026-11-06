@@ -1,0 +1,34 @@
+---
+// Contador flutuante de visitas, nas páginas públicas dos três sites (decisão de
+// 07/11/2026). As páginas ficam no cache, e dois dos sites não têm o token: o
+// navegador busca o texto no site de produção, que guarda a resposta por um dia.
+// Fica escondido até o texto chegar: sem token ou com falha, a página não muda.
+import { Icone } from "@acheaqui/ui";
+import { ambiente, ENDERECO_VISITAS } from "@/lib/ambiente";
+
+const endereco = ambiente === "producao" ? "/api/visitas" : ENDERECO_VISITAS;
+---
+
+<p
+  data-contador-visitas={endereco}
+  hidden
+  class="contador-visitas fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 z-30 inline-flex items-center gap-1.5 rounded-full bg-azul-900 px-3 py-1.5 text-xs font-bold text-white shadow-lg"
+>
+  <Icone nome="usuarios" class="size-4 shrink-0" />
+  <span data-texto></span>
+</p>
+
+<script>
+  const contador = document.querySelector<HTMLElement>("[data-contador-visitas]");
+  if (contador?.dataset.contadorVisitas) {
+    fetch(contador.dataset.contadorVisitas)
+      .then((resposta) => (resposta.ok ? (resposta.json() as Promise<{ texto: string | null }>) : { texto: null }))
+      .then(({ texto }) => {
+        if (!texto) return;
+        contador.querySelector("[data-texto]")!.textContent = texto;
+        contador.hidden = false;
+      })
+      // É só um enfeite da página: na falha, ela segue sem o contador.
+      .catch((erro: unknown) => console.warn("Contador de visitas: sem resposta", erro));
+  }
+</script>

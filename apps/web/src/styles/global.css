@@ -70,7 +70,8 @@ body {
  * conosco" (site de apresentação) não cobrirem o rodapé. No perfil, pelo
  * celular, o botão sobe acima da barra.
  */
-body:has(.botao-duvidas) footer {
+body:has(.botao-duvidas) footer,
+body:has(.contador-visitas:not([hidden])) footer {
   padding-bottom: 4.5rem;
 }
 @media (width < 64rem) {
@@ -80,8 +81,21 @@ body:has(.botao-duvidas) footer {
   body:has(.barra-contato):has(.botao-duvidas) footer {
     padding-bottom: 9rem;
   }
-  body:has(.barra-contato) .botao-duvidas {
+  body:has(.barra-contato) .botao-duvidas,
+  body:has(.barra-contato) .contador-visitas {
     bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  }
+}
+/* No celular, os dois não cabem lado a lado: o contador fica acima do "Dúvidas?". */
+@media (width < 30rem) {
+  body:has(.botao-duvidas) .contador-visitas {
+    bottom: calc(4.25rem + env(safe-area-inset-bottom));
+  }
+  body:has(.barra-contato):has(.botao-duvidas) .contador-visitas {
+    bottom: calc(8.5rem + env(safe-area-inset-bottom));
+  }
+  body:has(.botao-duvidas):has(.contador-visitas:not([hidden])) footer {
+    padding-bottom: 7.5rem;
   }
 }
 
