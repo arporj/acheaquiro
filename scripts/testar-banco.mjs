@@ -2,7 +2,7 @@
 // sem Docker: o "supabase test db" exige Docker até com --linked.
 // Cada arquivo roda numa transação que termina em erro de propósito, levando
 // o resultado na mensagem: o banco desfaz tudo e nada fica gravado.
-// Uso: npm run test:banco (lê SUPABASE_ACCESS_TOKEN do apps/web/.env.local).
+// Uso: npm run test:banco (roda por scripts/cli.ps1, que carrega o SUPABASE_ACCESS_TOKEN do .credenciais.local).
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";

@@ -9,6 +9,8 @@ node_modules/
 .env*
 !.env.example
 !apps/web/.env.teste
+.dev.vars
+.credenciais.local
 
 # Relatórios de cobertura de testes
 coverage/

@@ -29,7 +29,7 @@ interface BucketR2 {
   delete(chaves: string | string[]): Promise<void>;
 }
 
-/** Segredos e ligações do Worker (wrangler secret put; no desenvolvimento, .env.local). */
+/** Segredos e ligações do Worker (wrangler secret put; no desenvolvimento, .dev.vars). */
 declare module "cloudflare:workers" {
   export const env: {
     readonly SUPABASE_SERVICE_ROLE_KEY?: string;

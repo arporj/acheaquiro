@@ -38,5 +38,7 @@ export default defineConfig({
   // O atalho "@/" vem dos paths do tsconfig.json, que o Astro já lê.
   vite: {
     plugins: [tailwindcss()],
+    // Porta ocupada faz o servidor falhar, em vez de pular para outra (CLAUDE.md).
+    server: { strictPort: true },
   },
 });
