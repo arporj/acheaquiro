@@ -115,6 +115,16 @@ Carro de som, cartazes e panfletos e prêmio de fim de ano (decisão de 29/10/20
 - Redirecionamento de domínio fica em regras da Cloudflare, e não no Worker (decisão de 02/11/2026): o Workers Cache não separa as páginas por domínio e, com a página no cache, o Worker nem roda, então o redirecionamento do middleware só acontecia sem cache. Regras em Rules > Redirect Rules da zona acheaquiro.com.br (Single Redirects, 10 por zona no plano gratuito; 2 em uso), fora do repositório: "teste para exemplo" (*://teste.acheaquiro.com.br/* para concat("https://exemplo.acheaquiro.com.br", http.request.uri.path)) e "www para principal" (*://www.acheaquiro.com.br/* para concat("https://acheaquiro.com.br", http.request.uri.path)), ambas Dynamic, 301 e com a query string preservada. O tipo Static usa a URL ao pé da letra e não troca ${1}/${2}. O redirecionamento do middleware (src/middleware.ts) fica só como reserva. Conferir redirecionamento abrindo primeiro o destino (para ele entrar no cache) e depois a origem. A regra do www continua depois da abertura, quando a produção recebe acheaquiro.com.br e www.
 - Hospedagem e serviços externos: somente planos gratuitos que permitam uso comercial. Antes de recomendar um serviço, confira e informe os limites atuais do plano gratuito.
 
+## Execução local e credenciais
+
+- Portas (faixa 3400–3499, decisão de 06/11/2026): `npm run dev` em http://localhost:3400, prévia do Workers (`npm run preview -w web`) em 3401 e o inspetor dela em 3402. Supabase local no bloco 554xx (`supabase/config.toml`). Porta ocupada faz o comando falhar (`vite.server.strictPort` em `apps/web/astro.config.mjs`): descubra o que a ocupa e avise, sem trocar de porta. O `http://localhost:3400/**` fica em `additional_redirect_urls`, aplicado à produção por `supabase config push`.
+- Valores locais em três arquivos, nenhum no Git (modelo com os nomes em `apps/web/.env.example`; decisão de 06/11/2026):
+  - `apps/web/.env.local`: valores públicos do app (`PUBLIC_*`).
+  - `apps/web/.dev.vars`: segredos do app no desenvolvimento; na produção, os mesmos nomes ficam nos segredos do Worker. `npm run importar:cnpj` lê este arquivo e o `.env.local`.
+  - `.credenciais.local`, na raiz: tokens das ferramentas, lidos só por `scripts/cli.ps1`.
+- Todo comando que precisa de token passa pelo script: `.\scripts\cli.ps1 supabase migration list --linked`, `.\scripts\cli.ps1 supabase db push`, `.\scripts\cli.ps1 wrangler whoami`, `.\scripts\cli.ps1 npm run deploy:producao -w web`. `npm run test:banco` já passa por ele. Nunca usar `wrangler login` nem `supabase login`. O script recusa `supabase` e `wrangler` sem o token do projeto preenchido, em vez de cair no login global, e devolve o terminal como estava ao terminar. Em worktree, usa o `.credenciais.local` da pasta principal. Para conferir sem ver os valores: `.\scripts\cli.ps1 --conferir`.
+- Conta e projeto fixados: `account_id` em `apps/web/wrangler.jsonc`, ref do Supabase em `scripts/cli.ps1`. O GitHub Actions continua publicando com os segredos do GitHub.
+
 ## Arquitetura
 
 - Monorepo com esta estrutura:

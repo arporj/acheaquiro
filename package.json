@@ -11,8 +11,8 @@
     "lint": "npm run lint -w web",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test:banco": "node --env-file=apps/web/.env.local scripts/testar-banco.mjs",
-    "importar:cnpj": "node --env-file=apps/web/.env.local scripts/importar-cnpj/importar.mjs"
+    "test:banco": "powershell -NoProfile -File scripts/cli.ps1 node scripts/testar-banco.mjs",
+    "importar:cnpj": "node --env-file=apps/web/.env.local --env-file=apps/web/.dev.vars scripts/importar-cnpj/importar.mjs"
   },
   "devDependencies": {
     "supabase": "^2.121.0",

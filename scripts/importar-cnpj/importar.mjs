@@ -1,6 +1,6 @@
 // Importação dos comércios de Rio das Ostras pelos dados abertos do CNPJ.
 // Uso (da raiz do repositório), depois de baixar.sh:
-//   node --env-file=apps/web/.env.local scripts/importar-cnpj/importar.mjs <etapa> <pasta> <AAAA-MM>
+//   npm run importar:cnpj -- <etapa> <pasta> <AAAA-MM>
 // Etapas, nesta ordem:
 //   mapa          grava em cnae_categoria os CNAEs da cidade que ainda não estão lá (mapa-cnae.mjs)
 //   preparar      aplica as regras e gera saida/comercios.json e as listas para revisão (não grava no banco)
@@ -25,7 +25,7 @@ mkdirSync(saida, { recursive: true });
 const url = process.env.PUBLIC_SUPABASE_URL;
 const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !chave) {
-  console.error("Faltam PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (rode com --env-file=apps/web/.env.local).");
+  console.error("Faltam PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (rode com npm run importar:cnpj, que lê apps/web/.env.local e apps/web/.dev.vars).");
   process.exit(1);
 }
 const banco = createClient(url, chave, { auth: { persistSession: false } });
