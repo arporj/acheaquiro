@@ -1,0 +1,35 @@
+---
+// Ficha do cliente na área do representante (opção B, decisões de 06/11/2026):
+// o mesmo endereço serve para o importado, para a cópia do "Fechei" e para quem
+// já tem conta.
+import Aviso from "@/components/conta/Aviso.astro";
+import FichaDoCliente from "@/components/negociacoes/FichaDoCliente.astro";
+import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
+import { avisoDaFicha, executarAcao, lerFicha, listarMotivosAtivos } from "@/lib/negociacoes";
+
+const supabase = Astro.locals.supabase!;
+const id = Astro.params.id ?? "";
+let erro = "";
+
+if (Astro.request.method === "POST") {
+  const r = await executarAcao(supabase, await Astro.request.formData());
+  if (r.ok) {
+    return Astro.redirect("destino" in r.dados ? r.dados.destino : `/representante/clientes/${id}?aviso=${r.dados.aviso}`, 303);
+  }
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const [ficha, motivos] = await Promise.all([lerFicha(supabase, id), listarMotivosAtivos(supabase)]);
+if (!ficha.ok && ficha.erro.codigo === "NAO_ENCONTRADO") return new Response(null, { status: 404 });
+if (!ficha.ok) erro ||= ficha.erro.mensagem;
+if (!motivos.ok) erro ||= motivos.erro.mensagem;
+const aviso = avisoDaFicha(Astro.url.searchParams.get("aviso"));
+---
+
+<PaginaRepresentante titulo={ficha.ok ? ficha.dados.cliente.nome : "Cliente"}>
+  <p class="mt-2 text-sm"><a href="/representante/clientes" class="font-bold text-azul-600 hover:underline">← Clientes</a></p>
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+  {ficha.ok && <FichaDoCliente ficha={ficha.dados} modo="representante" motivos={motivos.ok ? motivos.dados : []} />}
+</PaginaRepresentante>

@@ -57,6 +57,12 @@ const campo =
         <input name="telefone" type="tel" autocomplete="tel" maxlength="20" placeholder="(22) 99999-0000" class={campo} />
         <span class="text-xs text-vermelho-600" data-erro="telefone"></span>
       </label>
+      <label class="block" data-pedido-so-assumir>
+        <span class="text-sm font-bold">Código do representante (opcional)</span>
+        <input name="codigoRepresentante" autocomplete="off" maxlength="30" placeholder="Se alguém da equipe falou com você" class={campo} />
+        <span class="text-xs text-slate-500">Quem te indicou o Ache Aqui pode ter passado um código.</span>
+        <span class="block text-xs text-vermelho-600" data-erro="codigoRepresentante"></span>
+      </label>
       <label class="flex items-start gap-2 text-sm">
         <input type="checkbox" name="declaracao" class="mt-0.5 size-4 accent-azul-600" />
         <span>Declaro que sou o responsável por <strong>{nomeAnunciante}</strong>.</span>
@@ -89,6 +95,8 @@ const campo =
 
 <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script>
+  import { lerIndicacao } from "@/lib/indicacao";
+
   type Tipo = "assumir" | "remover" | "fechou";
   interface Turnstile {
     render(alvo: HTMLElement, opcoes: Record<string, unknown>): string;
@@ -186,6 +194,11 @@ const campo =
       explicacao.textContent = textos.explicacao;
       rotuloMensagem.textContent = textos.rotuloMensagem;
       dados.hidden = tipo === "fechou";
+      // Quem chegou pelo link do representante já vem com o código dele.
+      const blocoCodigo = dados.querySelector<HTMLElement>("[data-pedido-so-assumir]");
+      if (blocoCodigo) blocoCodigo.hidden = tipo !== "assumir";
+      const campoCodigo = formulario.querySelector<HTMLInputElement>("[name=codigoRepresentante]");
+      if (campoCodigo && !campoCodigo.value) campoCodigo.value = lerIndicacao(document.cookie);
       formulario.reset();
       formulario.hidden = false;
       enviado.hidden = true;
@@ -216,6 +229,7 @@ const campo =
               email: valores.get("email"),
               telefone: valores.get("telefone"),
               declaracao: valores.get("declaracao") === "on",
+              codigoRepresentante: tipo === "assumir" ? valores.get("codigoRepresentante") : "",
               mensagem: valores.get("mensagem"),
               tokenRobo: token,
             };

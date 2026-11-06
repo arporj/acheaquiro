@@ -1,36 +1,5 @@
 ---
-// Meus contatos (decisão de 02/11/2026): todos os contatos que o representante
-// registrou, com a etapa em que cada comércio está hoje. Os contatos são
-// registrados na Prospecção e na página do anunciante.
-import Aviso from "@/components/conta/Aviso.astro";
-import FiltroContatos from "@/components/contatos/FiltroContatos.astro";
-import ListaContatos from "@/components/contatos/ListaContatos.astro";
-import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
-import { comerciosDistintos, lerFiltroContatos, listarContatos } from "@/lib/contatos";
-import { formatarData } from "@/lib/texto";
-
-const supabase = Astro.locals.supabase!;
-const filtro = lerFiltroContatos(Astro.url.searchParams);
-const lista = await listarContatos(supabase, filtro);
-const contatos = lista.ok ? lista.dados : [];
-const pagos = new Set(contatos.filter((c) => c.etapa === "plano_pago").map((c) => c.anunciante_id)).size;
+// Os contatos ficam na ficha de cada cliente, e o acompanhamento em Negociações
+// (opção B, decisões de 06/11/2026). O endereço continua para os links já salvos.
+return Astro.redirect("/representante/negociacoes", 302);
 ---
-
-<PaginaRepresentante titulo="Meus contatos" descricao="Os contatos que você registrou e em que pé está cada comércio.">
-  {!lista.ok && <Aviso tipo="erro">{lista.erro.mensagem}</Aviso>}
-  <FiltroContatos filtro={filtro} limpar="/representante/contatos" />
-  {
-    lista.ok && contatos.length > 0 && (
-      <p class="mt-5 text-sm text-slate-700">
-        De {formatarData(filtro.inicio)} a {formatarData(filtro.fim)}: <strong>{contatos.length}</strong>{" "}
-        {contatos.length === 1 ? "contato" : "contatos"} com <strong>{comerciosDistintos(contatos)}</strong>{" "}
-        {comerciosDistintos(contatos) === 1 ? "comércio" : "comércios"}; <strong>{pagos}</strong> já com plano pago.
-      </p>
-    )
-  }
-  <ListaContatos
-    contatos={contatos}
-    modo="representante"
-    vazio={'Nenhum contato neste período. Registre os contatos pela Prospecção ou pela página do anunciante, em "Registrar contato".'}
-  />
-</PaginaRepresentante>

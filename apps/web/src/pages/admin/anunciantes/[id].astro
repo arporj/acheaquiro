@@ -184,7 +184,7 @@ const caixa = "rounded-xl bg-fundo p-3";
 ---
 
 <PaginaAdmin titulo={a?.nome ?? "Anunciante"} descricao={a ? `${a.tipo === "profissional" ? "Autônomo" : "Comércio"} · ${ROTULO_SITUACAO[a.status]}` : undefined}>
-  <p class="mt-2 text-sm"><a href="/admin/anunciantes" class="font-bold text-azul-600 hover:underline">← Anunciantes</a></p>
+  <p class="mt-2 flex flex-wrap gap-x-4 text-sm"><a href="/admin/anunciantes" class="font-bold text-azul-600 hover:underline">← Anunciantes</a><a href={`/admin/clientes/${id}`} class="font-bold text-azul-600 hover:underline">Ficha do cliente</a></p>
   {aviso && <Aviso tipo="sucesso" class="mt-4">{aviso}</Aviso>}
   {erro && <Aviso tipo="erro" class="mt-4">{erro}</Aviso>}
 

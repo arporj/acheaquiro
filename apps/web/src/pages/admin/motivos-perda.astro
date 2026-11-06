@@ -1,0 +1,68 @@
+---
+// Motivos de perda das negociações (decisão N3 de 06/11/2026), editáveis. Nada é
+// apagado: o motivo desativado some da escolha e continua nas negociações antigas.
+// Os dois usados pelo banco nos fechamentos automáticos só mudam de nome.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import { listarMotivos, salvarMotivo } from "@/lib/negociacoes";
+
+const supabase = Astro.locals.supabase!;
+let erro = "";
+
+if (Astro.request.method === "POST") {
+  const r = await salvarMotivo(supabase, await Astro.request.formData());
+  if (r.ok) return Astro.redirect("/admin/motivos-perda?aviso=salvo", 303);
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const lista = await listarMotivos(supabase);
+if (!lista.ok) erro ||= lista.erro.mensagem;
+const aviso = Astro.url.searchParams.get("aviso") === "salvo" ? "Motivo salvo." : "";
+---
+
+<PaginaAdmin titulo="Motivos de perda" descricao="As opções para marcar uma negociação como perdida.">
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <form method="post" class="mt-5 grid gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:grid-cols-[1fr_auto] sm:items-end">
+    <div>
+      <label class={classesRotulo} for="novo-motivo">Novo motivo</label>
+      <input id="novo-motivo" name="nome" required maxlength="60" class={classesCampo} />
+    </div>
+    <button type="submit" class={classesBotao("azul", "m")}>
+      <Icone nome="certo" class="size-4" />
+      Acrescentar
+    </button>
+  </form>
+
+  <ul class="mt-5 space-y-3">
+    {
+      (lista.ok ? lista.dados : []).map((m) => (
+        <li class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+          <form method="post" class="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+            <input type="hidden" name="id" value={m.id} />
+            <div>
+              <label class={classesRotulo} for={`motivo-${m.id}`}>Nome</label>
+              <input id={`motivo-${m.id}`} name="nome" value={m.nome} required maxlength="60" class={classesCampo} />
+            </div>
+            {m.codigo_sistema ? (
+              <p class="self-center text-xs text-slate-500">Usado pelo sistema</p>
+            ) : (
+              <div>
+                <label class={classesRotulo} for={`ativo-${m.id}`}>Situação</label>
+                <select id={`ativo-${m.id}`} name="ativo" class={classesCampo}>
+                  <option value="sim" selected={m.ativo}>Ativo</option>
+                  <option value="nao" selected={!m.ativo}>Desativado</option>
+                </select>
+              </div>
+            )}
+            <button type="submit" class={classesBotao("contorno", "m")}>Salvar</button>
+          </form>
+        </li>
+      ))
+    }
+  </ul>
+</PaginaAdmin>

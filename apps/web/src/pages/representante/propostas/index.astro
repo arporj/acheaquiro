@@ -1,19 +1,17 @@
 ---
-// Propostas do representante (item 4.12, parte 5; plano 3B.1): a busca do
-// anunciante (qualquer um com conta, decisão de 23/10/2026) e as propostas
-// feitas, com a situação e o cancelamento enquanto não foram pagas.
+// Propostas do representante (item 4.12, parte 5; plano 3B.1): as propostas
+// feitas, com a situação e o cancelamento enquanto não foram pagas. A nova
+// proposta sai da ficha do cliente (decisão de 06/11/2026).
 import { Modal, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
-import { classesCampo, classesRotulo } from "@/components/conta/estilos";
 import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
 import { hojeNaCidade } from "@/lib/pagamentos";
 import { formatarCentavos } from "@/lib/precos";
-import { ROTULO_PROPOSTA, buscarAnunciantes, listarPropostas, responderProposta, situacaoVisivel } from "@/lib/propostas";
+import { ROTULO_PROPOSTA, listarPropostas, responderProposta, situacaoVisivel } from "@/lib/propostas";
 import { formatarData } from "@/lib/texto";
 
 const supabase = Astro.locals.supabase!;
 const AVISOS: Record<string, string> = {
-  enviada: "Proposta enviada. O anunciante recebe um e-mail para entrar na conta, ver os valores e aceitar.",
   cancelada: "Proposta cancelada.",
 };
 const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
@@ -27,46 +25,21 @@ if (Astro.request.method === "POST") {
   Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
 }
 
-const termo = (Astro.url.searchParams.get("termo") ?? "").slice(0, 80);
-const [propostas, encontrados] = await Promise.all([listarPropostas(supabase), buscarAnunciantes(supabase, termo)]);
+const propostas = await listarPropostas(supabase);
 if (!propostas.ok) erro ||= propostas.erro.mensagem;
-if (!encontrados.ok) erro ||= encontrados.erro.mensagem;
 const hoje = hojeNaCidade();
 const cartao = "rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5";
 ---
 
-<PaginaRepresentante titulo="Propostas" descricao="Assinatura para quem ainda não tem plano pago, ou um plano maior para quem já anuncia.">
+<PaginaRepresentante titulo="Propostas" descricao="As propostas que você fez: assinatura para quem ainda não tem plano pago, ou um plano maior para quem já anuncia.">
   {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
   {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
   <section class={`${cartao} mt-4`}>
-    <form method="get" class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-      <div>
-        <label for="termo" class={classesRotulo}>Nova proposta: buscar o anunciante pelo nome</label>
-        <input id="termo" name="termo" minlength="2" maxlength="80" value={termo} required class={classesCampo} />
-      </div>
-      <button type="submit" class={classesBotao("contorno", "m")}>Buscar</button>
-    </form>
-    {
-      termo && encontrados.ok && (
-        <ul class="mt-3 divide-y divide-slate-100 text-sm">
-          {encontrados.dados.length === 0 && (
-            <li class="py-2 text-slate-600">Nenhum anunciante com conta encontrado. A proposta é para quem já tem conta no site.</li>
-          )}
-          {encontrados.dados.map((a) => (
-            <li class="flex items-center justify-between gap-3 py-2">
-              <span>
-                <span class="font-bold text-azul-900">{a.nome}</span>
-                <span class="text-slate-500"> · {a.tipo === "comercio" ? "comércio" : "autônomo"} · {a.plano ?? "sem plano"}</span>
-              </span>
-              <a href={`/representante/propostas/nova?anunciante=${a.id}`} class={classesBotao("azul", "p")}>
-                Propor
-              </a>
-            </li>
-          ))}
-        </ul>
-      )
-    }
+    <p class="text-sm text-slate-700">
+      Para fazer uma proposta, abra o cliente em <a href="/representante/clientes?conta=com" class="font-bold text-azul-600 hover:underline">Clientes</a>. A proposta é
+      para quem já tem conta no site; para quem ainda não tem, o caminho é "Fechei com este comércio", na ficha.
+    </p>
   </section>
 
   <section class="mt-6">

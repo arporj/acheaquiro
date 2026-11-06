@@ -35,3 +35,24 @@ describe("pedidos sobre o perfil importado", () => {
     expect(mensagem(esquemaPedidoPerfil.safeParse({ ...assumir, tipo: "outro" }))).toBe("Escolha o tipo do pedido.");
   });
 });
+
+describe("esquemaPedidoPerfil: código do representante (C1)", () => {
+  const assumir = {
+    tipo: "assumir",
+    anuncianteId: "6f1c7c2e-8a55-4c5e-9f39-0d7a1e2b3c4d",
+    nome: "Maria",
+    email: "maria@exemplo.com",
+    telefone: "(22) 99999-0000",
+    declaracao: true,
+  };
+
+  it("é opcional: sem ele, fica nulo", () => {
+    expect(esquemaPedidoPerfil.parse(assumir)).toMatchObject({ codigoRepresentante: null });
+    expect(esquemaPedidoPerfil.parse({ ...assumir, codigoRepresentante: "" })).toMatchObject({ codigoRepresentante: null });
+  });
+
+  it("guarda o código em minúsculas e recusa o formato errado", () => {
+    expect(esquemaPedidoPerfil.parse({ ...assumir, codigoRepresentante: " Joao " })).toMatchObject({ codigoRepresentante: "joao" });
+    expect(esquemaPedidoPerfil.safeParse({ ...assumir, codigoRepresentante: "joão silva" }).success).toBe(false);
+  });
+});

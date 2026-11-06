@@ -1,0 +1,24 @@
+---
+// Negociações do representante (opção B, decisões de 06/11/2026): as dele e
+// aquelas em que ele registrou contato. Por padrão, as em aberto.
+import Aviso from "@/components/conta/Aviso.astro";
+import ListaNegociacoes from "@/components/negociacoes/ListaNegociacoes.astro";
+import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
+import { lerFiltroNegociacoes, listarNegociacoes } from "@/lib/negociacoes";
+
+const supabase = Astro.locals.supabase!;
+const filtro = lerFiltroNegociacoes(Astro.url.searchParams);
+const lista = await listarNegociacoes(supabase, filtro);
+---
+
+<PaginaRepresentante titulo="Negociações" descricao="As suas negociações e aquelas em que você registrou contato, com as atrasadas primeiro.">
+  {!lista.ok && <Aviso tipo="erro">{lista.erro.mensagem}</Aviso>}
+  <ListaNegociacoes
+    linhas={lista.ok ? lista.dados.linhas : []}
+    total={lista.ok ? lista.dados.total : 0}
+    filtro={filtro}
+    base="/representante/negociacoes"
+    baseClientes="/representante/clientes"
+    vazio="Nenhuma negociação com esse filtro. Uma negociação se abre sozinha quando você registra um contato ou fecha com um comércio em Clientes."
+  />
+</PaginaRepresentante>

@@ -15,6 +15,8 @@ export type PedidoPerfilValidado =
       email: string;
       telefone: string;
       declaracao: true;
+      /** Código do representante que indicou, já no formato do link /r/codigo; o banco confere se está ativo. */
+      codigoRepresentante: string | null;
     }
   | { tipo: "fechou"; anuncianteId: string; mensagem: string };
 
@@ -64,6 +66,28 @@ export async function registrarPedidoPerfil(
   }
   if (!anunciante) return { ok: false, erro: { codigo: "NAO_ENCONTRADO", mensagem: "Este perfil não aceita pedidos." } };
 
+  // Código informado pelo visitante: precisa ser de um representante ativo (decisão C1 de 06/11/2026).
+  let representanteId: string | null = null;
+  if (pedido.tipo !== "fechou" && pedido.codigoRepresentante) {
+    const { data: representante, error: erroRepresentante } = await servico
+      .from("representantes")
+      .select("id")
+      .eq("codigo", pedido.codigoRepresentante)
+      .eq("ativo", true)
+      .maybeSingle();
+    if (erroRepresentante) {
+      console.error("registrarPedidoPerfil: leitura do representante falhou", { codigo: erroRepresentante.code, mensagem: erroRepresentante.message });
+      return ERRO_INTERNO;
+    }
+    if (!representante) {
+      return {
+        ok: false,
+        erro: { codigo: "DADOS_INVALIDOS", mensagem: "Confira os campos destacados.", campos: { codigoRepresentante: "Não achamos esse código. Confira com quem te indicou, ou deixe em branco." } },
+      };
+    }
+    representanteId = representante.id;
+  }
+
   // Repetido: responde como enviado, sem gravar de novo (não infla a fila).
   const primeiro = await consumir(servico, `pedido-perfil:${pedido.anuncianteId}:${pedido.tipo}:${visitante}`, 1, JANELA_REPETIDO_SEGUNDOS);
   if (primeiro === null) return ERRO_INTERNO;
@@ -80,6 +104,7 @@ export async function registrarPedidoPerfil(
           email: pedido.email,
           telefone: pedido.telefone,
           declarou_responsavel: pedido.declaracao,
+          representante_id: representanteId,
         },
   );
   if (error) {

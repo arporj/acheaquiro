@@ -1,0 +1,373 @@
+---
+// Ficha do cliente (opção B, decisões de 06/11/2026): tudo num lugar só, com ou
+// sem conta. Os dados, a negociação aberta com as ações que cabem nela, as
+// anteriores e a linha do tempo. Usada na área do representante e na
+// administração; o banco já tira o que cada papel não pode ver.
+import { acoesDaFicha, proximaAcaoAtrasada } from "@acheaqui/domain";
+import { Icone, Modal, classesBotao } from "@acheaqui/ui";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import ModalAtendimento from "@/components/representante/ModalAtendimento.astro";
+import { ROTULO_SITUACAO } from "@/lib/anunciantesAdmin";
+import { formatarTelefone, linkTelefone } from "@/lib/contato";
+import {
+  COR_ETAPA,
+  COR_SITUACAO_NEGOCIACAO,
+  ROTULO_ETAPA,
+  ROTULO_SITUACAO_NEGOCIACAO,
+  ROTULO_TIPO,
+  type FichaCliente,
+  type ItemDaLinhaDoTempo,
+} from "@/lib/negociacoes";
+import { hojeNaCidade } from "@/lib/pagamentos";
+import { formatarCentavos } from "@/lib/precos";
+import { formatarData } from "@/lib/texto";
+
+interface Props {
+  ficha: FichaCliente;
+  modo: "representante" | "administracao";
+  motivos: { id: string; nome: string }[];
+  /** Só na administração: para quem a negociação pode passar. */
+  equipe?: { id: string; nome: string }[];
+}
+
+const { ficha, modo, motivos, equipe = [] } = Astro.props;
+const { cliente, receita, copia } = ficha;
+const hoje = hojeNaCidade();
+const representante = modo === "representante";
+
+const reservaValida = copia && !copia.vencida ? copia : null;
+const cadastroProprio = cliente.meu_cadastro && (cliente.status === "rascunho" || cliente.status === "aguardando_anunciante");
+const abertas = ficha.negociacoes.filter((n) => n.situacao === "aberta");
+const anteriores = ficha.negociacoes.filter((n) => n.situacao !== "aberta");
+const acoes = acoesDaFicha({
+  representante,
+  temConta: cliente.tem_conta,
+  importado: cliente.origem === "receita",
+  cadastro: reservaValida ? (reservaValida.minha ? "meu" : "de_outro") : cadastroProprio ? "meu" : null,
+  naoProcurar: cliente.nao_procurar,
+  planoEmDia: cliente.plano_em_dia,
+  abertas: abertas.map((n) => n.tipo),
+});
+const linkCadastro = representante
+  ? `/representante/anunciantes/${reservaValida?.minha ? reservaValida.id : cliente.id}`
+  : `/admin/anunciantes/${copia?.id ?? cliente.id}`;
+const telefonesReceita = !cliente.tem_conta ? (receita?.telefones ?? []) : [];
+
+const cartao = "rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
+const etiqueta = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-extrabold";
+const dataHora = (iso: string) =>
+  new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(iso));
+const soData = (iso: string) => new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(iso));
+
+const TITULO_EVENTO: Record<ItemDaLinhaDoTempo["tipo"], string> = {
+  contato: "Contato",
+  fechou: "Fechou com o comércio e começou o cadastro",
+  aceite: "O comerciante aceitou e o perfil foi ao ar",
+  proposta: "Proposta",
+  pagamento: "Pagamento registrado",
+  pagamento_devolvido: "Pagamento devolvido ou contestado",
+  perdida: "Negociação perdida",
+};
+const ROTULO_PROPOSTA: Record<string, string> = {
+  aguardando_aceite: "aguardando o aceite",
+  aceita: "aceita",
+  paga: "paga",
+  recusada: "recusada",
+  cancelada: "cancelada",
+};
+---
+
+<section class={`${cartao} mt-4`}>
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      <p class="text-sm text-slate-600">
+        {[cliente.tipo === "comercio" ? "Comércio" : "Autônomo", cliente.categoria].filter(Boolean).join(" · ")}
+      </p>
+      {cliente.endereco && <p class="text-sm text-slate-600">{cliente.endereco}</p>}
+      {receita?.razao_social && receita.razao_social !== cliente.nome && <p class="text-xs text-slate-500">{receita.razao_social}</p>}
+    </div>
+    <div class="flex flex-wrap gap-1.5">
+      <span class={`${etiqueta} ${cliente.tem_conta ? "bg-zap-50 text-zap-700" : "bg-fundo text-slate-700"}`}>{cliente.tem_conta ? "Com conta" : "Sem conta"}</span>
+      <span class={`${etiqueta} bg-azul-50 text-azul-700`}>{ROTULO_SITUACAO[cliente.status]}</span>
+      {cliente.fundador && <span class={`${etiqueta} bg-amarelo-400 text-azul-900`}>Fundador</span>}
+      {cliente.nao_procurar && <span class={`${etiqueta} bg-vermelho-500 text-white`}>Não quer ser procurado</span>}
+    </div>
+  </div>
+
+  <dl class="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+    <div>
+      <dt class="font-bold text-slate-500">Plano</dt>
+      <dd>
+        {cliente.plano ?? "Sem plano"}
+        {cliente.vence_em && <span class="text-slate-600"> · vence em {formatarData(cliente.vence_em)}</span>}
+      </dd>
+    </div>
+    <div>
+      <dt class="font-bold text-slate-500">Quem trouxe (carteira)</dt>
+      <dd>{cliente.carteira ?? "Ninguém"}</dd>
+    </div>
+    {
+      (telefonesReceita.length > 0 || receita?.email || cliente.whatsapp || cliente.telefone) && (
+        <div class="sm:col-span-2">
+          <dt class="font-bold text-slate-500">Contato {telefonesReceita.length > 0 && <span class="font-normal">(da Receita, confidencial)</span>}</dt>
+          <dd class="flex flex-wrap gap-x-4 gap-y-1">
+            {telefonesReceita.map((t) => (
+              <a href={linkTelefone(t.startsWith("55") ? t : `55${t}`)} class="font-bold text-azul-600 hover:underline">
+                {formatarTelefone(t)}
+              </a>
+            ))}
+            {!cliente.tem_conta && receita?.email && (
+              <a href={`mailto:${receita.email}`} class="font-bold break-all text-azul-600 hover:underline">
+                {receita.email}
+              </a>
+            )}
+            {cliente.whatsapp && (
+              <a href={`https://wa.me/${cliente.whatsapp}`} target="_blank" rel="noopener noreferrer" class="font-bold text-azul-600 hover:underline">
+                WhatsApp {formatarTelefone(cliente.whatsapp)}
+              </a>
+            )}
+            {cliente.telefone && (
+              <a href={linkTelefone(cliente.telefone)} class="font-bold text-azul-600 hover:underline">
+                {formatarTelefone(cliente.telefone)}
+              </a>
+            )}
+          </dd>
+        </div>
+      )
+    }
+  </dl>
+
+  {
+    reservaValida && !reservaValida.minha && (
+      <p class="mt-4 rounded-xl bg-azul-50 px-3 py-2 text-sm font-semibold text-azul-900">
+        {reservaValida.convite_enviado
+          ? `Em atendimento por ${reservaValida.autor}: convite enviado ao comerciante.`
+          : `Em cadastro por ${reservaValida.autor} até ${formatarData(reservaValida.ate)}.`}
+      </p>
+    )
+  }
+  {
+    cliente.origem === "receita" && !cliente.tem_conta && !reservaValida && (
+      <p class="mt-4 text-xs text-slate-500">Sem conta no site: a proposta só vale para quem tem conta. O caminho é "Fechei com este comércio", que faz o cadastro e envia o convite.</p>
+    )
+  }
+
+  <div class="mt-4 flex flex-wrap gap-2">
+    <button type="button" class={classesBotao("contorno", "m")} data-abrir-modal="modal-atendimento">
+      <Icone nome="mensagem" class="size-4" />
+      Registrei um contato
+    </button>
+    {
+      acoes.fechar && (
+        <form method="post">
+          <input type="hidden" name="acao" value="fechar" />
+          <input type="hidden" name="anuncianteId" value={cliente.id} />
+          <button type="submit" class={classesBotao("azul", "m")}>
+            <Icone nome="usuarios" class="size-4" />
+            Fechei com este comércio
+          </button>
+        </form>
+      )
+    }
+    {
+      acoes.continuarCadastro && (
+        <a href={linkCadastro} class={classesBotao("azul", "m")}>
+          <Icone nome="usuarios" class="size-4" />
+          Continuar o cadastro
+        </a>
+      )
+    }
+    {
+      acoes.fazerProposta && (
+        <a href={`/representante/propostas/nova?anunciante=${cliente.id}`} class={classesBotao("azul", "m")}>
+          <Icone nome="etiqueta" class="size-4" />
+          Fazer proposta
+        </a>
+      )
+    }
+    {
+      acoes.simular && (
+        <a href={`/representante/simulador?tipo=${cliente.tipo}`} class={classesBotao("contorno", "m")}>
+          <Icone nome="cartao" class="size-4" />
+          Simular desconto
+        </a>
+      )
+    }
+    {
+      !representante && (
+        <a href={linkCadastro} class={classesBotao("contorno", "m")}>
+          Ver o cadastro
+        </a>
+      )
+    }
+    {
+      cliente.status === "publicado" && (
+        <a href={`/perfil/${cliente.slug}`} target="_blank" class={classesBotao("contorno", "m")}>
+          Ver o perfil
+        </a>
+      )
+    }
+  </div>
+</section>
+
+<section class="mt-6">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 class="font-display text-xl font-bold text-azul-900">Negociação</h2>
+    {
+      acoes.abrir && (
+        <form method="post">
+          <input type="hidden" name="acao" value="abrir" />
+          <input type="hidden" name="anuncianteId" value={cliente.id} />
+          <input type="hidden" name="tipo" value={acoes.abrir} />
+          <button type="submit" class={classesBotao("contorno", "p")}>
+            Abrir negociação de {ROTULO_TIPO[acoes.abrir].toLowerCase()}
+          </button>
+        </form>
+      )
+    }
+  </div>
+
+  {abertas.length === 0 && <p class={`${cartao} mt-3 text-sm text-slate-600`}>Nenhuma negociação aberta. Registrar um contato abre uma.</p>}
+
+  <ul class="mt-3 space-y-3">
+    {
+      abertas.map((n) => {
+        const atrasada = proximaAcaoAtrasada(n.proxima_acao_em, hoje);
+        return (
+          <li class={cartao}>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-bold text-azul-900">{ROTULO_TIPO[n.tipo]}</span>
+              {n.etapa && <span class={`${etiqueta} ${COR_ETAPA[n.etapa]}`}>{ROTULO_ETAPA[n.etapa]}</span>}
+              <span class="text-sm text-slate-600">
+                Responsável: <strong>{n.minha ? "você" : n.responsavel}</strong>
+                {!n.responsavel_ativo && " (desativado)"} · desde {soData(n.aberta_em)}
+              </span>
+            </div>
+
+            {n.pode_alterar ? (
+              <>
+                <form method="post" class="mt-4 grid gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-end">
+                  <input type="hidden" name="acao" value="proxima" />
+                  <input type="hidden" name="negociacao" value={n.id} />
+                  <div>
+                    <label class={classesRotulo} for={`dia-${n.id}`}>Próxima ação</label>
+                    <input id={`dia-${n.id}`} type="date" name="dia" value={n.proxima_acao_em ?? ""} class={classesCampo} />
+                  </div>
+                  <div>
+                    <label class={classesRotulo} for={`texto-${n.id}`}>O que fazer</label>
+                    <input id={`texto-${n.id}`} name="texto" value={n.proxima_acao} maxlength="200" placeholder="Ex.: ligar para falar do plano anual" class={classesCampo} />
+                  </div>
+                  <button type="submit" class={classesBotao("contorno", "m")}>Salvar</button>
+                </form>
+                {atrasada && (
+                  <p class="mt-2 text-sm font-bold text-vermelho-600" role="status">
+                    Atrasada: era para {formatarData(n.proxima_acao_em!)}.
+                  </p>
+                )}
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button type="button" class={classesBotao("contorno", "p")} data-abrir-modal={`modal-perdida-${n.id}`}>
+                    Marcar como perdida
+                  </button>
+                </div>
+                <Modal id={`modal-perdida-${n.id}`} titulo="Marcar como perdida">
+                  <form method="post">
+                    <input type="hidden" name="acao" value="perdida" />
+                    <input type="hidden" name="negociacao" value={n.id} />
+                    <label class={classesRotulo} for={`motivo-${n.id}`}>Motivo</label>
+                    <select id={`motivo-${n.id}`} name="motivo" required class={classesCampo}>
+                      <option value="" disabled selected>
+                        Escolha o motivo
+                      </option>
+                      {motivos.map((m) => (
+                        <option value={m.id}>{m.nome}</option>
+                      ))}
+                    </select>
+                    <label class={classesRotulo} for={`obs-${n.id}`}>Observação (opcional)</label>
+                    <input id={`obs-${n.id}`} name="observacao" maxlength="300" class={classesCampo} />
+                    <button type="submit" class={classesBotao("perigo", "m", "mt-4 w-full")}>Marcar como perdida</button>
+                  </form>
+                </Modal>
+              </>
+            ) : (
+              <p class="mt-2 text-sm text-slate-600">Só {n.responsavel} ou a administração alteram esta negociação. Combine com a pessoa antes de procurar o cliente.</p>
+            )}
+
+            {!representante && equipe.length > 0 && (
+              <form method="post" class="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-[1fr_auto] sm:items-end">
+                <input type="hidden" name="acao" value="responsavel" />
+                <input type="hidden" name="negociacao" value={n.id} />
+                <div>
+                  <label class={classesRotulo} for={`resp-${n.id}`}>Passar para</label>
+                  <select id={`resp-${n.id}`} name="usuario" required class={classesCampo}>
+                    {equipe.map((p) => (
+                      <option value={p.id} selected={p.id === n.responsavel_id}>
+                        {p.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button type="submit" class={classesBotao("contorno", "m")}>Trocar o responsável</button>
+              </form>
+            )}
+          </li>
+        );
+      })
+    }
+  </ul>
+
+  {
+    anteriores.length > 0 && (
+      <>
+        <h3 class="mt-6 font-bold text-azul-900">Negociações anteriores</h3>
+        <ul class="mt-2 space-y-2">
+          {anteriores.map((n) => (
+            <li class={`${cartao} flex flex-wrap items-center gap-2 text-sm`}>
+              <span class="font-bold text-azul-900">{ROTULO_TIPO[n.tipo]}</span>
+              <span class={`${etiqueta} ${COR_SITUACAO_NEGOCIACAO[n.situacao]}`}>{ROTULO_SITUACAO_NEGOCIACAO[n.situacao]}</span>
+              <span class="text-slate-600">
+                {n.minha ? "você" : n.responsavel}
+                {n.fechada_em && ` · ${soData(n.fechada_em)}`}
+                {n.motivo && ` · ${n.motivo}`}
+                {n.observacao_perda && ` · ${n.observacao_perda}`}
+              </span>
+              {n.situacao === "perdida" && n.pode_alterar && !cliente.nao_procurar && !abertas.some((a) => a.tipo === n.tipo) && (
+                <form method="post" class="ml-auto">
+                  <input type="hidden" name="acao" value="reabrir" />
+                  <input type="hidden" name="negociacao" value={n.id} />
+                  <button type="submit" class={classesBotao("contorno", "p")}>
+                    Reabrir
+                  </button>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+      </>
+    )
+  }
+</section>
+
+<section class="mt-6">
+  <h2 class="font-display text-xl font-bold text-azul-900">Linha do tempo</h2>
+  {ficha.linha_do_tempo.length === 0 && <p class={`${cartao} mt-3 text-sm text-slate-600`}>Nada registrado ainda.</p>}
+  <ol class="mt-3 space-y-2">
+    {
+      ficha.linha_do_tempo.map((e) => (
+        <li class={`${cartao} text-sm`}>
+          <p class="flex flex-wrap items-baseline gap-x-2">
+            <span class="font-bold text-azul-900">{TITULO_EVENTO[e.tipo]}</span>
+            {e.tipo === "proposta" && e.situacao && <span class="text-slate-600">({ROTULO_PROPOSTA[e.situacao] ?? e.situacao})</span>}
+            <span class="text-xs text-slate-500">
+              {e.dia ? formatarData(e.dia) : dataHora(e.quando)}
+              {e.autor && ` · ${e.autor}`}
+            </span>
+          </p>
+          {e.texto && <p class="mt-1 break-words text-slate-700">{e.texto}</p>}
+          {e.valor_centavos != null && <p class="mt-1 font-bold text-slate-700">{formatarCentavos(e.valor_centavos)}</p>}
+        </li>
+      ))
+    }
+  </ol>
+</section>
+
+<ModalAtendimento anuncianteId={cliente.id} comNaoProcurar={!cliente.nao_procurar} />

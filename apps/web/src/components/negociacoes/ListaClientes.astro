@@ -1,0 +1,214 @@
+---
+// Lista única de clientes (opção B, decisões de 06/11/2026): filtros e uma linha
+// por cliente, com a negociação e o contato. No lugar da Prospecção e de Meus
+// anunciantes. Quem clica no nome abre a ficha.
+import { proximaAcaoAtrasada } from "@acheaqui/domain";
+import { Icone, classesBotao } from "@acheaqui/ui";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import ModalAtendimento from "@/components/representante/ModalAtendimento.astro";
+import { formatarTelefone, linkTelefone } from "@/lib/contato";
+import {
+  COR_ETAPA,
+  COR_SITUACAO_NEGOCIACAO,
+  POR_PAGINA,
+  ROTULO_ETAPA,
+  ROTULO_SITUACAO_NEGOCIACAO,
+  ROTULO_TIPO,
+  type FiltroClientes,
+  type LinhaCliente,
+} from "@/lib/negociacoes";
+import { hojeNaCidade } from "@/lib/pagamentos";
+import { formatarData } from "@/lib/texto";
+
+interface Props {
+  linhas: LinhaCliente[];
+  total: number;
+  filtro: FiltroClientes;
+  /** Endereço da lista e prefixo da ficha. */
+  base: string;
+  categorias: { id: string; nome: string }[];
+  bairros: { id: string; nome: string }[];
+  /** Só na administração: o filtro por responsável. No representante, "só os meus". */
+  pessoas?: { id: string; nome: string }[];
+}
+
+const { linhas, total, filtro, base, categorias, bairros, pessoas } = Astro.props;
+const hoje = hojeNaCidade();
+const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+const linkPagina = (n: number) => {
+  const p = new URLSearchParams(Astro.url.search);
+  p.delete("aviso");
+  p.set("pagina", String(n));
+  return `${base}?${p}`;
+};
+const etiqueta = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-extrabold";
+const filtrando = Boolean(
+  filtro.busca || filtro.categoriaId || filtro.bairroId || filtro.tipo || filtro.situacao || filtro.etapa || filtro.conta || filtro.meus || filtro.responsavelId,
+);
+---
+
+<form method="get" role="search" class="mt-4 grid gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
+  <div class="sm:col-span-2">
+    <label class={classesRotulo} for="filtro-q">Nome</label>
+    <input id="filtro-q" name="q" type="search" value={filtro.busca} maxlength="80" class={classesCampo} />
+  </div>
+  <div>
+    <label class={classesRotulo} for="filtro-situacao">Negociação</label>
+    <select id="filtro-situacao" name="situacao" class={classesCampo}>
+      <option value="">Todas</option>
+      <option value="sem" selected={filtro.situacao === "sem"}>Sem negociação</option>
+      <option value="aberta" selected={filtro.situacao === "aberta"}>Em aberto</option>
+      <option value="ganha" selected={filtro.situacao === "ganha"}>Ganhas</option>
+      <option value="perdida" selected={filtro.situacao === "perdida"}>Perdidas</option>
+    </select>
+  </div>
+  <div>
+    <label class={classesRotulo} for="filtro-etapa">Etapa</label>
+    <select id="filtro-etapa" name="etapa" class={classesCampo}>
+      <option value="">Todas</option>
+      {Object.entries(ROTULO_ETAPA).map(([valor, rotulo]) => <option value={valor} selected={filtro.etapa === valor}>{rotulo}</option>)}
+    </select>
+  </div>
+  <div>
+    <label class={classesRotulo} for="filtro-conta">Conta no site</label>
+    <select id="filtro-conta" name="conta" class={classesCampo}>
+      <option value="">Com ou sem</option>
+      <option value="com" selected={filtro.conta === "com"}>Com conta</option>
+      <option value="sem" selected={filtro.conta === "sem"}>Sem conta</option>
+    </select>
+  </div>
+  <div>
+    <label class={classesRotulo} for="filtro-tipo">Tipo</label>
+    <select id="filtro-tipo" name="tipo" class={classesCampo}>
+      <option value="">Autônomos e comércios</option>
+      <option value="comercio" selected={filtro.tipo === "comercio"}>Comércios</option>
+      <option value="profissional" selected={filtro.tipo === "profissional"}>Autônomos</option>
+    </select>
+  </div>
+  <div>
+    <label class={classesRotulo} for="filtro-categoria">Categoria</label>
+    <select id="filtro-categoria" name="categoria" class={classesCampo}>
+      <option value="">Todas</option>
+      {categorias.map((c) => <option value={c.id} selected={c.id === filtro.categoriaId}>{c.nome}</option>)}
+    </select>
+  </div>
+  <div>
+    <label class={classesRotulo} for="filtro-bairro">Bairro</label>
+    <select id="filtro-bairro" name="bairro" class={classesCampo}>
+      <option value="">Todos</option>
+      {bairros.map((b) => <option value={b.id} selected={b.id === filtro.bairroId}>{b.nome}</option>)}
+    </select>
+  </div>
+  {
+    pessoas && (
+      <div>
+        <label class={classesRotulo} for="filtro-responsavel">Responsável</label>
+        <select id="filtro-responsavel" name="responsavel" class={classesCampo}>
+          <option value="">Todos</option>
+          {pessoas.map((p) => <option value={p.id} selected={p.id === filtro.responsavelId}>{p.nome}</option>)}
+        </select>
+      </div>
+    )
+  }
+  <div class="flex flex-wrap items-center gap-3 sm:col-span-2 lg:col-span-4">
+    {
+      !pessoas && (
+        <label class="flex min-h-11 items-center gap-2 text-sm font-bold text-azul-900">
+          <input type="checkbox" name="meus" value="1" checked={filtro.meus} class="size-4 accent-azul-600" />
+          Só os meus
+        </label>
+      )
+    }
+    <button type="submit" class={classesBotao("azul", "m")}>
+      <Icone nome="filtro" class="size-4" />
+      Filtrar
+    </button>
+    {filtrando && <a href={base} class={classesBotao("contorno", "m")}>Limpar</a>}
+  </div>
+</form>
+
+<p class="mt-4 text-sm text-slate-600">{total.toLocaleString("pt-BR")} {total === 1 ? "cliente" : "clientes"}.</p>
+{linhas.length === 0 && <p class="mt-3 rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm ring-1 ring-black/5">Ninguém encontrado com esse filtro. Confira o nome ou clique em Limpar.</p>}
+
+<ul class="mt-3 space-y-3">
+  {
+    linhas.map((c) => {
+      const n = c.negociacao;
+      return (
+        <li class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+              <a href={`${base}/${c.id}`} class="font-display text-lg font-bold break-words text-azul-900 hover:underline">
+                {c.nome}
+              </a>
+              <p class="text-sm text-slate-600">
+                {[c.categoria, c.bairro].filter(Boolean).join(" · ")}
+                {c.endereco && <span class="block">{c.endereco}</span>}
+              </p>
+              {c.razao_social && c.razao_social !== c.nome && <p class="text-xs text-slate-500">{c.razao_social}</p>}
+            </div>
+            <div class="flex flex-wrap justify-end gap-1.5">
+              {!n && <span class={`${etiqueta} bg-fundo text-slate-600`}>Sem negociação</span>}
+              {n?.etapa && <span class={`${etiqueta} ${COR_ETAPA[n.etapa]}`}>{ROTULO_ETAPA[n.etapa]}</span>}
+              {n && n.situacao !== "aberta" && <span class={`${etiqueta} ${COR_SITUACAO_NEGOCIACAO[n.situacao]}`}>{ROTULO_SITUACAO_NEGOCIACAO[n.situacao]}</span>}
+              {c.nao_procurar && <span class={`${etiqueta} bg-vermelho-500 text-white`}>Não quer ser procurado</span>}
+              <span class={`${etiqueta} ${c.tem_conta ? "bg-zap-50 text-zap-700" : "bg-fundo text-slate-600"}`}>{c.tem_conta ? "Com conta" : "Sem conta"}</span>
+            </div>
+          </div>
+          <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+            {n && (
+              <span>
+                {ROTULO_TIPO[n.tipo]}: <strong>{n.minha ? "você" : n.responsavel}</strong>
+              </span>
+            )}
+            {n?.proxima_acao_em && n.situacao === "aberta" && (
+              <span class:list={[proximaAcaoAtrasada(n.proxima_acao_em, hoje) && "font-bold text-vermelho-600"]}>
+                {proximaAcaoAtrasada(n.proxima_acao_em, hoje) ? "Atrasada: " : "Próxima ação: "}
+                {formatarData(n.proxima_acao_em)}
+              </span>
+            )}
+            {c.ultimo_contato && <span>Último contato: {c.ultimo_contato.autor} em {formatarData(c.ultimo_contato.dia)}</span>}
+            {c.plano && c.vence_em && <span>{c.plano}, vence em {formatarData(c.vence_em)}</span>}
+          </div>
+          {!c.tem_conta && ((c.telefones?.length ?? 0) > 0 || c.email) && (
+            <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              {(c.telefones ?? []).map((t) => (
+                <a href={linkTelefone(t.startsWith("55") ? t : `55${t}`)} class="font-bold text-azul-600 hover:underline">
+                  {formatarTelefone(t)}
+                </a>
+              ))}
+              {c.email && (
+                <a href={`mailto:${c.email}`} class="font-bold break-all text-azul-600 hover:underline">
+                  {c.email}
+                </a>
+              )}
+            </div>
+          )}
+          <div class="mt-3 flex flex-wrap gap-2">
+            <a href={`${base}/${c.id}`} class={classesBotao("azul", "p")}>
+              Abrir a ficha
+            </a>
+            <button type="button" class={classesBotao("contorno", "p")} data-atendimento={c.id} data-atendimento-nome={c.nome}>
+              <Icone nome="mensagem" class="size-4" />
+              Registrei um contato
+            </button>
+          </div>
+        </li>
+      );
+    })
+  }
+</ul>
+
+{
+  paginas > 1 && (
+    <nav aria-label="Páginas" class="mt-6 flex items-center justify-between gap-3 text-sm font-bold">
+      {filtro.pagina > 1 ? <a href={linkPagina(filtro.pagina - 1)} class={classesBotao("contorno", "p")}>← Anterior</a> : <span />}
+      <span>
+        Página {filtro.pagina} de {paginas}
+      </span>
+      {filtro.pagina < paginas ? <a href={linkPagina(filtro.pagina + 1)} class={classesBotao("contorno", "p")}>Próxima →</a> : <span />}
+    </nav>
+  )
+}
+
+<ModalAtendimento comNaoProcurar />

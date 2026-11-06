@@ -35,7 +35,7 @@ const opcoes = await lerOpcoes(supabase, await obterRegrasCobranca());
 ---
 
 <PaginaRepresentante titulo="Cadastro assistido" descricao="Fica como rascunho até o anunciante aceitar o convite. Depois, a equipe confere e aprova.">
-  <p class="mt-2 text-sm"><a href="/representante/anunciantes" class="font-bold text-azul-600 hover:underline">← Meus anunciantes</a></p>
+  <p class="mt-2 text-sm"><a href="/representante/clientes" class="font-bold text-azul-600 hover:underline">← Clientes</a></p>
   {erro && <Aviso tipo="erro" class="mt-4">{erro}</Aviso>}
   {
     opcoes.ok ? (

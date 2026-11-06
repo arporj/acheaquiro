@@ -1,0 +1,55 @@
+---
+// Clientes na administração (opção B, decisões de 06/11/2026): a mesma lista do
+// representante, com todos e o filtro por responsável. A manutenção dos cadastros
+// continua em Anunciantes.
+import { compararNomes } from "@acheaqui/domain";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import Aviso from "@/components/conta/Aviso.astro";
+import ListaClientes from "@/components/negociacoes/ListaClientes.astro";
+import { listarEquipe } from "@/lib/equipe";
+import { listarCategoriasAdmin } from "@/lib/importacao";
+import { avisoDaFicha, executarAcao, lerFiltroClientes, listarClientes } from "@/lib/negociacoes";
+
+const supabase = Astro.locals.supabase!;
+const filtro = lerFiltroClientes(Astro.url.searchParams);
+let erro = "";
+
+if (Astro.request.method === "POST") {
+  const r = await executarAcao(supabase, await Astro.request.formData());
+  if (r.ok) {
+    if ("destino" in r.dados) return Astro.redirect(r.dados.destino, 303);
+    const p = new URLSearchParams(Astro.url.search);
+    p.set("aviso", r.dados.aviso);
+    return Astro.redirect(`/admin/clientes?${p}`, 303);
+  }
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const [lista, categorias, bairros, equipe] = await Promise.all([
+  listarClientes(supabase, filtro),
+  listarCategoriasAdmin(supabase),
+  supabase.from("bairros").select("id, nome").eq("ativo", true).order("nome"),
+  listarEquipe(supabase),
+]);
+if (!lista.ok) erro ||= lista.erro.mensagem;
+if (!categorias.ok) erro ||= categorias.erro.mensagem;
+if (!equipe.ok) erro ||= equipe.erro.mensagem;
+if (bairros.error) console.error("clientes: bairros falharam", { codigo: bairros.error.code, mensagem: bairros.error.message });
+const pessoas = (equipe.ok ? equipe.dados : []).map((m) => ({ id: m.usuario_id, nome: `${m.nome || m.email}${m.ativo ? "" : " (desativado)"}` }));
+const aviso = avisoDaFicha(Astro.url.searchParams.get("aviso"));
+---
+
+<PaginaAdmin titulo="Clientes" descricao="Todos os comércios e profissionais, com a negociação de cada um. Clique no nome para abrir a ficha.">
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+  <ListaClientes
+    linhas={lista.ok ? lista.dados.linhas : []}
+    total={lista.ok ? lista.dados.total : 0}
+    filtro={filtro}
+    base="/admin/clientes"
+    categorias={(categorias.ok ? categorias.dados : []).toSorted((a, b) => compararNomes(a.nome, b.nome))}
+    bairros={bairros.data ?? []}
+    pessoas={pessoas}
+  />
+</PaginaAdmin>

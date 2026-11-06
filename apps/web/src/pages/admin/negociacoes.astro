@@ -1,0 +1,95 @@
+---
+// Negociações na administração (opção B, decisões de 06/11/2026): o resumo por
+// pessoa no período e todas as negociações, com filtros. "Ganha" é a negociação
+// fechada por um pagamento; o valor é o desse pagamento.
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import Aviso from "@/components/conta/Aviso.astro";
+import ListaNegociacoes from "@/components/negociacoes/ListaNegociacoes.astro";
+import { listarEquipe } from "@/lib/equipe";
+import { lerFiltroNegociacoes, listarNegociacoes, periodoDoResumo, resumirNegociacoes } from "@/lib/negociacoes";
+import { formatarCentavos } from "@/lib/precos";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const filtro = lerFiltroNegociacoes(Astro.url.searchParams);
+const periodo = periodoDoResumo(filtro);
+const [lista, resumo, equipe] = await Promise.all([listarNegociacoes(supabase, filtro), resumirNegociacoes(supabase, periodo), listarEquipe(supabase)]);
+const erro = (!lista.ok && lista.erro.mensagem) || (!resumo.ok && resumo.erro.mensagem) || (!equipe.ok && equipe.erro.mensagem) || "";
+const linhas = resumo.ok ? resumo.dados : [];
+const pessoas = (equipe.ok ? equipe.dados : []).map((m) => ({ id: m.usuario_id, nome: `${m.nome || m.email}${m.ativo ? "" : " (desativado)"}` }));
+
+/** Mesmo filtro, com outro responsável. */
+function linkPessoa(usuarioId: string): string {
+  const p = new URLSearchParams(Astro.url.searchParams);
+  p.set("responsavel", usuarioId);
+  p.delete("pagina");
+  return `/admin/negociacoes?${p}`;
+}
+const celula = "px-3 py-2 text-right tabular-nums";
+---
+
+<PaginaAdmin titulo="Negociações" descricao="Como os contatos estão acontecendo e o que está sendo fechado.">
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <section class="mt-5">
+    <h2 class="font-display text-xl font-bold text-azul-900">Resumo de {formatarData(periodo.inicio)} a {formatarData(periodo.fim)}</h2>
+    <p class="mt-1 text-sm text-slate-600">Abertas e atrasadas são as de hoje; o resto é do período. Cadastro iniciado é um anunciante criado com a pessoa ("Fechei" ou cadastro assistido).</p>
+    {
+      linhas.length === 0 ? (
+        <p class="mt-3 rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm ring-1 ring-black/5">Nenhum contato, cadastro ou negociação neste período.</p>
+      ) : (
+        <div class="relative mt-3 overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+          <table class="w-full min-w-[48rem] text-sm">
+            <thead class="bg-fundo text-xs font-bold text-slate-600 uppercase">
+              <tr>
+                <th scope="col" class="px-3 py-2 text-left">Pessoa</th>
+                <th scope="col" class={celula}>Contatos</th>
+                <th scope="col" class={celula}>Comércios</th>
+                <th scope="col" class={celula}>Cadastros iniciados</th>
+                <th scope="col" class={celula}>Abertas</th>
+                <th scope="col" class={celula}>Atrasadas</th>
+                <th scope="col" class={celula}>Ganhas</th>
+                <th scope="col" class={celula}>Perdidas</th>
+                <th scope="col" class={celula}>Valor vendido</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {linhas.map((r) => (
+                <tr class:list={[filtro.responsavelId === r.usuario_id && "bg-azul-50"]}>
+                  <th scope="row" class="px-3 py-2 text-left font-semibold">
+                    <a href={linkPessoa(r.usuario_id)} class="text-azul-700 hover:underline">
+                      {r.nome || "Sem nome"}
+                    </a>
+                    {r.papel === "administrador" && <span class="ml-1 text-xs font-normal text-slate-500">(administrador)</span>}
+                    {r.ativo === false && <span class="ml-1 text-xs font-normal text-slate-500">(desativado)</span>}
+                  </th>
+                  <td class={celula}>{r.contatos}</td>
+                  <td class={celula}>{r.comercios}</td>
+                  <td class={celula}>{r.cadastros_iniciados}</td>
+                  <td class={celula}>{r.abertas}</td>
+                  <td class:list={[celula, r.atrasadas > 0 && "font-bold text-vermelho-600"]}>{r.atrasadas}</td>
+                  <td class={celula}>{r.ganhas}</td>
+                  <td class={celula}>{r.perdidas}</td>
+                  <td class={celula}>{formatarCentavos(r.valor_vendido_centavos)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
+  </section>
+
+  <section class="mt-8">
+    <h2 class="font-display text-xl font-bold text-azul-900">Negociações</h2>
+    <ListaNegociacoes
+      linhas={lista.ok ? lista.dados.linhas : []}
+      total={lista.ok ? lista.dados.total : 0}
+      filtro={filtro}
+      base="/admin/negociacoes"
+      baseClientes="/admin/clientes"
+      pessoas={pessoas}
+      vazio="Nenhuma negociação com esse filtro."
+    />
+  </section>
+</PaginaAdmin>

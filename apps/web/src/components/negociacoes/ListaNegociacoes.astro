@@ -1,0 +1,163 @@
+---
+// Lista de negociações (opção B, decisões de 06/11/2026): por padrão, as em
+// aberto, com as atrasadas primeiro. Quem clica no cliente abre a ficha.
+import { proximaAcaoAtrasada } from "@acheaqui/domain";
+import { Icone, classesBotao } from "@acheaqui/ui";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import {
+  COR_ETAPA,
+  COR_SITUACAO_NEGOCIACAO,
+  POR_PAGINA,
+  ROTULO_ETAPA,
+  ROTULO_SITUACAO_NEGOCIACAO,
+  ROTULO_TIPO,
+  type FiltroNegociacoes,
+  type LinhaNegociacao,
+} from "@/lib/negociacoes";
+import { hojeNaCidade } from "@/lib/pagamentos";
+import { formatarData } from "@/lib/texto";
+
+interface Props {
+  linhas: LinhaNegociacao[];
+  total: number;
+  filtro: FiltroNegociacoes;
+  /** Endereço desta lista. */
+  base: string;
+  /** Prefixo da ficha do cliente. */
+  baseClientes: string;
+  /** Só na administração: o filtro por responsável. */
+  pessoas?: { id: string; nome: string }[];
+  vazio: string;
+}
+
+const { linhas, total, filtro, base, baseClientes, pessoas, vazio } = Astro.props;
+const hoje = hojeNaCidade();
+const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+const linkPagina = (n: number) => {
+  const p = new URLSearchParams(Astro.url.search);
+  p.set("pagina", String(n));
+  return `${base}?${p}`;
+};
+const etiqueta = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-extrabold";
+const soData = (iso: string) => new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(iso));
+---
+
+<form method="get" role="search" class="mt-4 grid gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
+  <div class="sm:col-span-2">
+    <label class={classesRotulo} for="neg-q">Cliente</label>
+    <input id="neg-q" name="q" type="search" value={filtro.busca} maxlength="80" class={classesCampo} />
+  </div>
+  <div>
+    <label class={classesRotulo} for="neg-situacao">Situação</label>
+    <select id="neg-situacao" name="situacao" class={classesCampo}>
+      <option value="aberta" selected={filtro.situacao === "aberta"}>Em aberto</option>
+      <option value="ganha" selected={filtro.situacao === "ganha"}>Ganhas</option>
+      <option value="perdida" selected={filtro.situacao === "perdida"}>Perdidas</option>
+      <option value="todas" selected={filtro.situacao === ""}>Todas</option>
+    </select>
+  </div>
+  <div>
+    <label class={classesRotulo} for="neg-etapa">Etapa</label>
+    <select id="neg-etapa" name="etapa" class={classesCampo}>
+      <option value="">Todas</option>
+      {Object.entries(ROTULO_ETAPA).map(([valor, rotulo]) => <option value={valor} selected={filtro.etapa === valor}>{rotulo}</option>)}
+    </select>
+  </div>
+  <div>
+    <label class={classesRotulo} for="neg-tipo">Tipo</label>
+    <select id="neg-tipo" name="tipo" class={classesCampo}>
+      <option value="">Todos</option>
+      <option value="assinatura" selected={filtro.tipo === "assinatura"}>{ROTULO_TIPO.assinatura}</option>
+      <option value="upgrade" selected={filtro.tipo === "upgrade"}>{ROTULO_TIPO.upgrade}</option>
+    </select>
+  </div>
+  <div>
+    <label class={classesRotulo} for="neg-de">Aberta de</label>
+    <input id="neg-de" name="de" type="date" value={filtro.inicio} class={classesCampo} />
+  </div>
+  <div>
+    <label class={classesRotulo} for="neg-ate">Até</label>
+    <input id="neg-ate" name="ate" type="date" value={filtro.fim} class={classesCampo} />
+  </div>
+  {
+    pessoas && (
+      <div>
+        <label class={classesRotulo} for="neg-responsavel">Responsável</label>
+        <select id="neg-responsavel" name="responsavel" class={classesCampo}>
+          <option value="">Todos</option>
+          {pessoas.map((p) => <option value={p.id} selected={p.id === filtro.responsavelId}>{p.nome}</option>)}
+        </select>
+      </div>
+    )
+  }
+  <div class="flex flex-wrap items-center gap-3 sm:col-span-2 lg:col-span-4">
+    <label class="flex min-h-11 items-center gap-2 text-sm font-bold text-azul-900">
+      <input type="checkbox" name="atrasadas" value="1" checked={filtro.atrasadas} class="size-4 accent-azul-600" />
+      Só as atrasadas
+    </label>
+    <button type="submit" class={classesBotao("azul", "m")}>
+      <Icone nome="filtro" class="size-4" />
+      Filtrar
+    </button>
+    <a href={base} class={classesBotao("contorno", "m")}>Limpar</a>
+  </div>
+</form>
+
+<p class="mt-4 text-sm text-slate-600">{total.toLocaleString("pt-BR")} {total === 1 ? "negociação" : "negociações"}.</p>
+{linhas.length === 0 && <p class="mt-3 rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm ring-1 ring-black/5">{vazio}</p>}
+
+<ul class="mt-3 space-y-3">
+  {
+    linhas.map((n) => {
+      const atrasada = n.situacao === "aberta" && proximaAcaoAtrasada(n.proxima_acao_em, hoje);
+      return (
+        <li class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <a href={`${baseClientes}/${n.anunciante_id}`} class="font-display text-lg font-bold break-words text-azul-900 hover:underline">
+              {n.cliente}
+            </a>
+            <span class="text-sm font-semibold text-slate-600">{ROTULO_TIPO[n.tipo]}</span>
+            {n.etapa ? (
+              <span class={`${etiqueta} ${COR_ETAPA[n.etapa]}`}>{ROTULO_ETAPA[n.etapa]}</span>
+            ) : (
+              <span class={`${etiqueta} ${COR_SITUACAO_NEGOCIACAO[n.situacao]}`}>{ROTULO_SITUACAO_NEGOCIACAO[n.situacao]}</span>
+            )}
+            <span class={`${etiqueta} ${n.tem_conta ? "bg-zap-50 text-zap-700" : "bg-fundo text-slate-600"}`}>{n.tem_conta ? "Com conta" : "Sem conta"}</span>
+          </div>
+          <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+            <span>
+              Responsável: <strong>{n.minha ? "você" : n.responsavel}</strong>
+              {!n.responsavel_ativo && " (desativado)"}
+            </span>
+            <span>Aberta em {soData(n.aberta_em)}</span>
+            <span>
+              {n.contatos} {n.contatos === 1 ? "contato" : "contatos"}
+              {n.ultimo_contato && `, o último em ${formatarData(n.ultimo_contato)}`}
+            </span>
+            {n.fechada_em && <span>Encerrada em {soData(n.fechada_em)}</span>}
+            {n.motivo && <span>Motivo: {n.motivo}</span>}
+          </div>
+          {n.proxima_acao_em && n.situacao === "aberta" && (
+            <p class:list={["mt-2 text-sm", atrasada ? "font-bold text-vermelho-600" : "text-slate-700"]}>
+              {atrasada ? "Atrasada: " : "Próxima ação: "}
+              {formatarData(n.proxima_acao_em)}
+              {n.proxima_acao && ` · ${n.proxima_acao}`}
+            </p>
+          )}
+        </li>
+      );
+    })
+  }
+</ul>
+
+{
+  paginas > 1 && (
+    <nav aria-label="Páginas" class="mt-6 flex items-center justify-between gap-3 text-sm font-bold">
+      {filtro.pagina > 1 ? <a href={linkPagina(filtro.pagina - 1)} class={classesBotao("contorno", "p")}>← Anterior</a> : <span />}
+      <span>
+        Página {filtro.pagina} de {paginas}
+      </span>
+      {filtro.pagina < paginas ? <a href={linkPagina(filtro.pagina + 1)} class={classesBotao("contorno", "p")}>Próxima →</a> : <span />}
+    </nav>
+  )
+}

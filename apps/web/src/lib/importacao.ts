@@ -48,6 +48,9 @@ export interface PedidoAdmin {
   /** Guardados quando o perfil sai do site. */
   cnpj: string | null;
   nome_comercio: string | null;
+  /** Representante indicado no pedido (decisão C1 de 06/11/2026): ao assumir, vira quem trouxe o anunciante. */
+  representante_id: string | null;
+  indicado_por: { codigo: string } | null;
   anunciante: {
     id: string;
     nome: string;
@@ -61,7 +64,7 @@ export async function listarPedidos(supabase: SupabaseClient, situacao: Situacao
   const { data, error } = await supabase
     .from("pedidos_perfil")
     .select(
-      "id, tipo, situacao, nome, email, telefone, declarou_responsavel, mensagem, observacao_admin, criado_em, atendido_em, cnpj, nome_comercio, " +
+      "id, tipo, situacao, nome, email, telefone, declarou_responsavel, mensagem, observacao_admin, criado_em, atendido_em, cnpj, nome_comercio, representante_id, indicado_por:representantes(codigo), " +
         "anunciante:anunciantes(id, nome, slug, usuario_id, dados_receita(cnpj, razao_social, telefones, email))",
     )
     .eq("situacao", situacao)
@@ -80,7 +83,7 @@ async function lerPedidoAberto(supabase: SupabaseClient, id: string): Promise<Re
   if (!UUID.test(id)) return falha("DADOS_INVALIDOS", "Pedido inválido.");
   const { data, error } = await supabase
     .from("pedidos_perfil")
-    .select("id, tipo, situacao, nome, email, telefone, anunciante:anunciantes(id, nome, usuario_id, dados_receita(cnpj))")
+    .select("id, tipo, situacao, nome, email, telefone, representante_id, anunciante:anunciantes(id, nome, usuario_id, dados_receita(cnpj))")
     .eq("id", id)
     .maybeSingle();
   if (error) return mensagemDoBanco(error, "lerPedidoAberto");
@@ -111,7 +114,7 @@ export async function confirmarAssumir(supabase: SupabaseClient, id: string, obs
 
   const { error: erroLigacao } = await supabase
     .from("anunciantes")
-    .update({ usuario_id: convite.user.id, email_convite: pedido.email })
+    .update({ usuario_id: convite.user.id, email_convite: pedido.email, ...(pedido.representante_id ? { representante_id: pedido.representante_id } : {}) })
     .eq("id", pedido.anunciante.id);
   if (erroLigacao) {
     // O convite já saiu: a conta existe sem perfil ligado. Fica registrado para a equipe ligar à mão.

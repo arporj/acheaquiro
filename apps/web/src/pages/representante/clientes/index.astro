@@ -1,0 +1,57 @@
+---
+// Clientes do representante (opção B, decisões de 06/11/2026): a lista única, no
+// lugar da Prospecção e de Meus anunciantes. O telefone e o e-mail da Receita
+// são confidenciais (termo). Sem reserva: só o "Fechei" reserva, na ficha.
+import { compararNomes } from "@acheaqui/domain";
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import ListaClientes from "@/components/negociacoes/ListaClientes.astro";
+import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
+import { listarCategoriasAdmin } from "@/lib/importacao";
+import { avisoDaFicha, executarAcao, lerFiltroClientes, listarClientes } from "@/lib/negociacoes";
+
+const supabase = Astro.locals.supabase!;
+const filtro = lerFiltroClientes(Astro.url.searchParams);
+let erro = "";
+
+if (Astro.request.method === "POST") {
+  const r = await executarAcao(supabase, await Astro.request.formData());
+  if (r.ok) {
+    if ("destino" in r.dados) return Astro.redirect(r.dados.destino, 303);
+    const p = new URLSearchParams(Astro.url.search);
+    p.set("aviso", r.dados.aviso);
+    return Astro.redirect(`/representante/clientes?${p}`, 303);
+  }
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const [lista, categorias, bairros] = await Promise.all([
+  listarClientes(supabase, filtro),
+  listarCategoriasAdmin(supabase),
+  supabase.from("bairros").select("id, nome").eq("ativo", true).order("nome"),
+]);
+if (!lista.ok) erro ||= lista.erro.mensagem;
+if (!categorias.ok) erro ||= categorias.erro.mensagem;
+if (bairros.error) console.error("clientes: bairros falharam", { codigo: bairros.error.code, mensagem: bairros.error.message });
+const aviso = avisoDaFicha(Astro.url.searchParams.get("aviso"));
+---
+
+<PaginaRepresentante titulo="Clientes" descricao="Todos os comércios e profissionais, com ou sem conta. Clique no nome para abrir a ficha.">
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+  <div class="mt-4">
+    <a href="/representante/anunciantes/novo" class={classesBotao("azul", "m")}>
+      <Icone nome="usuarios" class="size-4" />
+      Novo cadastro assistido
+    </a>
+  </div>
+  <ListaClientes
+    linhas={lista.ok ? lista.dados.linhas : []}
+    total={lista.ok ? lista.dados.total : 0}
+    filtro={filtro}
+    base="/representante/clientes"
+    categorias={(categorias.ok ? categorias.dados : []).toSorted((a, b) => compararNomes(a.nome, b.nome))}
+    bairros={bairros.data ?? []}
+  />
+</PaginaRepresentante>

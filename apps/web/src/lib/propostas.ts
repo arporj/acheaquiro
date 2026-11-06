@@ -398,14 +398,3 @@ export async function responderProposta(supabase: SupabaseClient, id: string, re
   if (error) return mensagemDoBanco(error, `responderProposta: ${resposta}`);
   return { ok: true, dados: null };
 }
-
-/** Busca de anunciantes com conta para propor (nome e plano). */
-export async function buscarAnunciantes(
-  supabase: SupabaseClient,
-  termo: string,
-): Promise<Resultado<{ id: string; nome: string; tipo: "profissional" | "comercio"; plano: string | null }[]>> {
-  if (termo.trim().length < 2) return { ok: true, dados: [] };
-  const { data, error } = await supabase.rpc("anunciantes_para_proposta", { p_termo: termo.slice(0, 80) });
-  if (error) return mensagemDoBanco(error, "buscarAnunciantes");
-  return { ok: true, dados: data as { id: string; nome: string; tipo: "profissional" | "comercio"; plano: string | null }[] };
-}

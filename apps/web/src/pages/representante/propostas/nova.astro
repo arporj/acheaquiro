@@ -24,7 +24,7 @@ const recebeComissao = cadastro.ok && cadastro.dados.recebeComissao;
 if (Astro.request.method === "POST" && cadastro.ok && contexto.ok) {
   const form = await Astro.request.formData();
   const r = await criarProposta(supabase, contexto.dados, form, recebeComissao);
-  if (r.ok) return Astro.redirect("/representante/propostas?aviso=enviada", 303);
+  if (r.ok) return Astro.redirect(`/representante/clientes/${anuncianteId}?aviso=proposta`, 303);
   erro = r.erro.mensagem;
   Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
 }
@@ -50,7 +50,7 @@ const porPeriodo = (p: "mensal" | "anual") => (p === "anual" ? "por ano" : "por 
 ---
 
 <PaginaRepresentante titulo="Nova proposta" descricao={ctx?.anunciante.nome}>
-  <p class="mt-2 text-sm"><a href="/representante/propostas" class="font-bold text-azul-600 hover:underline">← Propostas</a></p>
+  <p class="mt-2 text-sm"><a href={`/representante/clientes/${anuncianteId}`} class="font-bold text-azul-600 hover:underline">← Ficha do cliente</a></p>
   {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
   {

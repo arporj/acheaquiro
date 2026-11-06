@@ -155,6 +155,7 @@ const campoTexto = "mt-1 w-full rounded-2xl border-2 border-azul-100 p-3 focus:b
                     <p>{p.email}</p>
                     {p.telefone && <p>{formatarTelefone(p.telefone)}</p>}
                     {p.declarou_responsavel && <p class="mt-1 text-xs font-bold text-zap-700">Declarou ser o responsável</p>}
+                    {p.indicado_por && <p class="mt-1 text-xs font-bold text-azul-700">Indicado pelo representante {p.indicado_por.codigo}: ao confirmar, ele fica com o cliente</p>}
                   </>
                 )}
                 {p.mensagem && <p class="mt-2 text-slate-600 italic">"{p.mensagem}"</p>}

@@ -6,11 +6,8 @@
 import type { Resultado } from "@acheaqui/types";
 import { esquemaAtendimento, esquemaChavePix, mensagensPorCampo, type TipoChavePix } from "@acheaqui/validation";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Situacao } from "./anunciantesAdmin";
 import { DOCUMENTOS } from "./documentosLegais";
-import { umSo } from "./importacao";
 import { clienteServico } from "./sessao";
-import { paraSlug } from "./texto";
 
 type CodigoFalha = "DADOS_INVALIDOS" | "CONFLITO" | "SEM_PERMISSAO" | "NAO_ENCONTRADO" | "ERRO_INTERNO";
 type Falha = { ok: false; erro: { codigo: CodigoFalha; mensagem: string; campos?: Record<string, string> } };
@@ -112,11 +109,6 @@ export interface RegistroAtendimento {
   autor: string;
 }
 
-export interface UltimoContato {
-  autor: string;
-  dia: string;
-}
-
 export async function registrarAtendimento(
   supabase: SupabaseClient,
   entrada: { anuncianteId: string; dia: string; observacao: string },
@@ -167,172 +159,9 @@ export async function listarAtendimentos(supabase: SupabaseClient, anuncianteId:
   };
 }
 
-/** Último contato de cada anunciante da lista: só o nome de quem fez e o dia (decisão Y1, 24/10/2026). */
-export async function ultimosContatos(supabase: SupabaseClient, anuncianteIds: string[]): Promise<Resultado<Map<string, UltimoContato>>> {
-  const mapa = new Map<string, UltimoContato>();
-  if (!anuncianteIds.length) return { ok: true, dados: mapa };
-  const { data, error } = await supabase.rpc("ultimos_contatos", { p_anunciantes: anuncianteIds });
-  if (error) return mensagemDoBanco(error, "ultimosContatos");
-  for (const linha of data as { anunciante_id: string; autor_nome: string; dia: string }[]) {
-    mapa.set(linha.anunciante_id, { autor: linha.autor_nome, dia: linha.dia });
-  }
-  return { ok: true, dados: mapa };
-}
-
-// ---------------------------------------------------------------------------
-// Meus anunciantes
-// ---------------------------------------------------------------------------
-
-export interface MeuAnunciante {
-  id: string;
-  nome: string;
-  slug: string;
-  tipo: "profissional" | "comercio";
-  status: Situacao;
-  origem: "cadastro" | "receita";
-  criado_em: string;
-  importado_id: string | null;
-  plano: { nome: string } | null;
-  planoEscolhido: { nome: string } | null;
-  /** Vencimento do plano pago, para o representante ver quem está em atraso. */
-  assinatura: { vence_em: string } | null;
-}
-
-/** Os anunciantes que o representante trouxe (o RLS também mostra os publicados de todos; o filtro fica aqui). */
-export async function listarMeusAnunciantes(supabase: SupabaseClient, representanteId: string): Promise<Resultado<MeuAnunciante[]>> {
-  const { data, error } = await supabase
-    .from("anunciantes")
-    .select(
-      "id, nome, slug, tipo, status, origem, criado_em, importado_id, plano:planos!anunciantes_plano_id_fkey(nome), planoEscolhido:planos!anunciantes_plano_escolhido_id_fkey(nome), " +
-        "assinatura:assinaturas(vence_em)",
-    )
-    .eq("representante_id", representanteId)
-    .order("criado_em", { ascending: false })
-    .limit(500);
-  if (error) return mensagemDoBanco(error, "listarMeusAnunciantes");
-  return { ok: true, dados: data as unknown as MeuAnunciante[] };
-}
-
-// ---------------------------------------------------------------------------
-// Prospecção: comércios importados da Receita ainda sem dono
-// ---------------------------------------------------------------------------
-
-export const POR_PAGINA_PROSPECCAO = 30;
-
-export interface FiltroProspeccao {
-  busca: string;
-  categoriaId: string;
-  bairroId: string;
-  pagina: number;
-}
-
-export interface ComercioProspeccao {
-  id: string;
-  nome: string;
-  slug: string;
-  categoria: string;
-  bairro: string;
-  endereco: string;
-  razaoSocial: string;
-  telefones: string[];
-  email: string | null;
-  ultimoContato: UltimoContato | null;
-  /** Representante que fechou com o comércio e está fazendo o cadastro (vazio: livre). */
-  reserva: ReservaImportado | null;
-}
-
-export interface ReservaImportado {
-  autor: string;
-  /** Até quando os outros não pegam o comércio, se o convite não sair (AAAA-MM-DD). */
-  ate: string;
-  conviteEnviado: boolean;
-  /** Rascunho do próprio representante que está vendo, para continuar o cadastro. */
-  meuRascunho: string | null;
-}
-
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-/** Tira da busca os caracteres que mudam a sintaxe do filtro do PostgREST e os curingas. */
-const limparBusca = (texto: string) => texto.replace(/[%_,()*\\:"']/g, " ").trim().replace(/\s+/g, " ").slice(0, 80);
 
-export function lerFiltroProspeccao(p: URLSearchParams): FiltroProspeccao {
-  const id = (nome: string) => (UUID.test(p.get(nome) ?? "") ? p.get(nome)! : "");
-  const pagina = Number.parseInt(p.get("pagina") ?? "1", 10);
-  return {
-    busca: limparBusca(p.get("q") ?? ""),
-    categoriaId: id("categoria"),
-    bairroId: id("bairro"),
-    pagina: Number.isInteger(pagina) && pagina > 0 && pagina <= 1000 ? pagina : 1,
-  };
-}
-
-type DadosReceitaLinha = { razao_social: string; telefones: string[]; email: string | null };
-
-interface LinhaProspeccao {
-  id: string;
-  nome: string;
-  slug: string;
-  categoria: { nome: string } | null;
-  enderecos: { logradouro: string; numero: string; bairro: { nome: string } | null }[];
-  dados_receita: DadosReceitaLinha | DadosReceitaLinha[] | null;
-}
-
-export async function listarProspeccao(
-  supabase: SupabaseClient,
-  f: FiltroProspeccao,
-): Promise<Resultado<{ comercios: ComercioProspeccao[]; total: number }>> {
-  let consulta = supabase
-    .from("anunciantes")
-    .select(
-      "id, nome, slug, categoria:categorias(nome), " +
-        `enderecos${f.bairroId ? "!inner" : ""}(logradouro, numero, bairro_id, bairro:bairros(nome)), ` +
-        "dados_receita(razao_social, telefones, email), nao_procurar(anunciante_id)",
-      { count: "exact" },
-    )
-    .eq("origem", "receita")
-    .eq("status", "publicado")
-    .is("usuario_id", null)
-    .is("nao_procurar", null);
-  if (f.busca) consulta = consulta.or(`nome.ilike.%${f.busca}%,slug.ilike.%${paraSlug(f.busca) || f.busca}%`);
-  if (f.categoriaId) consulta = consulta.eq("categoria_principal_id", f.categoriaId);
-  if (f.bairroId) consulta = consulta.eq("enderecos.bairro_id", f.bairroId);
-  const inicio = (f.pagina - 1) * POR_PAGINA_PROSPECCAO;
-  const { data, error, count } = await consulta.order("nome").order("id").range(inicio, inicio + POR_PAGINA_PROSPECCAO - 1);
-  if (error) return mensagemDoBanco(error, "listarProspeccao");
-  const linhas = data as unknown as LinhaProspeccao[];
-
-  const ids = linhas.map((l) => l.id);
-  const [contatos, reservas] = await Promise.all([ultimosContatos(supabase, ids), reservasDosImportados(supabase, ids)]);
-  // Sem o último contato, a lista sai assim mesmo: o aviso já foi para o registro.
-  const mapa = contatos.ok ? contatos.dados : new Map<string, UltimoContato>();
-  // Sem as reservas, não dá para saber quem está com cada comércio: melhor não mostrar a lista.
-  if (!reservas.ok) return reservas;
-
-  return {
-    ok: true,
-    dados: {
-      total: count ?? 0,
-      comercios: linhas.map((l) => {
-        const receita = umSo(l.dados_receita);
-        const [endereco] = l.enderecos;
-        return {
-          id: l.id,
-          nome: l.nome,
-          slug: l.slug,
-          categoria: l.categoria?.nome ?? "",
-          bairro: endereco?.bairro?.nome ?? "",
-          endereco: endereco ? `${endereco.logradouro}, ${endereco.numero}` : "",
-          razaoSocial: receita?.razao_social ?? "",
-          telefones: receita?.telefones ?? [],
-          email: receita?.email ?? null,
-          ultimoContato: mapa.get(l.id) ?? null,
-          reserva: reservas.dados.get(l.id) ?? null,
-        };
-      }),
-    },
-  };
-}
-
-/** Quem pediu para não ser mais procurado sai da prospecção (só a equipe desfaz). */
+/** Quem pediu para não ser mais procurado não é mais procurado por ninguém (só a equipe desfaz). */
 export async function marcarNaoProcurar(supabase: SupabaseClient, anuncianteId: string): Promise<Resultado<null>> {
   if (!UUID.test(anuncianteId)) return falha("NAO_ENCONTRADO", "Comércio não encontrado.");
   const { data: anunciante, error: erroLeitura } = await supabase.from("anunciantes").select("cidade_id").eq("id", anuncianteId).maybeSingle();
@@ -342,29 +171,6 @@ export async function marcarNaoProcurar(supabase: SupabaseClient, anuncianteId: 
   // Já marcado por outra pessoa: o resultado é o mesmo.
   if (error?.code === "23505") return { ok: true, dados: null };
   return error ? mensagemDoBanco(error, "marcarNaoProcurar") : { ok: true, dados: null };
-}
-
-/**
- * Reservas em vigor: o convite já saiu, ou o representante fechou com o
- * comércio há menos de 7 dias (a reserva vencida não conta; o banco apaga o
- * rascunho vencido quando outro representante fecha com o comércio).
- */
-async function reservasDosImportados(supabase: SupabaseClient, ids: string[]): Promise<Resultado<Map<string, ReservaImportado>>> {
-  const mapa = new Map<string, ReservaImportado>();
-  if (!ids.length) return { ok: true, dados: mapa };
-  const { data, error } = await supabase.rpc("situacao_importados", { p_importados: ids });
-  if (error) return mensagemDoBanco(error, "reservasDosImportados");
-  const agora = Date.now();
-  for (const l of data as { importado_id: string; autor_nome: string; ate: string; convite_enviado: boolean; meu_rascunho: string | null }[]) {
-    if (!l.convite_enviado && !l.meu_rascunho && new Date(l.ate).getTime() <= agora) continue;
-    mapa.set(l.importado_id, {
-      autor: l.autor_nome,
-      ate: new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(l.ate)),
-      conviteEnviado: l.convite_enviado,
-      meuRascunho: l.meu_rascunho,
-    });
-  }
-  return { ok: true, dados: mapa };
 }
 
 /**

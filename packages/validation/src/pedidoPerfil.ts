@@ -3,6 +3,7 @@
 // checagens da tabela (migration 20261023110000_pedidos_perfil_contato.sql).
 import { z } from "zod";
 import { esquemaEmail } from "./acesso";
+import { esquemaCodigoIndicacao } from "./negociacao";
 
 export const TIPOS_PEDIDO_PERFIL = ["assumir", "remover", "fechou"] as const;
 export type TipoPedidoPerfil = (typeof TIPOS_PEDIDO_PERFIL)[number];
@@ -39,6 +40,8 @@ export const esquemaPedidoPerfil = z.discriminatedUnion(
       email: esquemaEmail,
       telefone: esquemaTelefone,
       declaracao: z.literal(true, { error: "Confirme que você é o responsável por este comércio." }),
+      // Opcional: quem indicou (decisão C1 de 06/11/2026).
+      codigoRepresentante: esquemaCodigoIndicacao,
     }),
     z.object({ tipo: z.literal("fechou"), ...base }),
   ],

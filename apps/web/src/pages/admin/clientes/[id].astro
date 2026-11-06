@@ -1,0 +1,37 @@
+---
+// Ficha do cliente na administração (opção B, decisões de 06/11/2026): a mesma do
+// representante, com as anotações de todos e a troca do responsável.
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import Aviso from "@/components/conta/Aviso.astro";
+import FichaDoCliente from "@/components/negociacoes/FichaDoCliente.astro";
+import { listarEquipe } from "@/lib/equipe";
+import { avisoDaFicha, executarAcao, lerFicha, listarMotivosAtivos } from "@/lib/negociacoes";
+
+const supabase = Astro.locals.supabase!;
+const id = Astro.params.id ?? "";
+let erro = "";
+
+if (Astro.request.method === "POST") {
+  const r = await executarAcao(supabase, await Astro.request.formData());
+  if (r.ok) {
+    return Astro.redirect("destino" in r.dados ? r.dados.destino : `/admin/clientes/${id}?aviso=${r.dados.aviso}`, 303);
+  }
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const [ficha, motivos, equipe] = await Promise.all([lerFicha(supabase, id), listarMotivosAtivos(supabase), listarEquipe(supabase)]);
+if (!ficha.ok && ficha.erro.codigo === "NAO_ENCONTRADO") return new Response(null, { status: 404 });
+if (!ficha.ok) erro ||= ficha.erro.mensagem;
+if (!motivos.ok) erro ||= motivos.erro.mensagem;
+if (!equipe.ok) erro ||= equipe.erro.mensagem;
+const pessoas = (equipe.ok ? equipe.dados : []).filter((m) => m.ativo).map((m) => ({ id: m.usuario_id, nome: m.nome || m.email }));
+const aviso = avisoDaFicha(Astro.url.searchParams.get("aviso"));
+---
+
+<PaginaAdmin titulo={ficha.ok ? ficha.dados.cliente.nome : "Cliente"}>
+  <p class="mt-2 text-sm"><a href="/admin/clientes" class="font-bold text-azul-600 hover:underline">← Clientes</a></p>
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+  {ficha.ok && <FichaDoCliente ficha={ficha.dados} modo="administracao" motivos={motivos.ok ? motivos.dados : []} equipe={pessoas} />}
+</PaginaAdmin>
