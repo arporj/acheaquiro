@@ -13,7 +13,8 @@ const temporaria = mkdtempSync(join(tmpdir(), "testes-banco-"));
 let falhas = 0;
 
 for (const arquivo of readdirSync(PASTA).filter((nome) => nome.endsWith(".test.sql")).sort()) {
-  let sql = readFileSync(join(PASTA, arquivo), "utf8");
+  // O Git no Windows pode trocar o fim de linha, e as trocas abaixo procuram por LF.
+  let sql = readFileSync(join(PASTA, arquivo), "utf8").replace(/\r\n/g, "\n");
   // Guarda a saída de cada asserção numa tabela da transação, liberada para os papéis testados.
   sql = sql.replace(
     "set local search_path = public, extensions;",
