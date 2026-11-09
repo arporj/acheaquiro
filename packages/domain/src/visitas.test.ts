@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { textoDoContadorDeVisitas } from "./visitas";
+import { numeroDoContadorDeVisitas, textoDoContadorDeVisitas } from "./visitas";
+
+describe("numeroDoContadorDeVisitas", () => {
+  it("devolve só o número arredondado, escrito em português", () => {
+    expect(numeroDoContadorDeVisitas(501)).toBe("500");
+    expect(numeroDoContadorDeVisitas(500)).toBe("400");
+    expect(numeroDoContadorDeVisitas(12_345)).toBe("12.300");
+  });
+
+  it("abaixo do mínimo ou inválido, nada", () => {
+    expect(numeroDoContadorDeVisitas(100)).toBeNull();
+    expect(numeroDoContadorDeVisitas(Number.NaN)).toBeNull();
+  });
+});
 
 describe("textoDoContadorDeVisitas", () => {
   it("arredonda para baixo em centenas", () => {

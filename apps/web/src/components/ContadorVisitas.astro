@@ -1,9 +1,9 @@
 ---
 // Contador flutuante de visitas, nas páginas públicas dos três sites (decisão de
-// 07/11/2026). As páginas ficam no cache, e dois dos sites não têm o token: o
-// navegador busca o texto no site de produção, que guarda a resposta por um dia.
-// Fica escondido até o texto chegar: sem token ou com falha, a página não muda.
-import { Icone } from "@acheaqui/ui";
+// 07/11/2026), como selo redondo azul com borda amarela (decisão de 09/11/2026):
+// menor no celular. As páginas ficam no cache, e dois dos sites não têm o token: o
+// navegador busca o número no site de produção, que guarda a resposta por um dia.
+// Fica escondido até o número chegar: sem token ou com falha, a página não muda.
 import { ambiente, ENDERECO_VISITAS } from "@/lib/ambiente";
 
 const endereco = ambiente === "producao" ? "/api/visitas" : ENDERECO_VISITAS;
@@ -12,19 +12,33 @@ const endereco = ambiente === "producao" ? "/api/visitas" : ENDERECO_VISITAS;
 <p
   data-contador-visitas={endereco}
   hidden
-  class="contador-visitas fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 z-30 inline-flex items-center gap-1.5 rounded-full bg-azul-900 px-3 py-1.5 text-xs font-bold text-white shadow-lg"
+  class="contador-visitas fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 z-30 flex size-17 flex-col items-center justify-center rounded-full border-3 border-amarelo-400 bg-azul-600 text-center font-display leading-none text-white shadow-lg md:size-21 md:border-4"
 >
-  <Icone nome="usuarios" class="size-4 shrink-0" />
-  <span data-texto></span>
+  <span data-texto class="sr-only"></span>
+  <span aria-hidden="true" class="text-[0.5625rem] font-bold tracking-wide uppercase md:text-[0.625rem]">Mais de</span>
+  <span
+    aria-hidden="true"
+    data-numero
+    class="my-0.5 text-[1.3rem] font-extrabold text-amarelo-400 data-longo:text-[0.95rem] md:text-[1.625rem] md:data-longo:text-[1.2rem]"
+  ></span>
+  <span aria-hidden="true" class="text-[0.5625rem] font-bold tracking-wide uppercase md:text-[0.625rem]">Visitas</span>
 </p>
 
 <script>
+  interface Resposta {
+    texto: string | null;
+    numero?: string | null;
+  }
   const contador = document.querySelector<HTMLElement>("[data-contador-visitas]");
   if (contador?.dataset.contadorVisitas) {
     fetch(contador.dataset.contadorVisitas)
-      .then((resposta) => (resposta.ok ? (resposta.json() as Promise<{ texto: string | null }>) : { texto: null }))
-      .then(({ texto }) => {
-        if (!texto) return;
+      .then((resposta) => (resposta.ok ? (resposta.json() as Promise<Resposta>) : { texto: null }))
+      .then(({ texto, numero }) => {
+        if (!texto || !numero) return;
+        const campoNumero = contador.querySelector<HTMLElement>("[data-numero]")!;
+        campoNumero.textContent = numero;
+        // "1.000" em diante não cabe no círculo com a letra cheia.
+        campoNumero.toggleAttribute("data-longo", numero.length > 3);
         contador.querySelector("[data-texto]")!.textContent = texto;
         contador.hidden = false;
       })

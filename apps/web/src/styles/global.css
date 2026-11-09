@@ -70,9 +70,17 @@ body {
  * conosco" (site de apresentação) não cobrirem o rodapé. No perfil, pelo
  * celular, o botão sobe acima da barra.
  */
-body:has(.botao-duvidas) footer,
-body:has(.contador-visitas:not([hidden])) footer {
+body:has(.botao-duvidas) footer {
   padding-bottom: 4.5rem;
+}
+/* O selo de visitas tem 4.25rem no celular e 5.25rem a partir de 48rem (ContadorVisitas.astro). */
+body:has(.contador-visitas:not([hidden])) footer {
+  padding-bottom: 5.5rem;
+}
+@media (width >= 48rem) {
+  body:has(.contador-visitas:not([hidden])) footer {
+    padding-bottom: 6.5rem;
+  }
 }
 @media (width < 64rem) {
   body:has(.barra-contato) footer {
@@ -81,13 +89,16 @@ body:has(.contador-visitas:not([hidden])) footer {
   body:has(.barra-contato):has(.botao-duvidas) footer {
     padding-bottom: 9rem;
   }
+  body:has(.barra-contato):has(.contador-visitas:not([hidden])) footer {
+    padding-bottom: 10.5rem;
+  }
   body:has(.barra-contato) .botao-duvidas,
   body:has(.barra-contato) .contador-visitas {
     bottom: calc(5.25rem + env(safe-area-inset-bottom));
   }
 }
-/* No celular, os dois não cabem lado a lado: o contador fica acima do "Dúvidas?". */
-@media (width < 30rem) {
+/* Abaixo de 352 px, o selo e o "Dúvidas?" não cabem lado a lado: o selo sobe. */
+@media (width < 22rem) {
   body:has(.botao-duvidas) .contador-visitas {
     bottom: calc(4.25rem + env(safe-area-inset-bottom));
   }
@@ -95,7 +106,10 @@ body:has(.contador-visitas:not([hidden])) footer {
     bottom: calc(8.5rem + env(safe-area-inset-bottom));
   }
   body:has(.botao-duvidas):has(.contador-visitas:not([hidden])) footer {
-    padding-bottom: 7.5rem;
+    padding-bottom: 9.5rem;
+  }
+  body:has(.barra-contato):has(.botao-duvidas):has(.contador-visitas:not([hidden])) footer {
+    padding-bottom: 13.5rem;
   }
 }
 
