@@ -30,7 +30,9 @@ interface RespostaGraphQL {
 
 /** Total das duas janelas, ou nulo sem o token ou quando a Cloudflare falha (o motivo vai para o registro). */
 export async function totalDeVisitas(agora = new Date()): Promise<number | null> {
-  const token = env.CLOUDFLARE_ANALYTICS_TOKEN;
+  // Sem espaço nem quebra de linha nas pontas: colado assim no painel, o valor
+  // derruba o cabeçalho da requisição ("Invalid header value").
+  const token = env.CLOUDFLARE_ANALYTICS_TOKEN?.trim();
   if (!token) {
     console.error("totalDeVisitas: CLOUDFLARE_ANALYTICS_TOKEN não definido neste Worker.");
     return null;
