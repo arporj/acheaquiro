@@ -12,3 +12,4 @@ export * from "./configuracoes";
 export * from "./catalogo";
 export * from "./comum";
 export * from "./negociacao";
+export * from "./denuncia";

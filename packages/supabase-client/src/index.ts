@@ -8,4 +8,5 @@ export { lerAnunciantePublico, lerAnunciantesPublicos, type FiltroAnunciantes } 
 export { entrar, limitarRecuperacaoSenha, registrarAcesso, type ResultadoEntrada } from "./acesso";
 export { lerPatrocinioPublico, registrarCliquePatrocinio } from "./patrocinio";
 export { registrarPedidoPerfil, type PedidoPerfilValidado } from "./pedidos";
+export { registrarDenuncia, type DenunciaValidada } from "./denuncias";
 export { codigoRepresentanteValido } from "./representantes";

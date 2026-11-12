@@ -205,13 +205,6 @@ export interface LinkDestacado {
   bairroId?: string;
 }
 
-export type MotivoDenuncia =
-  | "informacao_falsa"
-  | "telefone_errado"
-  | "servico_nao_prestado"
-  | "conteudo_improprio"
-  | "outro";
-
 // Contrato padrão das operações de domínio (especificação técnica, seção 4.2).
 // A mensagem é para o usuário final; detalhes técnicos vão só para o log.
 export type CodigoErro =

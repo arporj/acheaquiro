@@ -93,16 +93,11 @@ const campo =
   </div>
 </Modal>
 
-<script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script>
   import { lerIndicacao } from "@/lib/indicacao";
+  import { criarTurnstile } from "@/lib/turnstileNavegador";
 
   type Tipo = "assumir" | "remover" | "fechou";
-  interface Turnstile {
-    render(alvo: HTMLElement, opcoes: Record<string, unknown>): string;
-    reset(id: string): void;
-  }
-  const global = window as unknown as { turnstile?: Turnstile };
 
   const TEXTOS: Record<Tipo, { titulo: string; explicacao: string; confirmacao: string; rotuloMensagem: string }> = {
     assumir: {
@@ -142,8 +137,7 @@ const campo =
 
   if (secao && dialogo && formulario && enviado && titulo && explicacao && dados && rotuloMensagem && caixaTurnstile && erroGeral && confirmacao && botaoEnviar) {
     let tipo: Tipo = "assumir";
-    let widget: string | undefined;
-    let token = "";
+    const robo = criarTurnstile(caixaTurnstile, secao.dataset.turnstile ?? "", "Pedido do perfil");
 
     const limparErros = () => {
       erroGeral.hidden = true;
@@ -160,31 +154,6 @@ const campo =
         const alvo = formulario.elements.namedItem(nome);
         if (alvo instanceof Element) alvo.setAttribute("aria-invalid", "true");
       }
-    };
-
-    const prepararTurnstile = () => {
-      token = "";
-      if (!global.turnstile) {
-        // O script do Turnstile ainda carrega; tenta de novo em instantes.
-        setTimeout(prepararTurnstile, 300);
-        return;
-      }
-      if (widget) {
-        global.turnstile.reset(widget);
-        return;
-      }
-      widget = global.turnstile.render(caixaTurnstile, {
-        sitekey: secao.dataset.turnstile,
-        language: "pt-br",
-        // O quadro normal tem 300 px fixos; em telas estreitas, o compacto cabe sem rolagem lateral.
-        size: caixaTurnstile.clientWidth < 300 ? "compact" : "normal",
-        callback: (t: string) => (token = t),
-        "expired-callback": () => (token = ""),
-        "error-callback": () => {
-          token = "";
-          console.error("Pedido do perfil: o Turnstile não carregou.");
-        },
-      });
     };
 
     const abrir = (novo: Tipo) => {
@@ -204,7 +173,7 @@ const campo =
       enviado.hidden = true;
       limparErros();
       dialogo.showModal();
-      prepararTurnstile();
+      void robo.preparar();
     };
 
     for (const botao of document.querySelectorAll<HTMLElement>("[data-pedido-abrir]")) {
@@ -214,6 +183,7 @@ const campo =
     formulario.addEventListener("submit", async (evento) => {
       evento.preventDefault();
       limparErros();
+      const token = robo.token();
       if (!token) {
         mostrarErro("Confirme que você não é um robô.");
         return;
@@ -255,7 +225,7 @@ const campo =
       } finally {
         botaoEnviar.disabled = false;
         // O token do Turnstile vale uma vez: um novo para a próxima tentativa.
-        prepararTurnstile();
+        void robo.preparar();
       }
     });
   } else if (secao) {

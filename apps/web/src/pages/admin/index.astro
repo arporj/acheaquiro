@@ -21,9 +21,10 @@ async function contar(tabela: string, filtros: Record<string, string | string[]>
   return count ?? 0;
 }
 
-const [equipe, pedidos, publicados, importados, emAnalise, emAndamento, bairrosPendentes, emAtraso] = await Promise.all([
+const [equipe, pedidos, denuncias, publicados, importados, emAnalise, emAndamento, bairrosPendentes, emAtraso] = await Promise.all([
   listarEquipe(supabase),
   contar("pedidos_perfil", { situacao: "aberto" }),
+  contar("denuncias", { situacao: "aberta" }),
   contar("anunciantes", { status: "publicado" }),
   contar("anunciantes", { status: "publicado", origem: "receita" }),
   // As mesmas situações das abas da lista de anunciantes, para o número bater com o que o link abre.
@@ -72,6 +73,7 @@ const pendencias: Cartao[] = [
     detalhe: "venceu e ainda está no prazo para pagar",
   },
   { rotulo: "Pedidos de perfil abertos", valor: pedidos, icone: "info", href: "/admin/pedidos" },
+  { rotulo: "Denúncias abertas", valor: denuncias, icone: "bandeira", href: "/admin/denuncias" },
   {
     rotulo: "Bairros da importação pendentes",
     valor: listaBairros.length,
@@ -138,6 +140,6 @@ const totalPendencias = pendencias.reduce((soma, c) => soma + c.valor, 0);
   }
 
   <p class="mt-6 text-sm text-slate-600">
-    As seções marcadas como "em breve" no menu entram nas próximas fases: denúncias e agenda até a abertura.
+    As seções marcadas como "em breve" no menu entram nas próximas fases: a agenda até a abertura.
   </p>
 </PaginaAdmin>

@@ -1,58 +1,66 @@
 ---
-// Denúncia de perfil (item 4.9). No protótipo, o envio é só visual.
+// Denúncia de perfil (item 4.9; decisões D1 e D2 de 12/11/2026). Na produção,
+// envia para /api/denuncias, com o Turnstile; no site de apresentação, que não
+// tem banco, o envio continua só visual. Quem denuncia não se identifica.
 import { Icone, Modal, classesBotao } from "@acheaqui/ui";
-import type { MotivoDenuncia } from "@acheaqui/types";
+import { DESCRICAO_DENUNCIA_MAXIMO, MOTIVOS_DENUNCIA, ROTULOS_MOTIVO_DENUNCIA } from "@acheaqui/validation";
+import { ambiente } from "@/lib/ambiente";
 
 interface Props {
+  anuncianteId: string;
   nomeAnunciante: string;
 }
 
-const motivos: { id: MotivoDenuncia; rotulo: string }[] = [
-  { id: "informacao_falsa", rotulo: "Informação falsa" },
-  { id: "telefone_errado", rotulo: "Telefone errado" },
-  { id: "servico_nao_prestado", rotulo: "Serviço não prestado" },
-  { id: "conteudo_improprio", rotulo: "Conteúdo impróprio" },
-  { id: "outro", rotulo: "Outro motivo" },
-];
-
-const { nomeAnunciante } = Astro.props;
+const { anuncianteId, nomeAnunciante } = Astro.props;
+const envioReal = ambiente === "producao";
+const chaveTurnstile = envioReal ? import.meta.env.PUBLIC_TURNSTILE_SITE_KEY : "";
+if (envioReal && !chaveTurnstile) throw new Error("PUBLIC_TURNSTILE_SITE_KEY não definida.");
+const campo = "mt-1 w-full rounded-xl border-0 p-3 ring-1 ring-slate-200 focus:ring-3 focus:ring-amarelo-400 focus:outline-none aria-invalid:ring-vermelho-500";
 ---
 
 <button
   type="button"
   data-denuncia-abrir
-  class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold text-slate-500 hover:bg-vermelho-500/10 hover:text-vermelho-600"
+  class="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold text-slate-500 hover:bg-vermelho-500/10 hover:text-vermelho-600"
 >
   <Icone nome="bandeira" class="size-4" />
   Denunciar
 </button>
 
 <Modal id="modal-denuncia" titulo="Denunciar perfil">
-  <form data-denuncia-formulario>
+  <form
+    data-denuncia-formulario
+    data-anunciante={anuncianteId}
+    data-envio={envioReal ? "real" : "visual"}
+    data-turnstile={chaveTurnstile}
+    novalidate
+  >
     <p class="mb-3 text-sm text-slate-600">
-      O que há de errado com o perfil de <strong>{nomeAnunciante}</strong>?
+      O que há de errado com o perfil de <strong>{nomeAnunciante}</strong>? A denúncia é anônima: não pedimos o seu nome nem o seu contato.
     </p>
     <fieldset class="space-y-2">
       <legend class="sr-only">Motivo</legend>
       {
-        motivos.map((m) => (
-          <label class="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 font-semibold ring-1 ring-slate-200 hover:bg-slate-50 has-checked:bg-azul-50 has-checked:ring-azul-500 has-checked:hover:bg-azul-50">
-            <input type="radio" name="motivo" value={m.id} class="size-4 accent-azul-600" />
-            {m.rotulo}
+        MOTIVOS_DENUNCIA.map((motivo) => (
+          <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3 py-2 font-semibold ring-1 ring-slate-200 hover:bg-slate-50 has-checked:bg-azul-50 has-checked:ring-azul-500 has-checked:hover:bg-azul-50">
+            <input type="radio" name="motivo" value={motivo} class="size-4 accent-azul-600" />
+            {ROTULOS_MOTIVO_DENUNCIA[motivo]}
           </label>
         ))
       }
     </fieldset>
-    <label class="mt-3 block" data-denuncia-outro hidden>
-      <span class="text-sm font-bold">Conte o que aconteceu</span>
-      <textarea
-        name="descricao"
-        rows="3"
-        maxlength="500"
-        class="mt-1 w-full rounded-xl border-0 p-3 ring-1 ring-slate-200 focus:ring-3 focus:ring-amarelo-400 focus:outline-none"
-      ></textarea>
-      <span class="text-xs text-slate-500">Pelo menos 10 caracteres.</span>
+    <span class="block text-xs text-vermelho-600" data-erro="motivo"></span>
+
+    <label class="mt-3 block" data-denuncia-descricao hidden>
+      <span class="text-sm font-bold" data-denuncia-rotulo-descricao>Quer contar mais? (opcional)</span>
+      <textarea name="descricao" rows="3" maxlength={DESCRICAO_DENUNCIA_MAXIMO} class={campo}></textarea>
+      <span class="text-xs text-slate-500" data-denuncia-dica-descricao hidden>Pelo menos 10 letras.</span>
+      <span class="block text-xs text-vermelho-600" data-erro="descricao"></span>
     </label>
+
+    {envioReal && <div class="mt-4 min-h-[65px]" data-denuncia-turnstile></div>}
+    <p class="mt-2 text-sm font-bold text-vermelho-600" data-denuncia-erro role="alert" hidden></p>
+
     <div class="mt-5 flex gap-2">
       <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>Cancelar</button>
       <button type="submit" disabled class={classesBotao("perigo", "m", "flex-1")}>Enviar denúncia</button>
@@ -71,41 +79,122 @@ const { nomeAnunciante } = Astro.props;
 </Modal>
 
 <script>
+  import { criarTurnstile } from "@/lib/turnstileNavegador";
+
+  const MINIMO_OUTRO = 10;
+  const ENVIAR = "Enviar denúncia";
+
   const dialogo = document.querySelector<HTMLDialogElement>("#modal-denuncia");
   const formulario = dialogo?.querySelector<HTMLFormElement>("[data-denuncia-formulario]");
   const enviada = dialogo?.querySelector<HTMLElement>("[data-denuncia-enviada]");
   const titulo = dialogo?.querySelector<HTMLElement>("[data-modal-titulo]");
-  const campoOutro = formulario?.querySelector<HTMLElement>("[data-denuncia-outro]");
+  const blocoDescricao = formulario?.querySelector<HTMLElement>("[data-denuncia-descricao]");
+  const rotuloDescricao = formulario?.querySelector<HTMLElement>("[data-denuncia-rotulo-descricao]");
+  const dicaDescricao = formulario?.querySelector<HTMLElement>("[data-denuncia-dica-descricao]");
+  const erroGeral = formulario?.querySelector<HTMLElement>("[data-denuncia-erro]");
   const botaoEnviar = formulario?.querySelector<HTMLButtonElement>("button[type=submit]");
 
-  if (dialogo && formulario && enviada && titulo && campoOutro && botaoEnviar) {
-    const podeEnviar = () => {
+  if (dialogo && formulario && enviada && titulo && blocoDescricao && rotuloDescricao && dicaDescricao && erroGeral && botaoEnviar) {
+    const envioReal = formulario.dataset.envio === "real";
+    const caixaTurnstile = formulario.querySelector<HTMLElement>("[data-denuncia-turnstile]");
+    const robo = envioReal && caixaTurnstile ? criarTurnstile(caixaTurnstile, formulario.dataset.turnstile ?? "", "Denúncia") : undefined;
+    let enviando = false;
+
+    const valores = () => {
       const dados = new FormData(formulario);
-      const motivo = dados.get("motivo");
-      const descricao = String(dados.get("descricao") ?? "");
-      return motivo !== null && (motivo !== "outro" || descricao.trim().length >= 10);
+      return { motivo: dados.get("motivo"), descricao: String(dados.get("descricao") ?? "").trim() };
+    };
+    const podeEnviar = () => {
+      const { motivo, descricao } = valores();
+      return motivo !== null && (motivo !== "outro" || descricao.length >= MINIMO_OUTRO);
     };
 
+    const limparErros = () => {
+      erroGeral.hidden = true;
+      for (const span of formulario.querySelectorAll<HTMLElement>("[data-erro]")) span.textContent = "";
+      for (const campo of formulario.querySelectorAll("[aria-invalid]")) campo.removeAttribute("aria-invalid");
+    };
+
+    const mostrarErro = (mensagem: string, campos: Record<string, string> = {}) => {
+      erroGeral.textContent = mensagem;
+      erroGeral.hidden = false;
+      for (const [nome, texto] of Object.entries(campos)) {
+        const span = formulario.querySelector<HTMLElement>(`[data-erro="${nome}"]`);
+        if (span) span.textContent = texto;
+        const alvo = formulario.elements.namedItem(nome);
+        if (alvo instanceof HTMLTextAreaElement) alvo.setAttribute("aria-invalid", "true");
+      }
+    };
+
+    // A descrição aparece com o motivo escolhido: obrigatória só no "Outro motivo".
     const atualizar = () => {
-      campoOutro.hidden = new FormData(formulario).get("motivo") !== "outro";
-      botaoEnviar.disabled = !podeEnviar();
+      const { motivo } = valores();
+      blocoDescricao.hidden = motivo === null;
+      rotuloDescricao.textContent = motivo === "outro" ? "Conte o que aconteceu" : "Quer contar mais? (opcional)";
+      dicaDescricao.hidden = motivo !== "outro";
+      botaoEnviar.disabled = enviando || !podeEnviar();
     };
 
-    document.querySelector("[data-denuncia-abrir]")?.addEventListener("click", () => dialogo.showModal());
+    document.querySelector("[data-denuncia-abrir]")?.addEventListener("click", () => {
+      dialogo.showModal();
+      void robo?.preparar();
+    });
     formulario.addEventListener("input", atualizar);
-    formulario.addEventListener("submit", (evento) => {
-      evento.preventDefault();
-      if (!podeEnviar()) return;
+
+    const concluir = () => {
       formulario.hidden = true;
       enviada.hidden = false;
       titulo.textContent = "Denúncia enviada";
+    };
+
+    formulario.addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+      if (enviando || !podeEnviar()) return;
+      limparErros();
+      if (!robo) {
+        concluir();
+        return;
+      }
+      const token = robo.token();
+      if (!token) {
+        mostrarErro("Confirme que você não é um robô.");
+        return;
+      }
+
+      enviando = true;
+      botaoEnviar.disabled = true;
+      botaoEnviar.textContent = "Enviando…";
+      try {
+        const resposta = await fetch("/api/denuncias", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ anuncianteId: formulario.dataset.anunciante, ...valores(), tokenRobo: token }),
+        });
+        const resultado = (await resposta.json()) as { ok: boolean; erro?: { mensagem: string; campos?: Record<string, string> } };
+        if (resultado.ok) {
+          concluir();
+          return;
+        }
+        mostrarErro(resultado.erro?.mensagem ?? "Não foi possível enviar agora. Tente de novo em instantes.", resultado.erro?.campos);
+      } catch (erro) {
+        console.error("Denúncia: envio falhou", erro);
+        mostrarErro("Sem conexão com o Ache Aqui. Confira a internet e tente de novo.");
+      } finally {
+        enviando = false;
+        botaoEnviar.textContent = ENVIAR;
+        atualizar();
+        // O token do Turnstile vale uma vez: um novo para a próxima tentativa.
+        void robo.preparar();
+      }
     });
+
     // Ao fechar, o modal volta ao estado inicial.
     dialogo.addEventListener("close", () => {
       formulario.reset();
       formulario.hidden = false;
       enviada.hidden = true;
       titulo.textContent = "Denunciar perfil";
+      limparErros();
       atualizar();
     });
   } else {

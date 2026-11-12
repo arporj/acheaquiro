@@ -106,7 +106,7 @@ const resumo = resumirTexto(anunciante.descricao) || categoriaNaCidade;
               />
               <div class="flex flex-wrap items-center justify-end gap-1 pt-2">
                 <BotaoCompartilhar caminho={`/perfil/${anunciante.slug}`} titulo={anunciante.nome} variante="botao" />
-                <BotaoDenunciar nomeAnunciante={anunciante.nome} />
+                <BotaoDenunciar anuncianteId={anunciante.id} nomeAnunciante={anunciante.nome} />
               </div>
             </div>
 

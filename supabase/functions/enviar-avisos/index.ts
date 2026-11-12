@@ -20,7 +20,7 @@ const WHATSAPP_EQUIPE = "5521988520666";
 
 interface Aviso {
   id: string;
-  tipo: "lembrete_7_dias" | "lembrete_vencimento" | "plano_vencido" | "aviso_preco" | "escala_fundador" | "proposta";
+  tipo: "lembrete_7_dias" | "lembrete_vencimento" | "plano_vencido" | "aviso_preco" | "escala_fundador" | "proposta" | "denuncia";
   para: string;
   tentativas: number;
   dados: {
@@ -43,6 +43,9 @@ interface Aviso {
     representante?: string;
     planoNovo?: string;
     expiraEm?: string;
+    /** Denúncia de perfil, para os administradores: o perfil e o motivo (sem o texto de quem denunciou). */
+    slug?: string;
+    motivo?: string;
   };
 }
 
@@ -82,6 +85,17 @@ function montar(
         "Se não reconhece este pedido, é só não aceitar: nada muda no seu plano.",
       ],
       botao: { texto: "Ver a proposta", link: `${PRODUCAO}/anunciante/proposta/${d.propostaId ?? ""}` },
+    };
+  }
+  if (aviso.tipo === "denuncia") {
+    return {
+      assunto: `Nova denúncia: ${d.nome ?? "perfil"}`,
+      paragrafos: [
+        `O perfil ${d.nome ?? ""} recebeu uma denúncia hoje, pelo motivo "${d.motivo ?? "não informado"}".`,
+        "Novas denúncias deste perfil hoje entram direto na tela, sem outro e-mail.",
+      ],
+      botao: { texto: "Ver as denúncias", link: `${PRODUCAO}/admin/denuncias` },
+      rodape: "Você recebe este aviso porque é administrador do Ache Aqui RO.",
     };
   }
   if (aviso.tipo === "escala_fundador") {
