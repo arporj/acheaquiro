@@ -7,7 +7,7 @@
     ".": "./src/index.ts"
   },
   "peerDependencies": {
-    "astro": "^7"
+    "astro": "^7.4.12"
   },
   "dependencies": {
     "@acheaqui/types": "*",
