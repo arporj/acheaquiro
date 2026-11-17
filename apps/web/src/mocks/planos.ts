@@ -117,6 +117,26 @@ export const extrasDisponiveis: Extra[] = [
     ...mensal,
     ...pacote,
   },
+  // Cópia do catálogo do banco (migration 20261117233134): mudou lá, muda aqui.
+  {
+    id: "agenda",
+    nome: "Agenda",
+    descricao: "Os shows e eventos do seu comércio no seu perfil e na Agenda do site, quantos quiser. Já vem no plano Premium.",
+    valorMensalCentavos: 3990,
+    ...mensal,
+    ...pacote,
+  },
+  {
+    id: "evento-avulso",
+    nome: "Evento avulso",
+    descricao: "Festa, feira, festival ou show na Agenda do site, com programação e barracas, quantos dias e atrações quiser dentro do período.",
+    valorMensalCentavos: 4990,
+    unidade: "por bloco de 7 dias",
+    ...anual,
+    cobranca: "por_evento",
+    aceitaDescontoFundador: false,
+    permiteAnual: false,
+  },
 ];
 
 export const regrasCobranca: RegrasCobranca = {

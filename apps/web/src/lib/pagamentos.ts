@@ -13,6 +13,7 @@ import {
   momentoLocal,
   percentualFundadorNoAno,
   podeDevolver,
+  podeDevolverEvento,
   situacaoCobranca,
   somarDias,
   type FaixaUpgrade,
@@ -33,6 +34,7 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { obterAberturaAoPublico, obterRegrasCobranca } from "../dados/consultas";
 import { limparPerfilDoCache, type Situacao } from "./anunciantesAdmin";
+import { limparCacheDoSite } from "./arquivos";
 import { apagarComprovante, enderecoDoComprovante, guardarComprovante } from "./comprovantesGuardados";
 import { lerProposta, planoDaProposta, type Proposta } from "./propostas";
 
@@ -499,10 +501,17 @@ export const ROTULO_FORMA: Record<FormaRecebimento, string> = { pix: "Pix", debi
 
 export interface PagamentoLista {
   id: string;
-  anuncianteId: string;
+  tipo: "plano" | "upgrade" | "extra" | "evento";
+  /** O evento avulso pode ser pago por quem não é anunciante (decisão B5). */
+  anuncianteId: string | null;
+  /** Quem pagou: o anunciante ou, no evento avulso, o nome do evento. */
   anunciante: string;
+  /** Página de quem pagou na administração: o anunciante ou o evento. */
+  link: string;
+  /** O que foi pago: o plano, "Extra Agenda" ou "Evento avulso, 2 blocos". */
   plano: string;
-  periodicidade: "mensal" | "anual";
+  /** Vazio no evento avulso, que não tem periodicidade. */
+  periodicidade: "mensal" | "anual" | "";
   numero: number;
   valorCentavos: number;
   forma: FormaRecebimento;
@@ -518,32 +527,45 @@ export interface PagamentoLista {
 
 // pagamentos tem duas ligações com planos (plano_id e plano_anterior_id): a junção diz qual usar.
 const COLUNAS_LISTA =
-  "id, anunciante_id, tipo, periodicidade, numero, valor_centavos, forma, parcelas, pago_em, devolvido_em, tipo_devolucao, " +
-  "anunciante:anunciantes(nome), plano:planos!pagamentos_plano_id_fkey(nome), conta:contas_recebimento(nome)";
+  "id, anunciante_id, tipo, periodicidade, numero, blocos, valor_centavos, forma, parcelas, pago_em, devolvido_em, tipo_devolucao, " +
+  "anunciante:anunciantes(nome), plano:planos!pagamentos_plano_id_fkey(nome), conta:contas_recebimento(nome), " +
+  "contratacao:extras_contratados(extra:extras(nome)), evento:eventos(id, nome, data_inicio)";
 
 type LinhaLista = {
   id: string;
-  anunciante_id: string;
-  tipo: "plano" | "upgrade";
-  periodicidade: "mensal" | "anual";
+  anunciante_id: string | null;
+  tipo: PagamentoLista["tipo"];
+  periodicidade: "mensal" | "anual" | null;
   numero: number;
+  blocos: number | null;
   valor_centavos: number;
   forma: FormaRecebimento;
   parcelas: number;
   pago_em: string;
   devolvido_em: string | null;
   tipo_devolucao: "devolucao" | "contestacao" | null;
-  anunciante: { nome: string };
-  plano: { nome: string };
+  anunciante: { nome: string } | null;
+  plano: { nome: string } | null;
   conta: { nome: string };
+  contratacao: { extra: { nome: string } } | null;
+  evento: { id: string; nome: string; data_inicio: string } | null;
 };
+
+/** O que foi pago, para a lista: o plano, o extra ou os blocos do evento avulso. */
+function oQueFoiPago(l: LinhaLista): string {
+  if (l.tipo === "extra") return `Extra ${l.contratacao?.extra.nome ?? ""}`.trim();
+  if (l.tipo === "evento") return `Evento avulso, ${l.blocos} bloco${l.blocos === 1 ? "" : "s"} de 7 dias`;
+  return l.plano?.nome ?? "";
+}
 
 const paraLista = (l: LinhaLista): PagamentoLista => ({
   id: l.id,
+  tipo: l.tipo,
   anuncianteId: l.anunciante_id,
-  anunciante: l.anunciante.nome,
-  plano: l.plano.nome,
-  periodicidade: l.periodicidade,
+  anunciante: l.tipo === "evento" ? (l.evento?.nome ?? "") : (l.anunciante?.nome ?? ""),
+  link: l.tipo === "evento" ? `/admin/agenda/${l.evento?.id}` : `/admin/anunciantes/${l.anunciante_id}`,
+  plano: oQueFoiPago(l),
+  periodicidade: l.periodicidade ?? "",
   numero: l.numero,
   valorCentavos: l.valor_centavos,
   forma: l.forma,
@@ -585,6 +607,7 @@ export async function listarDoAnunciante(supabase: SupabaseClient, anuncianteId:
 }
 
 export interface PagamentoDetalhe extends PagamentoLista {
+  /** Vazio no evento avulso sem anunciante. */
   anuncianteSlug: string;
   periodoInicio: string;
   venceEm: string;
@@ -632,7 +655,7 @@ export async function lerPagamento(supabase: SupabaseClient, id: string): Promis
     tornou_fundador: boolean;
     motivo_devolucao: string | null;
     comprovante_caminho: string | null;
-    slug: { slug: string };
+    slug: { slug: string } | null;
     comissoes: { origem: string; valor_centavos: number; libera_em: string; cancelada_em: string | null; representante: { codigo: string } }[];
   };
   const comprovante = await enderecoDoComprovante(supabase, l.comprovante_caminho);
@@ -640,7 +663,7 @@ export async function lerPagamento(supabase: SupabaseClient, id: string): Promis
     ok: true,
     dados: {
       ...paraLista(l),
-      anuncianteSlug: l.slug.slug,
+      anuncianteSlug: l.slug?.slug ?? "",
       periodoInicio: l.periodo_inicio,
       venceEm: l.vence_em,
       valorCheioCentavos: l.valor_cheio_centavos,
@@ -660,20 +683,38 @@ export async function lerPagamento(supabase: SupabaseClient, id: string): Promis
         liberaEm: c.libera_em,
         cancelada: c.cancelada_em !== null,
       })),
-      podeDevolver: !l.devolvido_em && podeDevolver({ numero: l.numero, pagoEm: l.pago_em, hoje: hojeNaCidade() }),
+      // Evento avulso: até 7 dias e até a véspera do evento (E1); o resto, o 1º pagamento em até 7 dias.
+      podeDevolver:
+        !l.devolvido_em &&
+        (l.tipo === "evento" && l.evento
+          ? podeDevolverEvento({ pagoEm: l.pago_em, inicioDoEvento: l.evento.data_inicio, hoje: hojeNaCidade() })
+          : podeDevolver({ numero: l.numero, pagoEm: l.pago_em, hoje: hojeNaCidade() })),
       podeContestar: !l.devolvido_em && l.forma !== "pix",
     },
   };
 }
 
-/** Devolução do primeiro pagamento, em até 7 dias (decisão 11). */
+/** O perfil sai do cache; no extra e no evento avulso, também as páginas da Agenda. */
+async function limparDepoisDaDevolucao(pagamento: PagamentoDetalhe, origemDoSite: string): Promise<void> {
+  if (pagamento.anuncianteSlug) await limparPerfilDoCache(origemDoSite, pagamento.anuncianteSlug);
+  if (pagamento.tipo === "extra" || pagamento.tipo === "evento") await limparCacheDoSite(origemDoSite);
+}
+
+/** Devolução do primeiro pagamento, em até 7 dias (decisão 11); do evento avulso, também até a véspera dele (E1). */
 export async function devolver(supabase: SupabaseClient, pagamento: PagamentoDetalhe, form: FormData, origemDoSite: string): Promise<Resultado<null>> {
   const lido = esquemaDevolucao.safeParse({ motivo: typeof form.get("motivo") === "string" ? String(form.get("motivo")).slice(0, 400) : undefined });
   if (!lido.success) return falha("DADOS_INVALIDOS", lido.error.issues[0]!.message);
-  if (!pagamento.podeDevolver) return falha("CONFLITO", "Só o primeiro pagamento pode ser devolvido, em até 7 dias depois dele.");
+  if (!pagamento.podeDevolver) {
+    return falha(
+      "CONFLITO",
+      pagamento.tipo === "evento"
+        ? "O evento avulso só é devolvido em até 7 dias depois do pagamento e até a véspera do evento."
+        : "Só o primeiro pagamento pode ser devolvido, em até 7 dias depois dele.",
+    );
+  }
   const { error } = await supabase.rpc("registrar_devolucao", { p_pagamento: pagamento.id, p_motivo: lido.data.motivo });
   if (error) return mensagemDoBanco(error, "devolver");
-  await limparPerfilDoCache(origemDoSite, pagamento.anuncianteSlug);
+  await limparDepoisDaDevolucao(pagamento, origemDoSite);
   return { ok: true, dados: null };
 }
 
@@ -688,7 +729,7 @@ export async function contestar(supabase: SupabaseClient, pagamento: PagamentoDe
   if (!pagamento.podeContestar) return falha("CONFLITO", "Só pagamento no cartão, ainda não devolvido, tem contestação.");
   const { error } = await supabase.rpc("registrar_contestacao", { p_pagamento: pagamento.id, p_motivo: lido.data.motivo });
   if (error) return mensagemDoBanco(error, "contestar");
-  await limparPerfilDoCache(origemDoSite, pagamento.anuncianteSlug);
+  await limparDepoisDaDevolucao(pagamento, origemDoSite);
   return { ok: true, dados: null };
 }
 

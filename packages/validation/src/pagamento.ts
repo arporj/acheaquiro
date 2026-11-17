@@ -3,6 +3,7 @@
 // de autorização impresso no comprovante do cartão. A taxa da maquininha não
 // entra: o valor é sempre o do sistema, calculado no servidor.
 import { z } from "zod";
+import { reaisEmCentavos, uuidOuVazio } from "./comum";
 
 export const FORMAS_RECEBIMENTO = ["pix", "debito", "credito"] as const;
 export type FormaRecebimento = (typeof FORMAS_RECEBIMENTO)[number];
@@ -28,28 +29,31 @@ const texto = (maximo: number, mensagem: string) =>
     .transform((v) => (v ?? "").trim().replace(/\s+/g, " "))
     .pipe(z.string().max(maximo, mensagem));
 
-export const esquemaPagamento = esquemaEscolhaPagamento
-  .extend({
-    forma: z.enum(FORMAS_RECEBIMENTO, { error: "Escolha a forma de pagamento." }),
-    parcelas: z.coerce.number({ error: "Parcelas inválidas." }).int("Parcelas inválidas.").min(1, "Parcelas inválidas.").max(12, "No máximo 12 parcelas."),
-    codigoAutorizacao: texto(20, "Código de autorização: no máximo 20 letras e números.").transform((v) => v.replace(/\s/g, "").toUpperCase()),
-    observacao: texto(300, "Observação: no máximo 300 letras."),
-  })
-  .superRefine((p, ctx) => {
-    if (p.forma !== "credito" && p.parcelas !== 1) {
-      ctx.addIssue({ code: "custom", path: ["parcelas"], message: "Só o crédito pode ser parcelado." });
-    }
-    if (p.forma === "pix" && p.codigoAutorizacao) {
-      ctx.addIssue({ code: "custom", path: ["codigoAutorizacao"], message: "O Pix não tem código de autorização." });
-    }
-    if (p.forma !== "pix" && !/^[A-Z0-9]{4,20}$/.test(p.codigoAutorizacao)) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["codigoAutorizacao"],
-        message: "Informe o código de autorização impresso no comprovante do cartão (4 a 20 letras e números).",
-      });
-    }
-  });
+/** Como o dinheiro chegou: forma, parcelas no crédito, código de autorização do cartão e observação. */
+const camposRecebimento = {
+  forma: z.enum(FORMAS_RECEBIMENTO, { error: "Escolha a forma de pagamento." }),
+  parcelas: z.coerce.number({ error: "Parcelas inválidas." }).int("Parcelas inválidas.").min(1, "Parcelas inválidas.").max(12, "No máximo 12 parcelas."),
+  codigoAutorizacao: texto(20, "Código de autorização: no máximo 20 letras e números.").transform((v) => v.replace(/\s/g, "").toUpperCase()),
+  observacao: texto(300, "Observação: no máximo 300 letras."),
+};
+
+function conferirRecebimento(p: { forma: FormaRecebimento; parcelas: number; codigoAutorizacao: string }, ctx: z.RefinementCtx) {
+  if (p.forma !== "credito" && p.parcelas !== 1) {
+    ctx.addIssue({ code: "custom", path: ["parcelas"], message: "Só o crédito pode ser parcelado." });
+  }
+  if (p.forma === "pix" && p.codigoAutorizacao) {
+    ctx.addIssue({ code: "custom", path: ["codigoAutorizacao"], message: "O Pix não tem código de autorização." });
+  }
+  if (p.forma !== "pix" && !/^[A-Z0-9]{4,20}$/.test(p.codigoAutorizacao)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["codigoAutorizacao"],
+      message: "Informe o código de autorização impresso no comprovante do cartão (4 a 20 letras e números).",
+    });
+  }
+}
+
+export const esquemaPagamento = esquemaEscolhaPagamento.extend(camposRecebimento).superRefine(conferirRecebimento);
 export type DadosPagamento = z.infer<typeof esquemaPagamento>;
 
 export const esquemaDevolucao = z.object({
@@ -61,3 +65,43 @@ export const esquemaPagamentoRepresentante = z.object({
   pagoEm: z.iso.date("Informe o dia do Pix ao representante."),
   observacao: texto(300, "Observação: no máximo 300 letras."),
 });
+
+/** Desconto do representante em reais; vazio é zero. O limite (a comissão desse pagamento) é conferido pelas regras do domínio. */
+const descontoRepresentante = z
+  .string()
+  .optional()
+  .transform((v) => (v ?? "").trim() || "0")
+  .pipe(reaisEmCentavos("Desconto do representante", { permiteZero: true }));
+
+/**
+ * Pagamento de um extra mensal (ou anual), com vencimento próprio (decisão B3
+ * de 17/11/2026). O representante é quem atendeu a venda (vazio: o anunciante
+ * contratou sozinho), e o desconto dele só vale no 1º pagamento.
+ */
+export const esquemaPagamentoExtra = z
+  .object({
+    extraId: z.uuid("Escolha o extra."),
+    periodicidade: z.enum(["mensal", "anual"], { error: "Escolha mensal ou anual." }),
+    pagoEm: z.iso.date("Informe o dia do pagamento."),
+    representanteId: uuidOuVazio("Escolha um representante da lista."),
+    descontoCentavos: descontoRepresentante,
+    ...camposRecebimento,
+  })
+  .superRefine(conferirRecebimento);
+export type DadosPagamentoExtra = z.infer<typeof esquemaPagamentoExtra>;
+
+/**
+ * Pagamento do evento avulso: os blocos de 7 dias que faltam pagar até o
+ * último dia informado (no pagamento complementar, o último dia novo,
+ * decisão E3 de 17/11/2026).
+ */
+export const esquemaPagamentoEvento = z
+  .object({
+    dataFim: z.iso.date("Informe o último dia do evento."),
+    pagoEm: z.iso.date("Informe o dia do pagamento."),
+    representanteId: uuidOuVazio("Escolha um representante da lista."),
+    descontoCentavos: descontoRepresentante,
+    ...camposRecebimento,
+  })
+  .superRefine(conferirRecebimento);
+export type DadosPagamentoEvento = z.infer<typeof esquemaPagamentoEvento>;

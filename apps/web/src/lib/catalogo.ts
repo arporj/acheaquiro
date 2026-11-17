@@ -54,6 +54,8 @@ export interface PlanoCatalogo {
   limiteProdutos: number;
   limiteEnderecos: number;
   temRelatorio: boolean;
+  /** Comércio: o plano inclui a Agenda, sem o extra (hoje, só o Premium). */
+  incluiAgenda: boolean;
   ativo: boolean;
   /** Assinaturas em dia ou dentro da tolerância: recebem o aviso quando o preço sobe. */
   assinaturasAtivas: number;
@@ -70,7 +72,7 @@ export interface ExtraCatalogo {
   quantidade: number | null;
   aceitaDescontoFundador: boolean;
   permiteAnual: boolean;
-  cobranca: "mensal" | "por_dia";
+  cobranca: "mensal" | "por_dia" | "por_evento";
   regras: Record<string, unknown>;
   ativo: boolean;
 }
@@ -110,7 +112,7 @@ export async function lerCatalogo(supabase: SupabaseClient): Promise<Resultado<C
       .from("planos")
       .select(
         "id, tipo, nome, nivel, valor_mensal_centavos, meses_cobrados_no_anual, limite_fotos, limite_categorias_adicionais, " +
-          "limite_encartes_semana, limite_produtos, limite_enderecos, tem_relatorio, ativo",
+          "limite_encartes_semana, limite_produtos, limite_enderecos, tem_relatorio, inclui_agenda, ativo",
       )
       .order("tipo")
       .order("nivel"),
@@ -141,6 +143,7 @@ export async function lerCatalogo(supabase: SupabaseClient): Promise<Resultado<C
     limite_produtos: number;
     limite_enderecos: number;
     tem_relatorio: boolean;
+    inclui_agenda: boolean;
     ativo: boolean;
   };
   type LinhaExtra = {
@@ -174,6 +177,7 @@ export async function lerCatalogo(supabase: SupabaseClient): Promise<Resultado<C
         limiteProdutos: p.limite_produtos,
         limiteEnderecos: p.limite_enderecos,
         temRelatorio: p.tem_relatorio,
+        incluiAgenda: p.inclui_agenda,
         ativo: p.ativo,
         assinaturasAtivas: ativas.dados.filter((a) => a.plano_id === p.id).length,
       })),
@@ -218,6 +222,7 @@ export async function salvarPlano(supabase: SupabaseClient, id: string, form: Fo
     limiteProdutos: campo(form, "limite_produtos"),
     limiteEnderecos: campo(form, "limite_enderecos"),
     temRelatorio: campo(form, "tem_relatorio"),
+    incluiAgenda: campo(form, "inclui_agenda"),
   });
   if (!lido.success) return falha("DADOS_INVALIDOS", lido.error.issues[0]!.message, mensagensPorCampo(lido.error));
   const d = lido.data;

@@ -3,7 +3,7 @@
 // quem está logado, para a auditoria registrar quem fez; o RLS decide o que
 // cada papel pode alterar. Regras em packages/domain/agenda.ts e esquemas em
 // packages/validation/agenda.ts; o banco repete as travas (migration da Agenda).
-import { impedimentoParaAparecerNaAgenda, momentoLocal, problemaNasDatasDoEvento, diaDentroDoEvento } from "@acheaqui/domain";
+import { blocosDoEventoAvulso, impedimentoParaAparecerNaAgenda, momentoLocal, problemaNasDatasDoEvento, diaDentroDoEvento } from "@acheaqui/domain";
 import type { OrigemEvento, Resultado } from "@acheaqui/types";
 import {
   ArquivoInvalido,
@@ -146,13 +146,15 @@ export interface EventoAdmin extends EventoResumoAdmin {
 }
 
 const CAMPOS_RESUMO =
-  "id, slug, nome, origem, situacao, data_inicio, data_fim, local, cortesia_em, bairros(nome), " +
-  "anunciantes(id, nome, slug, status, categoria_principal_id, planos!anunciantes_plano_id_fkey(inclui_agenda), anunciante_categorias(categoria_id))";
+  "id, slug, nome, origem, situacao, data_inicio, data_fim, local, cortesia_em, bairros(nome), pagamentos(blocos, devolvido_em), " +
+  "anunciantes(id, nome, slug, status, categoria_principal_id, planos!anunciantes_plano_id_fkey(inclui_agenda), anunciante_categorias(categoria_id), " +
+  "extras_contratados(encerrado_em, extras(codigo)))";
 
 type LinhaResumo = Omit<EventoResumoAdmin, "bairro" | "anunciante" | "cortesia" | "impedimento"> & {
   cortesia_em: string | null;
   bairros: { nome: string } | null;
-  anunciantes: AnuncianteDoEvento | null;
+  pagamentos: { blocos: number; devolvido_em: string | null }[];
+  anunciantes: (AnuncianteDoEvento & { extras_contratados: { encerrado_em: string | null; extras: { codigo: string } }[] }) | null;
 };
 
 async function idCategoriaMusicos(supabase: SupabaseClient): Promise<string | null> {
@@ -162,17 +164,21 @@ async function idCategoriaMusicos(supabase: SupabaseClient): Promise<string | nu
 }
 
 /**
- * Monta o resumo e confere se o evento aparece na Agenda pela regra do domínio.
- * O extra Agenda e o pagamento do evento avulso entram com a contratação de extras.
+ * Monta o resumo e confere se o evento aparece na Agenda pela regra do domínio
+ * (a mesma de interno.evento_liberado): o extra Agenda em vigor do comércio e
+ * os blocos de 7 dias pagos do evento avulso.
  */
 function paraResumo(linha: LinhaResumo, musicos: string | null): EventoResumoAdmin {
-  const { bairros, anunciantes: a, ...resto } = linha;
+  const { bairros, anunciantes: a, pagamentos, ...resto } = linha;
+  const blocosPagos = pagamentos.filter((p) => p.devolvido_em === null).reduce((soma, p) => soma + p.blocos, 0);
   const impedimento =
     linha.situacao === "publicado"
       ? impedimentoParaAparecerNaAgenda({
           origem: linha.origem,
           anuncioNoAr: a?.status === "publicado",
           planoIncluiAgenda: Boolean(a?.planos?.inclui_agenda),
+          extraAgendaEmDia: Boolean(a?.extras_contratados.some((c) => c.encerrado_em === null && c.extras.codigo === "agenda")),
+          pago: blocosPagos > 0 && blocosPagos >= blocosDoEventoAvulso(linha.data_inicio, linha.data_fim),
           anuncioDeArtista: Boolean(a && musicos && (a.categoria_principal_id === musicos || a.anunciante_categorias.some((c) => c.categoria_id === musicos))),
           cortesia: linha.cortesia_em !== null,
         })

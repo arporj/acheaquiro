@@ -69,8 +69,11 @@ export interface Extra {
   valorMensalCentavos: number;
   /** Complemento do preço: "por categoria, em 3 bairros". */
   unidade?: string;
-  /** "por_dia": o Banner Exclusivo, escolhido em calendário (regras em `porDia`). */
-  cobranca: "mensal" | "por_dia";
+  /**
+   * "por_dia": o Banner Exclusivo, escolhido em calendário (regras em `porDia`).
+   * "por_evento": o evento avulso da Agenda, por bloco de 7 dias (o valor é o do bloco).
+   */
+  cobranca: "mensal" | "por_dia" | "por_evento";
   porDia?: {
     diariaCentavos: number;
     valorBlocoCentavos: number;

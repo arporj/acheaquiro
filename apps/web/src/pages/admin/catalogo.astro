@@ -74,7 +74,11 @@ const caixa = "rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5";
 const marcavel = "flex items-center gap-2 text-sm font-semibold";
 const escalaLinhas = Array.from({ length: 5 }, (_, i) => catalogo?.escala[i]);
 const resumoExtra = (e: ExtraCatalogo) =>
-  e.cobranca === "por_dia" ? `${formatarCentavos(Number(e.regras.diaria_centavos ?? 0))} por dia` : `${formatarCentavos(e.valorMensalCentavos)} por mês`;
+  e.cobranca === "por_dia"
+    ? `${formatarCentavos(Number(e.regras.diaria_centavos ?? 0))} por dia`
+    : e.cobranca === "por_evento"
+      ? `${formatarCentavos(e.valorMensalCentavos)} por bloco de 7 dias`
+      : `${formatarCentavos(e.valorMensalCentavos)} por mês`;
 ---
 
 <PaginaAdmin titulo="Catálogo e valores" descricao="Planos, extras e o desconto de Fundador. Toda mudança fica no registro de atividades.">
@@ -191,6 +195,12 @@ const resumoExtra = (e: ExtraCatalogo) =>
                         <input type="checkbox" name="tem_relatorio" value="sim" checked={p.temRelatorio} />
                         Relatório mensal
                       </label>
+                      {p.tipo === "comercio" && (
+                        <label class={`${marcavel} sm:mt-7`}>
+                          <input type="checkbox" name="inclui_agenda" value="sim" checked={p.incluiAgenda} />
+                          Inclui a Agenda
+                        </label>
+                      )}
                     </div>
                     <button type="submit" class={classesBotao("azul", "m", "mt-4")}>
                       Salvar plano
@@ -226,9 +236,9 @@ const resumoExtra = (e: ExtraCatalogo) =>
                     <label class={classesRotulo} for={`enome-${e.id}`}>Nome</label>
                     <input id={`enome-${e.id}`} name="nome" required maxlength="60" value={e.nome} class={classesCampo} />
                   </div>
-                  {e.cobranca === "mensal" && (
+                  {e.cobranca !== "por_dia" && (
                     <div>
-                      <label class={classesRotulo} for={`evalor-${e.id}`}>Valor por mês (R$)</label>
+                      <label class={classesRotulo} for={`evalor-${e.id}`}>{e.cobranca === "por_evento" ? "Valor do bloco de 7 dias (R$)" : "Valor por mês (R$)"}</label>
                       <input id={`evalor-${e.id}`} name="valor" inputmode="decimal" required value={reais(e.valorMensalCentavos)} class={classesCampo} />
                     </div>
                   )}

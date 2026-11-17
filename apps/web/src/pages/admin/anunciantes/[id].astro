@@ -30,6 +30,7 @@ import {
 } from "@/lib/anunciantesAdmin";
 import { formatarTelefone } from "@/lib/contato";
 import { listarEquipe } from "@/lib/equipe";
+import { ROTULO_ENCERRAMENTO, listarExtrasDoAnunciante } from "@/lib/extras";
 import { ROTULO_FORMA, SITUACOES_ANTES_DA_APROVACAO, SITUACOES_QUE_PAGAM, agendarReducao, hojeNaCidade, listarDoAnunciante } from "@/lib/pagamentos";
 import { ROTULO_PROPOSTA, lerContextoProposta, listarPropostas, situacaoVisivel } from "@/lib/propostas";
 import { formatarCentavos } from "@/lib/precos";
@@ -108,7 +109,7 @@ if (Astro.request.method === "POST" && lido.ok) {
   }
 }
 
-const [opcoes, historico, equipe, atendimentos, pagamentos, naoProcurar, planoAtual, propostas] = await Promise.all([
+const [opcoes, historico, equipe, atendimentos, pagamentos, naoProcurar, planoAtual, propostas, extras] = await Promise.all([
   lerOpcoes(supabase),
   lerHistorico(supabase, id),
   listarEquipe(supabase),
@@ -117,11 +118,12 @@ const [opcoes, historico, equipe, atendimentos, pagamentos, naoProcurar, planoAt
   lerNaoProcurar(supabase, id),
   lerContextoProposta(supabase, id),
   listarPropostas(supabase, { anuncianteId: id }),
+  listarExtrasDoAnunciante(supabase, id),
 ]);
 // Pago antes do aceite (decisão de 17/11/2026): o anúncio espera o aceite e a aprovação.
 const pagoAntesDoAceite =
   lido.ok && SITUACOES_ANTES_DA_APROVACAO.includes(lido.dados.status) && pagamentos.ok
-    ? pagamentos.dados.find((p) => !p.devolvido && !p.upgrade)
+    ? pagamentos.dados.find((p) => !p.devolvido && p.tipo === "plano")
     : undefined;
 // Mudança de plano (plano 3B.1): maior na hora, com a diferença proporcional; menor, agendada para a renovação (decisão S2).
 const plano = planoAtual.ok ? planoAtual.dados : null;
@@ -371,6 +373,29 @@ const caixa = "rounded-xl bg-fundo p-3";
               ))}
             </ul>
           )}
+          {/* Extras com vencimento próprio (decisão B3 de 17/11/2026). */}
+          <div class="mt-4 rounded-xl bg-fundo p-3 text-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <p class="font-bold text-azul-900">Extras</p>
+              {SITUACOES_QUE_PAGAM.includes(a.status) && (
+                <a href={`/admin/pagamentos/extra?anunciante=${a.id}`} class={classesBotao("contorno", "p")}>
+                  Registrar pagamento de extra
+                </a>
+              )}
+            </div>
+            {!extras.ok && <p class="mt-1 text-vermelho-700">{extras.erro.mensagem}</p>}
+            {extras.ok && extras.dados.length === 0 && <p class="mt-1 text-slate-500">Nenhum extra contratado.</p>}
+            {extras.ok && extras.dados.length > 0 && (
+              <ul class="mt-1 space-y-1">
+                {extras.dados.map((e) => (
+                  <li class:list={[!e.emVigor && "text-slate-500"]}>
+                    <strong>{e.nome}</strong> ({e.periodicidade}){" "}
+                    {e.emVigor ? <>vence em {formatarData(e.venceEm)}</> : <>· {ROTULO_ENCERRAMENTO[e.motivoEncerramento!]} ({formatarData(e.venceEm)})</>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           {pagamentos.ok && pagamentos.dados.length === 0 && <p class="mt-2 text-sm text-slate-500">Nenhum pagamento registrado.</p>}
           {pagamentos.ok && pagamentos.dados.length > 0 && (
             <ul class="mt-2 divide-y divide-slate-100 text-sm">

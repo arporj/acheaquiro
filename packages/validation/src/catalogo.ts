@@ -23,6 +23,8 @@ export const esquemaPlanoAdmin = z.object({
   limiteProdutos: inteiro(0, 5000, "Produtos: de 0 a 5000."),
   limiteEnderecos: inteiro(1, 100, "Endereços: de 1 a 100."),
   temRelatorio: marcado,
+  /** Só nos planos de comércio: o banco recusa a Agenda incluída no plano de autônomo. */
+  incluiAgenda: marcado,
 });
 export type PlanoAdmin = z.output<typeof esquemaPlanoAdmin>;
 

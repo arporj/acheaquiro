@@ -50,3 +50,25 @@ export function ligarComprovante(form: HTMLFormElement): void {
     }
   });
 }
+
+/**
+ * Liga o bloco CamposRecebimento: o comprovante e os campos do cartão, que só
+ * aparecem (e só vão no envio) com débito ou crédito; parcelas, só no crédito.
+ */
+export function ligarCamposRecebimento(form: HTMLFormElement): void {
+  ligarComprovante(form);
+  const cartao = form.querySelector<HTMLElement>("[data-so-cartao]");
+  const credito = form.querySelector<HTMLElement>("[data-so-credito]");
+  const parcelas = form.querySelector<HTMLSelectElement>("#parcelas");
+  if (!cartao || !credito || !parcelas) return;
+  const atualizar = () => {
+    const forma = form.querySelector<HTMLInputElement>("[data-forma]:checked")?.value ?? "pix";
+    cartao.hidden = forma === "pix";
+    credito.hidden = forma !== "credito";
+    // Campo escondido não vai no envio: Pix sem código e débito sempre à vista.
+    for (const campo of cartao.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input, select")) campo.disabled = forma === "pix";
+    parcelas.disabled = forma !== "credito";
+  };
+  for (const radio of form.querySelectorAll("[data-forma]")) radio.addEventListener("change", atualizar);
+  atualizar();
+}

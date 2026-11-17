@@ -56,16 +56,20 @@ const caixa = "rounded-xl bg-fundo p-3";
         )}
         <div class="grid gap-3 text-sm sm:grid-cols-2">
           <div class={caixa}>
-            <p class="font-bold text-azul-900">Anunciante</p>
-            <a href={`/admin/anunciantes/${p.anuncianteId}`} class="font-bold text-azul-600 hover:underline">
+            <p class="font-bold text-azul-900">{p.tipo === "evento" ? "Evento" : "Anunciante"}</p>
+            <a href={p.link} class="font-bold text-azul-600 hover:underline">
               {p.anunciante}
             </a>
             <p>
               {p.plano} {p.periodicidade} · {p.upgrade ? "mudança para um plano maior" : `${p.numero}º pagamento`}
             </p>
-            <p>
-              Período: {formatarData(p.periodoInicio)} a {formatarData(p.venceEm)}
-            </p>
+            {
+              p.tipo !== "evento" && (
+                <p>
+                  Período: {formatarData(p.periodoInicio)} a {formatarData(p.venceEm)}
+                </p>
+              )
+            }
             {p.tornouFundador && <p class="font-bold text-zap-700">Virou Fundador com este pagamento</p>}
           </div>
           <div class={caixa}>
@@ -131,8 +135,15 @@ const caixa = "rounded-xl bg-fundo p-3";
       <Modal id="modal-devolver" titulo="Registrar devolução">
         <form method="post">
           <p class="text-sm text-slate-700">
-            Registre depois de devolver o dinheiro (Pix de volta ou estorno na maquininha). A comissão é cancelada, o plano sai
-            {p.tornouFundador && " e o anunciante deixa de ser Fundador"}: o comércio volta ao Gratuito e o autônomo sai do ar até um novo pagamento.
+            Registre depois de devolver o dinheiro (Pix de volta ou estorno na maquininha). A comissão é cancelada
+            {p.tipo === "extra" && " e o extra acaba."}
+            {p.tipo === "evento" && " e o evento sai da Agenda até os blocos que faltam serem pagos."}
+            {(p.tipo === "plano" || p.tipo === "upgrade") && (
+              <>
+                , o plano sai{p.tornouFundador && " e o anunciante deixa de ser Fundador"}: o comércio volta ao Gratuito e o autônomo sai do ar até um novo
+                pagamento.
+              </>
+            )}
           </p>
           <label for="motivo" class={classesRotulo}>Motivo</label>
           <textarea id="motivo" name="motivo" rows="3" required minlength="3" maxlength="300" class={classesCampo} />
@@ -155,8 +166,10 @@ const caixa = "rounded-xl bg-fundo p-3";
         <form method="post">
           <input type="hidden" name="acao" value="contestar" />
           <p class="text-sm text-slate-700">
-            Use quando o banco do anunciante estornar a compra. O plano sai como na devolução
-            {p.tornouFundador && " e o anunciante deixa de ser Fundador"}. A comissão ainda não paga é cancelada; a já paga é descontada do próximo
+            Use quando o banco do anunciante estornar a compra.
+            {p.tipo === "extra" && " O extra acaba."}
+            {p.tipo === "evento" && " O evento sai da Agenda até os blocos que faltam serem pagos."}
+            {(p.tipo === "plano" || p.tipo === "upgrade") && <> O plano sai como na devolução{p.tornouFundador && " e o anunciante deixa de ser Fundador"}.</>} A comissão ainda não paga é cancelada; a já paga é descontada do próximo
             pagamento ao representante.
           </p>
           <label for="motivo-contestacao" class={classesRotulo}>Motivo</label>

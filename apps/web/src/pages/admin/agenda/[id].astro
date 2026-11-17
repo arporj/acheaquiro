@@ -2,7 +2,7 @@
 // Um evento da Agenda na administração (/admin/agenda/novo cria): dados,
 // publicação, cortesia (decisão C1 de 17/11/2026), cartaz, programação e
 // barracas. Regras em packages/domain/agenda.ts; o banco repete as travas.
-import { diasDoEventoNoPeriodo, momentoLocal, ultimoDiaParaComecar } from "@acheaqui/domain";
+import { blocosDoEventoAvulso, diasDoEventoNoPeriodo, momentoLocal, ultimoDiaParaComecar } from "@acheaqui/domain";
 import { Icone, Modal, classesBotao } from "@acheaqui/ui";
 import {
   CLASSIFICACOES_ETARIAS,
@@ -34,6 +34,8 @@ import {
   type EventoAdmin,
 } from "@/lib/agenda";
 import { limparCacheDoSite } from "@/lib/arquivos";
+import { lerContextoEvento } from "@/lib/extras";
+import { formatarCentavos } from "@/lib/precos";
 import { dataCurtaComSemana, formatarData } from "@/lib/texto";
 import type { Resultado } from "@acheaqui/types";
 
@@ -132,6 +134,10 @@ const [eventoR, bairrosR, artistasR] = await Promise.all([
   listarBairros(supabase),
   novo ? Promise.resolve(null) : listarArtistasAdmin(supabase),
 ]);
+// Evento avulso: os blocos de 7 dias pagos e o que falta pagar (decisões E1 a E3 de 17/11/2026).
+const pagamentoR = eventoR?.ok && eventoR.dados.origem === "avulso" ? await lerContextoEvento(supabase, eventoR.dados.id) : null;
+if (pagamentoR && !pagamentoR.ok) erro ||= pagamentoR.erro.mensagem;
+const pagamento = pagamentoR?.ok ? pagamentoR.dados : null;
 if (eventoR && !eventoR.ok && eventoR.erro.codigo === "NAO_ENCONTRADO") return Astro.rewrite("/404");
 if (eventoR && !eventoR.ok) erro ||= eventoR.erro.mensagem;
 if (!bairrosR.ok) erro ||= bairrosR.erro.mensagem;
@@ -230,6 +236,46 @@ const titulo = novo ? "Novo evento" : (evento?.nome ?? "Evento");
                 </button>
               </form>
             )}
+          </div>
+        )}
+        {pagamento && (
+          <div class="mt-5 border-t border-slate-100 pt-4">
+            <h3 class="font-bold text-azul-900">Pagamento</h3>
+            {(() => {
+              const blocos = blocosDoEventoAvulso(pagamento.evento.dataInicio, pagamento.evento.dataFim);
+              const faltam = Math.max(0, blocos - pagamento.blocosPagos);
+              return (
+                <>
+                  <p class="mt-1 text-sm text-slate-700">
+                    {blocos} bloco{blocos === 1 ? "" : "s"} de 7 dias · {pagamento.blocosPagos} pago{pagamento.blocosPagos === 1 ? "" : "s"}
+                    {pagamento.valorBlocoCentavos !== null && faltam > 0 && ` · falta pagar ${formatarCentavos(faltam * pagamento.valorBlocoCentavos)}`}
+                    {pagamento.evento.cortesia && " · com cortesia, aparece sem pagamento"}
+                  </p>
+                  {pagamento.blocosPagos > 0 && (
+                    <p class="mt-1 text-xs text-slate-500">
+                      As datas só mudam dentro dos blocos pagos (até {pagamento.blocosPagos * 7} dias). Para aumentar o evento, registre o pagamento dos blocos que faltam.
+                    </p>
+                  )}
+                  {pagamento.pagamentos.length > 0 && (
+                    <ul class="mt-2 space-y-1 text-sm">
+                      {pagamento.pagamentos.map((p) => (
+                        <li>
+                          <a href={`/admin/pagamentos/${p.id}`} class:list={["font-bold text-azul-600 hover:underline", p.devolvido && "text-slate-400 line-through"]}>
+                            {formatarData(p.pagoEm)} · {p.blocos} bloco{p.blocos === 1 ? "" : "s"} · {formatarCentavos(p.valorCentavos)}
+                          </a>
+                          {p.devolvido && <span class="ml-2 text-xs font-extrabold text-vermelho-700">Devolvido</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {evento.situacao !== "cancelado" && evento.data_fim >= hoje && (
+                    <a href={`/admin/pagamentos/evento?evento=${evento.id}`} class={classesBotao(faltam > 0 ? "azul" : "contorno", "p", "mt-3")}>
+                      {faltam > 0 ? "Registrar pagamento" : "Aumentar o evento e pagar os blocos novos"}
+                    </a>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
       </section>

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { esquemaDevolucao, esquemaEscolhaPagamento, esquemaPagamento, esquemaPagamentoRepresentante } from "./pagamento";
+import {
+  esquemaDevolucao,
+  esquemaEscolhaPagamento,
+  esquemaPagamento,
+  esquemaPagamentoEvento,
+  esquemaPagamentoExtra,
+  esquemaPagamentoRepresentante,
+} from "./pagamento";
 
 const escolha = { planoId: "0b8f3a3e-4c1d-4d55-9a3e-2f6c1b7d9e01", periodicidade: "anual", pagoEm: "2026-11-10" };
 const pix = { ...escolha, forma: "pix", parcelas: "1", codigoAutorizacao: "", observacao: "" };
@@ -77,5 +84,46 @@ describe("esquemaPagamentoRepresentante", () => {
   it("exige o dia e limpa a observação", () => {
     expect(esquemaPagamentoRepresentante.parse({ pagoEm: "2026-11-20", observacao: "  Pix   enviado " })).toEqual({ pagoEm: "2026-11-20", observacao: "Pix enviado" });
     expect(mensagem(esquemaPagamentoRepresentante.safeParse({ pagoEm: "" }))).toBe("Informe o dia do Pix ao representante.");
+  });
+});
+
+describe("esquemaPagamentoExtra", () => {
+  const extra = {
+    extraId: "0b8f3a3e-4c1d-4d55-9a3e-2f6c1b7d9e02",
+    periodicidade: "mensal",
+    pagoEm: "2026-11-18",
+    representanteId: "",
+    descontoCentavos: "",
+    forma: "pix",
+    parcelas: "1",
+    codigoAutorizacao: "",
+    observacao: "",
+  };
+
+  it("sem representante e sem desconto", () => {
+    expect(esquemaPagamentoExtra.parse(extra)).toMatchObject({ representanteId: "", descontoCentavos: 0, parcelas: 1 });
+  });
+
+  it("desconto em reais vira centavos", () => {
+    expect(esquemaPagamentoExtra.parse({ ...extra, representanteId: "0b8f3a3e-4c1d-4d55-9a3e-2f6c1b7d9e03", descontoCentavos: "3,00" }).descontoCentavos).toBe(300);
+  });
+
+  it("recusa extra, representante e desconto inválidos, e confere o cartão", () => {
+    expect(mensagem(esquemaPagamentoExtra.safeParse({ ...extra, extraId: "x" }))).toBe("Escolha o extra.");
+    expect(mensagem(esquemaPagamentoExtra.safeParse({ ...extra, representanteId: "x" }))).toBe("Escolha um representante da lista.");
+    expect(mensagem(esquemaPagamentoExtra.safeParse({ ...extra, descontoCentavos: "abc" }))).toBe("Desconto do representante: valor inválido.");
+    expect(mensagem(esquemaPagamentoExtra.safeParse({ ...extra, forma: "debito" }))).toMatch(/código de autorização/);
+  });
+});
+
+describe("esquemaPagamentoEvento", () => {
+  const evento = { dataFim: "2026-11-29", pagoEm: "2026-11-18", representanteId: "", descontoCentavos: "", forma: "credito", parcelas: "2", codigoAutorizacao: "ab 12cd", observacao: "" };
+
+  it("aceita o último dia e o cartão parcelado", () => {
+    expect(esquemaPagamentoEvento.parse(evento)).toMatchObject({ dataFim: "2026-11-29", parcelas: 2, codigoAutorizacao: "AB12CD", descontoCentavos: 0 });
+  });
+
+  it("recusa último dia inválido", () => {
+    expect(mensagem(esquemaPagamentoEvento.safeParse({ ...evento, dataFim: "29/11" }))).toBe("Informe o último dia do evento.");
   });
 });

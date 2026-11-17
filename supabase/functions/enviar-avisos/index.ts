@@ -28,7 +28,10 @@ interface Aviso {
     | "escala_fundador"
     | "proposta"
     | "denuncia"
-    | "pagamento_antes_do_aceite";
+    | "pagamento_antes_do_aceite"
+    | "extra_lembrete_7_dias"
+    | "extra_lembrete_vencimento"
+    | "extra_vencido";
   para: string;
   tentativas: number;
   dados: {
@@ -61,6 +64,8 @@ interface Aviso {
     desistirAte?: string;
     /** Plano vencido de quem pagou e ainda não foi aprovado. */
     antesDaAprovacao?: boolean;
+    /** Extras que vencem (ou venceram) no dia (decisões B3 e E2 de 17/11/2026). */
+    extras?: { nome: string; periodicidade: "mensal" | "anual" }[];
   };
 }
 
@@ -91,6 +96,29 @@ function montar(
     ? `Como Fundador, a renovação é anual e precisa ser paga até ${limite} para você manter o selo e o desconto.`
     : "";
 
+  if (aviso.tipo === "extra_lembrete_7_dias" || aviso.tipo === "extra_lembrete_vencimento" || aviso.tipo === "extra_vencido") {
+    const extras = (d.extras ?? []).map((e) => `${e.nome} (${e.periodicidade})`);
+    const lista = extras.length > 1 ? `os extras ${extras.slice(0, -1).join(", ")} e ${extras.at(-1)}` : `o extra ${extras[0] ?? ""}`;
+    const renovar = { texto: "Renovar pelo WhatsApp", link: linkEquipe("Quero renovar o meu extra") };
+    if (aviso.tipo === "extra_vencido") {
+      return {
+        assunto: "Um extra do seu anúncio no Ache Aqui RO acabou",
+        paragrafos: [
+          `${lista[0]!.toUpperCase()}${lista.slice(1)} de ${d.nome} venceu em ${data(d.venceEm)} e não foi renovado. Por isso, ele saiu do seu anúncio.`,
+          "O seu plano continua igual. Para voltar a ter o extra, fale com a equipe pelo WhatsApp e pague por Pix ou cartão.",
+        ],
+        botao: { texto: "Falar com a equipe", link: linkEquipe("Quero voltar a ter o meu extra") },
+      };
+    }
+    return {
+      assunto: aviso.tipo === "extra_lembrete_vencimento" ? "Um extra do seu anúncio vence hoje" : `Um extra do seu anúncio vence em ${data(d.venceEm)}`,
+      paragrafos: [
+        `${lista[0]!.toUpperCase()}${lista.slice(1)} de ${d.nome} vence ${aviso.tipo === "extra_lembrete_vencimento" ? "hoje, " : "em "}${data(d.venceEm)}.`,
+        `Para continuar com ele, renove até ${limite}, por Pix ou cartão: é só falar com a equipe pelo WhatsApp. Depois disso, o extra sai do seu anúncio, e o seu plano continua igual.`,
+      ],
+      botao: renovar,
+    };
+  }
   if (aviso.tipo === "pagamento_antes_do_aceite") {
     return {
       assunto: "Recebemos o seu pagamento no Ache Aqui RO",

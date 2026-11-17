@@ -89,7 +89,7 @@ describe("impedimentoParaAparecerNaAgenda", () => {
   it("avulso: pago ou cortesia", () => {
     expect(impedimentoParaAparecerNaAgenda({ origem: "avulso", pago: true })).toBeNull();
     expect(impedimentoParaAparecerNaAgenda({ origem: "avulso", cortesia: true })).toBeNull();
-    expect(impedimentoParaAparecerNaAgenda({ origem: "avulso" })).toBe("O evento avulso aparece depois do pagamento registrado ou da cortesia.");
+    expect(impedimentoParaAparecerNaAgenda({ origem: "avulso" })).toBe("O evento avulso aparece com todos os blocos de 7 dias pagos ou com a cortesia.");
   });
   it("órgão público: sempre", () => {
     expect(impedimentoParaAparecerNaAgenda({ origem: "orgao_publico" })).toBeNull();

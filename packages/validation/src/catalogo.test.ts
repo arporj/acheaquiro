@@ -43,7 +43,12 @@ describe("esquemaPlanoAdmin", () => {
       limiteProdutos: 50,
       limiteEnderecos: 1,
       temRelatorio: true,
+      incluiAgenda: false,
     });
+  });
+
+  it("marca a Agenda incluída no plano", () => {
+    expect(esquemaPlanoAdmin.parse({ ...plano, incluiAgenda: "sim" }).incluiAgenda).toBe(true);
   });
 
   it("plano gratuito (zero) e sem relatório", () => {

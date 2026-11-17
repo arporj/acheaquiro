@@ -4,7 +4,8 @@
 // depois como foi pago. O servidor calcula tudo de novo no registro.
 import { Icone, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
-import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import CamposRecebimento from "@/components/admin/CamposRecebimento.astro";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
 import { ROTULO_SITUACAO } from "@/lib/anunciantesAdmin";
 import { SITUACOES_ANTES_DA_APROVACAO, calcular, hojeNaCidade, lerContexto, lerEscolha, registrarPagamento } from "@/lib/pagamentos";
@@ -52,8 +53,6 @@ if (escolha && !escolha.ok) erro ||= escolha.erro.mensagem;
 if (calculado && !calculado.ok) erro ||= calculado.erro.mensagem;
 const c = calculado?.ok ? calculado.dados : null;
 const hoje = hojeNaCidade();
-const valorEnviado = (nome: string) => (enviado?.get(nome) as string | null) ?? "";
-const forma = valorEnviado("forma") || "pix";
 const caixa = "rounded-xl bg-fundo p-3";
 const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
 ---
@@ -181,49 +180,7 @@ const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
               <input type="hidden" name="periodicidade" value={valores.periodicidade} />
               <input type="hidden" name="pago_em" value={valores.pagoEm} />
 
-              <fieldset>
-                <legend class="text-sm font-bold text-azul-900">Forma de pagamento</legend>
-                <div class="mt-2 flex flex-wrap gap-4">
-                  {(["pix", "debito", "credito"] as const).map((f) => (
-                    <label class="flex items-center gap-2 font-semibold">
-                      <input type="radio" name="forma" value={f} checked={forma === f} data-forma class="size-4 accent-azul-600" />
-                      {f === "pix" ? "Pix" : f === "debito" ? "Débito na maquininha" : "Crédito na maquininha"}
-                    </label>
-                  ))}
-                </div>
-                <p class="mt-1 text-xs text-slate-500">
-                  No cartão, a maquininha mostra o acréscimo na hora e o vendedor avisa o anunciante. Aqui fica o valor do sistema.
-                </p>
-              </fieldset>
-
-              <div class="mt-3 grid gap-3 sm:grid-cols-2" data-so-cartao>
-                <div data-so-credito>
-                  <label for="parcelas" class={classesRotulo}>Parcelas</label>
-                  <select id="parcelas" name="parcelas" class={classesCampo}>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                      <option value={n} selected={String(n) === (valorEnviado("parcelas") || "1")}>
-                        {n === 1 ? "À vista" : `${n}x`}
-                      </option>
-                    ))}
-                  </select>
-                  {campos.parcelas && <p class={classesErroCampo}>{campos.parcelas}</p>}
-                </div>
-                <div>
-                  <label for="codigo_autorizacao" class={classesRotulo}>Código de autorização</label>
-                  <input id="codigo_autorizacao" name="codigo_autorizacao" maxlength="20" value={valorEnviado("codigo_autorizacao")} class={classesCampo} />
-                  <p class="mt-1 text-xs text-slate-500">Impresso no comprovante da maquininha (AUT).</p>
-                  {campos.codigoAutorizacao && <p class={classesErroCampo}>{campos.codigoAutorizacao}</p>}
-                </div>
-              </div>
-
-              <label for="escolher-comprovante" class={classesRotulo}>Comprovante (opcional)</label>
-              <input id="escolher-comprovante" type="file" accept="image/*,application/pdf" data-escolher-comprovante class={classesCampo} />
-              <input type="file" name="comprovante" data-comprovante-pronto hidden />
-              <p class="mt-1 text-xs text-slate-500">Foto, captura de tela ou PDF, até 5 MB. A foto é guardada sem a localização, numa área que só a administração abre.</p>
-              <p class="mt-1 text-xs font-bold text-vermelho-700" data-erro-comprovante hidden />
-
-              <label for="observacao" class={classesRotulo}>Observação (opcional)</label>
-              <input id="observacao" name="observacao" maxlength="300" value={valorEnviado("observacao")} class={classesCampo} />
+              <CamposRecebimento enviado={enviado} campos={campos} />
 
               <button type="submit" class={classesBotao("zap", "g", "mt-5 w-full")}>
                 <Icone nome="certo" class="size-5" />
@@ -238,23 +195,8 @@ const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
 </PaginaAdmin>
 
 <script>
-  import { ligarComprovante } from "@/lib/comprovante";
+  import { ligarCamposRecebimento } from "@/lib/comprovante";
 
   const form = document.querySelector<HTMLFormElement>("[data-form-pagamento]");
-  if (form) {
-    ligarComprovante(form);
-    const cartao = form.querySelector<HTMLElement>("[data-so-cartao]")!;
-    const credito = form.querySelector<HTMLElement>("[data-so-credito]")!;
-    const parcelas = form.querySelector<HTMLSelectElement>("#parcelas")!;
-    const atualizar = () => {
-      const forma = form.querySelector<HTMLInputElement>("[data-forma]:checked")?.value ?? "pix";
-      cartao.hidden = forma === "pix";
-      credito.hidden = forma !== "credito";
-      // Campo escondido não vai no envio: Pix sem código e débito sempre à vista.
-      for (const campo of cartao.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input, select")) campo.disabled = forma === "pix";
-      parcelas.disabled = forma !== "credito";
-    };
-    for (const radio of form.querySelectorAll("[data-forma]")) radio.addEventListener("change", atualizar);
-    atualizar();
-  }
+  if (form) ligarCamposRecebimento(form);
 </script>

@@ -67,7 +67,7 @@ export interface EventoParaLiberar {
   extraAgendaEmDia?: boolean;
   /** artista: o anúncio é da categoria "Músicos e bandas". */
   anuncioDeArtista?: boolean;
-  /** avulso: há um pagamento não devolvido. */
+  /** avulso: os blocos de 7 dias do evento estão todos pagos (pagamentos não devolvidos). */
   pago?: boolean;
   /** avulso: a administração deu o evento como cortesia, com motivo (decisão C1 de 17/11/2026). */
   cortesia?: boolean;
@@ -85,7 +85,7 @@ export function impedimentoParaAparecerNaAgenda(evento: EventoParaLiberar): stri
       if (!evento.anuncioDeArtista) return "Só o anúncio da categoria Músicos e bandas cadastra shows sem o extra Agenda.";
       return null;
     case "avulso":
-      return evento.pago || evento.cortesia ? null : "O evento avulso aparece depois do pagamento registrado ou da cortesia.";
+      return evento.pago || evento.cortesia ? null : "O evento avulso aparece com todos os blocos de 7 dias pagos ou com a cortesia.";
     case "orgao_publico":
       return null;
   }

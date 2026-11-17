@@ -1,0 +1,183 @@
+---
+// Registro do pagamento do evento avulso: os blocos de 7 dias que faltam pagar
+// até o último dia do evento (decisões E1 a E3 de 17/11/2026). No pagamento
+// complementar, o último dia novo é gravado junto com o pagamento. Duas
+// etapas, como no plano; o servidor calcula tudo de novo no registro.
+import { blocosDoEventoAvulso } from "@acheaqui/domain";
+import { Icone, classesBotao } from "@acheaqui/ui";
+import CamposRecebimento from "@/components/admin/CamposRecebimento.astro";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
+import { calcularEvento, lerContextoEvento, lerDadosEvento, registrarPagamentoEvento } from "@/lib/extras";
+import { hojeNaCidade } from "@/lib/pagamentos";
+import { formatarCentavos } from "@/lib/precos";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const eventoId = Astro.url.searchParams.get("evento") ?? "";
+/** Comprovante de até 5 MB mais os campos de texto. */
+const TAMANHO_MAXIMO_PEDIDO = 5 * 1024 * 1024 + 64 * 1024;
+
+const contexto = await lerContextoEvento(supabase, eventoId);
+if (!contexto.ok && contexto.erro.codigo === "NAO_ENCONTRADO") return new Response(null, { status: 404 });
+
+let erro = contexto.ok ? "" : contexto.erro.mensagem;
+let campos: Record<string, string> = {};
+let enviado: FormData | null = null;
+
+if (Astro.request.method === "POST" && contexto.ok) {
+  const tamanho = Number(Astro.request.headers.get("content-length") ?? "0");
+  if (!tamanho || tamanho > TAMANHO_MAXIMO_PEDIDO) {
+    erro = "Envio maior que o permitido (comprovante de até 5 MB).";
+    Astro.response.status = 400;
+  } else {
+    enviado = await Astro.request.formData();
+    const arquivo = enviado.get("comprovante");
+    const comprovante = arquivo instanceof File && arquivo.size > 0 ? new Uint8Array(await arquivo.arrayBuffer()) : null;
+    const r = await registrarPagamentoEvento(supabase, contexto.dados, enviado, comprovante, Astro.url.origin);
+    if (r.ok) return Astro.redirect(`/admin/pagamentos/${r.dados.id}?aviso=registrado`, 303);
+    erro = r.erro.mensagem;
+    campos = r.erro.campos ?? {};
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  }
+}
+
+const ctx = contexto.ok ? contexto.dados : null;
+const lido = ctx ? lerDadosEvento(enviado ?? Astro.url.searchParams, ctx) : null;
+const valores = lido?.valores ?? null;
+if (lido && !lido.dados.ok) {
+  erro ||= lido.dados.erro.mensagem;
+  campos = { ...lido.dados.erro.campos, ...campos };
+}
+const calculado = ctx && lido?.dados.ok ? calcularEvento(ctx, lido.dados.dados) : null;
+if (calculado && !calculado.ok) erro ||= calculado.erro.mensagem;
+const c = calculado?.ok ? calculado.dados : null;
+const hoje = hojeNaCidade();
+const blocosHoje = ctx ? blocosDoEventoAvulso(ctx.evento.dataInicio, ctx.evento.dataFim) : 0;
+const caixa = "rounded-xl bg-fundo p-3";
+const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
+---
+
+<PaginaAdmin titulo="Pagamento do evento avulso" descricao={ctx?.evento.nome}>
+  <p class="mt-2 text-sm">
+    {ctx && <a href={`/admin/agenda/${ctx.evento.id}`} class="font-bold text-azul-600 hover:underline">← {ctx.evento.nome}</a>}
+  </p>
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  {
+    ctx && valores && (
+      <>
+        <section class={secao}>
+          <div class="grid gap-3 text-sm sm:grid-cols-2">
+            <div class={caixa}>
+              <p class="font-bold text-azul-900">Evento</p>
+              <p>
+                {formatarData(ctx.evento.dataInicio)} a {formatarData(ctx.evento.dataFim)} · {blocosHoje} bloco{blocosHoje === 1 ? "" : "s"} de 7 dias
+              </p>
+              {ctx.evento.cortesia && <p>Com cortesia: aparece na Agenda sem pagamento.</p>}
+            </div>
+            <div class={caixa}>
+              <p class="font-bold text-azul-900">Blocos pagos</p>
+              <p>
+                {ctx.blocosPagos} de {blocosHoje}
+                {ctx.valorBlocoCentavos !== null && ` · ${formatarCentavos(ctx.valorBlocoCentavos)} o bloco`}
+              </p>
+              {ctx.carteira && <p>Carteira de {ctx.carteira.codigo}</p>}
+            </div>
+          </div>
+
+          <form method="get" class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <input type="hidden" name="evento" value={ctx.evento.id} />
+            <div>
+              <label for="data_fim" class={classesRotulo}>Último dia do evento</label>
+              <input id="data_fim" type="date" name="data_fim" value={valores.dataFim} min={ctx.evento.dataInicio} required class={classesCampo} />
+              <p class="mt-1 text-xs text-slate-500">Mude só para aumentar o evento junto com o pagamento dos blocos novos.</p>
+              {campos.dataFim && <p class={classesErroCampo}>{campos.dataFim}</p>}
+            </div>
+            <div>
+              <label for="pago_em" class={classesRotulo}>Pago em</label>
+              <input id="pago_em" type="date" name="pago_em" value={valores.pagoEm} max={hoje} required class={classesCampo} />
+            </div>
+            <div>
+              <label for="representante" class={classesRotulo}>Quem atendeu a venda</label>
+              <select id="representante" name="representante" class={classesCampo}>
+                <option value="">Ninguém (o produtor procurou a equipe)</option>
+                {ctx.representantes.map((r) => (
+                  <option value={r.id} selected={r.id === valores.representanteId}>
+                    {r.codigo}
+                    {!r.recebeComissao && " (sem comissão)"}
+                  </option>
+                ))}
+              </select>
+              {campos.representanteId && <p class={classesErroCampo}>{campos.representanteId}</p>}
+            </div>
+            <div>
+              <label for="desconto" class={classesRotulo}>Desconto do representante (R$)</label>
+              <input id="desconto" name="desconto" inputmode="decimal" placeholder="0,00" value={valores.descontoCentavos} class={classesCampo} />
+              <p class="mt-1 text-xs text-slate-500">Até a comissão dele neste pagamento.</p>
+              {campos.descontoCentavos && <p class={classesErroCampo}>{campos.descontoCentavos}</p>}
+            </div>
+            <div class="self-end">
+              <button type="submit" class={classesBotao("contorno", "m", "w-full")}>
+                Calcular
+              </button>
+            </div>
+          </form>
+        </section>
+
+        {c && (
+          <>
+            <section class={secao}>
+              <p class="text-sm font-bold text-azul-900">Valor a receber</p>
+              <p class="font-display text-3xl font-extrabold text-azul-900">{formatarCentavos(c.valorCobradoCentavos)}</p>
+              {c.descontoRepresentanteCentavos > 0 && (
+                <p class="text-sm text-slate-600">
+                  {formatarCentavos(c.valorCentavos)} com {formatarCentavos(c.descontoRepresentanteCentavos)} de desconto do representante
+                </p>
+              )}
+              <ul class="mt-3 space-y-1 text-sm text-slate-700">
+                <li>
+                  {c.blocosPagos} bloco{c.blocosPagos === 1 ? "" : "s"} de 7 dias ({c.blocos} no total, até {formatarData(c.dataFim)})
+                  {c.dataFim !== ctx.evento.dataFim && ": o último dia do evento muda junto com o pagamento"}
+                </li>
+                <li>{c.numero}º pagamento deste evento</li>
+                <li>
+                  {c.desistirAte >= valores.pagoEm
+                    ? `Pode desistir, com o dinheiro de volta, até ${formatarData(c.desistirAte)} (7 dias, e no máximo a véspera do evento).`
+                    : "Sem devolução: o evento começa no dia do pagamento ou já começou."}
+                </li>
+                <li>
+                  {c.comissao && c.atendimento
+                    ? `Comissão de ${c.atendimento.codigo} (20%): ${formatarCentavos(c.comissao.valorCentavos)}, liberada em ${formatarData(c.comissaoLiberaEm!)}`
+                    : c.comissaoCarteira && ctx.carteira
+                      ? `Carteira de ${ctx.carteira.codigo} (${c.comissaoCarteira.percentual}%): ${formatarCentavos(c.comissaoCarteira.valorCentavos)}, liberada em ${formatarData(c.comissaoLiberaEm!)}`
+                      : "Sem comissão neste pagamento"}
+                </li>
+              </ul>
+            </section>
+
+            <form method="post" enctype="multipart/form-data" class={secao} data-form-pagamento>
+              <input type="hidden" name="data_fim" value={valores.dataFim} />
+              <input type="hidden" name="pago_em" value={valores.pagoEm} />
+              <input type="hidden" name="representante" value={valores.representanteId} />
+              <input type="hidden" name="desconto" value={valores.descontoCentavos} />
+              <CamposRecebimento enviado={enviado} campos={campos} />
+              <button type="submit" class={classesBotao("zap", "g", "mt-5 w-full")}>
+                <Icone nome="certo" class="size-5" />
+                Registrar pagamento de {formatarCentavos(c.valorCobradoCentavos)}
+              </button>
+            </form>
+          </>
+        )}
+      </>
+    )
+  }
+</PaginaAdmin>
+
+<script>
+  import { ligarCamposRecebimento } from "@/lib/comprovante";
+
+  const form = document.querySelector<HTMLFormElement>("[data-form-pagamento]");
+  if (form) ligarCamposRecebimento(form);
+</script>
