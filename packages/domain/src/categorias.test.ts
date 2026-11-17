@@ -1,8 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { agruparCategorias, compararNomes } from "./categorias";
+import { agruparCategorias, categoriaCombinaComBusca, compararNomes } from "./categorias";
 
 const cat = (nome: string, grupo: string) => ({ nome, grupo });
 const nomes = (lista: { nome: string }[]) => lista.map((c) => c.nome);
+
+describe("categoriaCombinaComBusca", () => {
+  const corretor = ["Corretor de imóveis", "Corretores de imóveis", "CRECI", "Serviços profissionais"];
+
+  it("acha pelo começo, pelo meio e pelo plural", () => {
+    expect(categoriaCombinaComBusca(corretor, "corr")).toBe(true);
+    expect(categoriaCombinaComBusca(corretor, "imov")).toBe(true);
+    expect(categoriaCombinaComBusca(corretor, "corretores")).toBe(true);
+  });
+
+  it("não diferencia acento, maiúscula nem espaços repetidos", () => {
+    expect(categoriaCombinaComBusca(corretor, "  CORRETOR   DE IMÓVEIS ")).toBe(true);
+    expect(categoriaCombinaComBusca(["Ótica"], "otica")).toBe(true);
+  });
+
+  it("acha pelo sinônimo e pelo grupo", () => {
+    expect(categoriaCombinaComBusca(corretor, "creci")).toBe(true);
+    expect(categoriaCombinaComBusca(corretor, "profissionais")).toBe(true);
+  });
+
+  it("busca vazia combina com tudo", () => {
+    expect(categoriaCombinaComBusca(corretor, "")).toBe(true);
+    expect(categoriaCombinaComBusca(corretor, "   ")).toBe(true);
+  });
+
+  it("não acha o que nenhum texto contém", () => {
+    expect(categoriaCombinaComBusca(corretor, "pizza")).toBe(false);
+    expect(categoriaCombinaComBusca([], "corretor")).toBe(false);
+  });
+});
 
 describe("compararNomes", () => {
   it("ordena como no português, sem pôr os acentos no fim", () => {

@@ -32,7 +32,13 @@ const FORMAS = [
   { id: "dinheiro", rotulo: "Dinheiro" },
 ];
 const caixa = "mt-2 max-h-64 overflow-y-auto rounded-2xl border-2 border-azul-100 bg-white p-3";
-const opcaoMarcavel = "flex items-center gap-2 py-1 text-sm";
+// min-h-11: alvo de toque de 44 px no celular.
+const opcaoMarcavel = "flex min-h-11 items-center gap-2 py-1 text-sm";
+const tituloGrupo = "text-xs font-extrabold tracking-wide text-slate-400 uppercase";
+const SEM_CATEGORIA = "Nenhuma categoria encontrada. Tente outra palavra, como o nome do serviço, e confira se o tipo (Autônomo ou Comércio) está certo.";
+// Textos em que a busca de categoria procura (regra em categoriaCombinaComBusca, packages/domain).
+const SEPARADOR_BUSCA = "|";
+const textoBusca = (c: (typeof opcoes.categorias)[number]) => [c.nome, ...c.termosBusca, c.grupo].join(SEPARADOR_BUSCA);
 const secao = "mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
 const tituloSecao = "font-display text-lg font-bold text-azul-900";
 const textarea = "mt-1 w-full rounded-2xl border-2 border-azul-100 p-3 focus:border-azul-500 focus:outline-none";
@@ -70,22 +76,38 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
     {erro("nome") && <p class={classesErroCampo}>{erro("nome")}</p>}
 
     <label class={classesRotulo}>
-      Categoria principal
-      <select name="categoriaPrincipalId" required class={classesCampo} aria-invalid={erro("categoriaPrincipalId") ? "true" : undefined}>
-        <option value="">Escolha</option>
+      Buscar categoria
+      <input
+        type="search"
+        data-busca-categoria
+        placeholder="Ex.: corretor, pizzaria, dentista"
+        autocomplete="off"
+        enterkeyhint="search"
+        class={classesCampo}
+      />
+    </label>
+    <p class="mt-1 text-xs text-slate-500">A busca vale para a categoria principal e as adicionais.</p>
+
+    <fieldset class="mt-4">
+      <legend class="text-sm font-bold text-azul-900">Categoria principal</legend>
+      <p class="mt-1 text-sm text-slate-700" data-categoria-escolhida aria-live="polite"></p>
+      <div class={caixa}>
         {
           grupos.map((g) => (
-            <optgroup label={g.grupo}>
+            <div class="mb-2" data-grupo-categoria>
+              <p class={tituloGrupo}>{g.grupo}</p>
               {g.categorias.map((c) => (
-                  <option value={c.id} data-tipo-categoria={c.tipo} selected={c.id === v.categoriaPrincipalId}>
-                    {c.nome}
-                  </option>
-                ))}
-            </optgroup>
+                <label class={opcaoMarcavel} data-tipo-categoria={c.tipo} data-busca={textoBusca(c)}>
+                  <input type="radio" name="categoriaPrincipalId" value={c.id} required checked={c.id === v.categoriaPrincipalId} />
+                  {c.nome}
+                </label>
+              ))}
+            </div>
           ))
         }
-      </select>
-    </label>
+        <p class="text-sm text-slate-600" data-sem-categoria hidden>{SEM_CATEGORIA}</p>
+      </div>
+    </fieldset>
     {erro("categoriaPrincipalId") && <p class={classesErroCampo}>{erro("categoriaPrincipalId")}</p>}
 
     <details class="mt-4" open={v.categoriasAdicionais.length > 0 || !!erro("categoriasAdicionais")}>
@@ -96,9 +118,9 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
         {
           grupos.map((g) => (
             <div class="mb-2" data-grupo-categoria>
-              <p class="text-xs font-extrabold tracking-wide text-slate-400 uppercase">{g.grupo}</p>
+              <p class={tituloGrupo}>{g.grupo}</p>
               {g.categorias.map((c) => (
-                  <label class={opcaoMarcavel} data-tipo-categoria={c.tipo}>
+                  <label class={opcaoMarcavel} data-tipo-categoria={c.tipo} data-busca={textoBusca(c)}>
                     <input type="checkbox" name="categoriasAdicionais" value={c.id} checked={v.categoriasAdicionais.includes(c.id)} />
                     {c.nome}
                   </label>
@@ -106,6 +128,7 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
             </div>
           ))
         }
+        <p class="text-sm text-slate-600" data-sem-categoria hidden>{SEM_CATEGORIA}</p>
       </div>
     </details>
     {erro("categoriasAdicionais") && <p class={classesErroCampo}>{erro("categoriasAdicionais")}</p>}
@@ -318,8 +341,35 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
 </form>
 
 <script>
+  import { categoriaCombinaComBusca } from "@acheaqui/domain";
+
   // Mostra só os campos do tipo escolhido e desliga os outros (não vão no envio).
   for (const form of document.querySelectorAll<HTMLFormElement>("form[data-formulario-anunciante]")) {
+    const busca = form.querySelector<HTMLInputElement>("[data-busca-categoria]");
+
+    // Busca de categoria: só esconde (com a classe), sem desligar, para as categorias
+    // marcadas e escondidas pela busca continuarem no envio. O tipo usa o atributo hidden.
+    const filtrarCategorias = () => {
+      const texto = busca?.value ?? "";
+      for (const opcao of form.querySelectorAll<HTMLElement>("[data-busca]")) {
+        opcao.classList.toggle("hidden", !categoriaCombinaComBusca((opcao.dataset.busca ?? "").split("|"), texto));
+      }
+      const visivel = (el: HTMLElement) => !el.hidden && !el.classList.contains("hidden");
+      for (const grupo of form.querySelectorAll<HTMLElement>("[data-grupo-categoria]")) {
+        grupo.hidden = ![...grupo.querySelectorAll<HTMLElement>("[data-busca]")].some(visivel);
+      }
+      for (const vazio of form.querySelectorAll<HTMLElement>("[data-sem-categoria]")) {
+        vazio.hidden = [...(vazio.parentElement?.querySelectorAll<HTMLElement>("[data-grupo-categoria]") ?? [])].some((g) => !g.hidden);
+      }
+      const principal = form.querySelector<HTMLInputElement>('input[name="categoriaPrincipalId"]:checked:not(:disabled)');
+      const escolhida = form.querySelector<HTMLElement>("[data-categoria-escolhida]");
+      if (escolhida) escolhida.textContent = principal ? `Escolhida: ${principal.parentElement?.textContent?.trim() ?? ""}` : "Nenhuma escolhida ainda.";
+    };
+    busca?.addEventListener("input", filtrarCategorias);
+    // Enter na busca não envia o formulário.
+    busca?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") e.preventDefault();
+    });
     const escolhido = () => form.querySelector<HTMLInputElement>('input[name="tipo"]:checked')?.value ?? form.dataset.tipoFixo ?? "";
     const ligar = (el: HTMLElement, ligado: boolean) => {
       el.hidden = !ligado;
@@ -353,10 +403,9 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
       for (const bloco of form.querySelectorAll<HTMLElement>("[data-so]")) ligar(bloco, bloco.dataset.so === tipo);
       // Categorias e planos só do tipo escolhido.
       for (const el of form.querySelectorAll<HTMLElement>("[data-tipo-categoria]")) {
-        const serve = !tipo || el.dataset.tipoCategoria === "ambos" || el.dataset.tipoCategoria === tipo;
-        if (el instanceof HTMLOptionElement) el.hidden = el.disabled = !serve;
-        else ligar(el, serve);
+        ligar(el, !tipo || el.dataset.tipoCategoria === "ambos" || el.dataset.tipoCategoria === tipo);
       }
+      filtrarCategorias();
       for (const op of form.querySelectorAll<HTMLOptionElement>("[data-tipo-plano]")) op.hidden = op.disabled = !!tipo && op.dataset.tipoPlano !== tipo;
       // Comércio começa no Gratuito; autônomo escolhe. Plano de outro tipo não fica marcado.
       const plano = form.querySelector<HTMLSelectElement>('select[name="planoEscolhidoId"]');

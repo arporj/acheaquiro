@@ -12,6 +12,26 @@ export function compararNomes(a: string, b: string): number {
   return COMPARADOR.compare(a, b);
 }
 
+function normalizarBusca(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Busca de categoria (na busca do site e no formulário do anunciante): combina
+ * quando algum dos textos (nome, plural, sinônimos e, no formulário, o grupo)
+ * contém o que foi digitado, sem diferenciar acento, maiúscula nem espaços
+ * repetidos. Busca vazia combina com tudo.
+ */
+export function categoriaCombinaComBusca(textos: readonly string[], busca: string): boolean {
+  const procurado = normalizarBusca(busca);
+  return !procurado || textos.some((texto) => normalizarBusca(texto).includes(procurado));
+}
+
 /**
  * Agrupa as categorias e põe as de cada grupo em ordem alfabética pelo nome
  * mostrado na tela. Os grupos ficam na ordem em que aparecem na lista recebida

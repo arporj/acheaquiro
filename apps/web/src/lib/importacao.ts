@@ -216,21 +216,36 @@ export interface CategoriaAdmin {
   nome: string;
   tipo: "profissional" | "comercio" | "ambos";
   grupo: string;
+  /** Plural e sinônimos, para a busca de categoria no formulário do anunciante. */
+  termosBusca: string[];
 }
 
 export async function listarCategoriasAdmin(supabase: SupabaseClient): Promise<Resultado<CategoriaAdmin[]>> {
   const { data, error } = await supabase
     .from("categorias")
-    .select("id, nome, tipo, grupos_categoria!inner(nome, ordem)")
+    .select("id, nome, nome_plural, tipo, grupos_categoria!inner(nome, ordem), sinonimos_categoria(termo)")
     .eq("ativa", true)
     .order("nome");
   if (error) return mensagemDoBanco(error, "listarCategoriasAdmin");
-  const linhas = data as unknown as { id: string; nome: string; tipo: CategoriaAdmin["tipo"]; grupos_categoria: { nome: string; ordem: number } }[];
+  const linhas = data as unknown as {
+    id: string;
+    nome: string;
+    nome_plural: string;
+    tipo: CategoriaAdmin["tipo"];
+    grupos_categoria: { nome: string; ordem: number };
+    sinonimos_categoria: { termo: string }[];
+  }[];
   return {
     ok: true,
     dados: linhas
       .sort((a, b) => a.grupos_categoria.ordem - b.grupos_categoria.ordem || a.nome.localeCompare(b.nome, "pt-BR"))
-      .map((l) => ({ id: l.id, nome: l.nome, tipo: l.tipo, grupo: l.grupos_categoria.nome })),
+      .map((l) => ({
+        id: l.id,
+        nome: l.nome,
+        tipo: l.tipo,
+        grupo: l.grupos_categoria.nome,
+        termosBusca: [l.nome_plural, ...l.sinonimos_categoria.map((s) => s.termo)],
+      })),
   };
 }
 

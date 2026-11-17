@@ -271,7 +271,13 @@ export const categorias: Categoria[] = [
   // Serviços profissionais
   c("advogado", "Advogado(a)", "Advogados", PROFISSIONAIS, "scale", cor.roxo, { sinonimos: ["advocacia", "advogada"], atalho: true }),
   c("contabilidade", "Contabilidade", "Contabilidade", PROFISSIONAIS, "calculator", cor.grafite, { sinonimos: ["contador"] }),
-  c("imobiliaria", "Imobiliária", "Imobiliárias", PROFISSIONAIS, "key-round", cor.azul),
+  c("imobiliaria", "Imobiliária", "Imobiliárias", PROFISSIONAIS, "key-round", cor.azul, {
+    sinonimos: ["imóveis", "aluguel de imóveis", "venda de imóveis"],
+  }),
+  c("corretor-de-imoveis", "Corretor de imóveis", "Corretores de imóveis", PROFISSIONAIS, "house", cor.azul, {
+    sinonimos: ["corretor", "corretora de imóveis", "imóveis", "CRECI"],
+    conselho: true,
+  }),
   c("corretor-de-seguros", "Corretor de seguros", "Corretores de seguros", PROFISSIONAIS, "shield-check", cor.turquesa),
   c("engenharia-e-arquitetura", "Engenharia e arquitetura", "Engenharia e arquitetura", PROFISSIONAIS, "drafting-compass", cor.grafite, {
     sinonimos: ["arquiteto", "engenheiro"],

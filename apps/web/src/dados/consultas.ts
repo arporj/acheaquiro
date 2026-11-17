@@ -4,7 +4,7 @@
 // anunciantes existirem (etapa 2), mostra a lista de anunciantes vazia. A
 // página "em breve" não acessa o banco: usa as regras de src/mocks/planos.ts.
 import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, CotaPatrocinio, CotaPatrocinioVenda, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
-import { agruparCategorias, dadosPublicosDoArtista, novaVagaAPartirDe, somarDias } from "@acheaqui/domain";
+import { agruparCategorias, categoriaCombinaComBusca, dadosPublicosDoArtista, novaVagaAPartirDe, somarDias } from "@acheaqui/domain";
 import {
   codigoRepresentanteValido,
   criarClientePublico,
@@ -301,7 +301,7 @@ export async function buscarPorTexto(termo: string): Promise<{ categorias: Categ
   }
 
   const categoriasEncontradas = c.categorias.filter((categoria) =>
-    [categoria.nome, categoria.nomePlural, ...categoria.sinonimos].some((texto) => normalizar(texto).includes(busca)),
+    categoriaCombinaComBusca([categoria.nome, categoria.nomePlural, ...categoria.sinonimos], termo),
   );
   const idsCategorias = new Set(categoriasEncontradas.map((categoria) => categoria.id));
 
