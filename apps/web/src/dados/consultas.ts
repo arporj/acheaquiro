@@ -467,17 +467,21 @@ const ordemAgenda = (x: ItemAgenda, y: ItemAgenda) => (x.data + x.inicio).locale
 function eventosFicticiosDeHoje(): EventoAgenda[] {
   if (!ficticio) return [];
   const hoje = hojeNaCidade();
-  return eventosFicticios.map(({ diasDepoisDeHoje, dias, ...e }) => ({
-    ...e,
-    dataInicio: somarDias(hoje, diasDepoisDeHoje),
-    dataFim: somarDias(hoje, diasDepoisDeHoje + dias - 1),
-  }));
+  return eventosFicticios.map((e) => {
+    if ("dataInicio" in e) return e;
+    const { diasDepoisDeHoje, dias, ...resto } = e;
+    return { ...resto, dataInicio: somarDias(hoje, diasDepoisDeHoje), dataFim: somarDias(hoje, diasDepoisDeHoje + dias - 1) };
+  });
 }
 
 function apresentacoesFicticias(): Apresentacao[] {
   if (!ficticio) return [];
   const hoje = hojeNaCidade();
-  return apresentacoesRelativas.map(({ diasDepoisDeHoje, ...a }) => ({ ...a, data: somarDias(hoje, diasDepoisDeHoje) }));
+  return apresentacoesRelativas.map((a) => {
+    if ("data" in a) return a;
+    const { diasDepoisDeHoje, ...resto } = a;
+    return { ...resto, data: somarDias(hoje, diasDepoisDeHoje) };
+  });
 }
 
 // Só o artista com anúncio ativo mostra foto, contato e o resto do perfil (packages/domain).
@@ -486,14 +490,16 @@ const artistasFicticiosPublicos: Artista[] = (ficticio ? artistasFicticios : [])
 );
 
 async function itemFicticio(a: Apresentacao, eventos: EventoAgenda[]): Promise<ItemAgenda | undefined> {
+  // Atividade sem artista (largada, premiação) só existe dentro de um evento.
   const artista = artistasFicticiosPublicos.find((ar) => ar.id === a.artistaId);
-  if (!artista) return undefined;
+  if (!artista && !(a.eventoId && a.titulo)) return undefined;
   if (a.eventoId) {
     const evento = eventos.find((e) => e.id === a.eventoId);
     if (!evento) return undefined;
     const lugar = { nome: evento.nome, href: `/agenda/${evento.slug}`, bairroId: evento.bairroId, bairro: await nomeBairro(evento.bairroId), evento: true };
-    return { id: a.id, data: a.data, inicio: a.inicio, fim: a.fim, artista, lugar };
+    return { id: a.id, data: a.data, inicio: a.inicio, fim: a.fim, artista, titulo: a.titulo, lugar };
   }
+  if (!artista) return undefined;
   const comercio = anunciantes.find((an) => an.id === a.anuncianteId);
   if (!comercio || comercio.tipo !== "comercio") return undefined;
   const bairroId = comercio.enderecos[0].bairroId;

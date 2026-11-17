@@ -79,7 +79,8 @@ const nomeDoItem = (it: ItemAgenda) => it.artista?.nome ?? it.titulo ?? "";
     }
 
     <section class="mt-2 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-6">
-      <div class="flex items-start justify-between gap-3">
+      {/* No celular, o botão de compartilhar vai para baixo do título, para o nome do evento não quebrar no meio. */}
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div class="min-w-0">
           <p class="text-sm font-extrabold text-vermelho-600 first-letter:uppercase">{datas}</p>
           <h1 class="font-display text-3xl leading-tight font-extrabold break-words text-azul-900">{evento.nome}</h1>
@@ -98,7 +99,9 @@ const nomeDoItem = (it: ItemAgenda) => it.artista?.nome ?? it.titulo ?? "";
           </p>
           {evento.endereco && <p class="mt-0.5 text-sm text-slate-500">{evento.endereco}</p>}
         </div>
-        <BotaoCompartilhar caminho={`/agenda/${evento.slug}`} titulo={evento.nome} variante="botao" />
+        <div class="shrink-0 self-start">
+          <BotaoCompartilhar caminho={`/agenda/${evento.slug}`} titulo={evento.nome} variante="botao" />
+        </div>
       </div>
       {evento.descricao && <p class="mt-3 leading-relaxed whitespace-pre-line text-slate-700">{evento.descricao}</p>}
       {evento.produtor && <p class="mt-2 text-sm text-slate-500">Organização: {evento.produtor}</p>}

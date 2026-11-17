@@ -7,8 +7,14 @@ import type { Apresentacao, Artista, EventoAgenda } from "@acheaqui/types";
 import { fotoPerfil } from "./anunciantes";
 
 type Relativa<T extends { data: string }> = Omit<T, "data"> & { diasDepoisDeHoje: number };
-/** Evento com o primeiro dia contado a partir de hoje e a duração em dias. */
-export type EventoRelativo = Omit<EventoAgenda, "dataInicio" | "dataFim"> & { diasDepoisDeHoje: number; dias: number };
+/** Apresentação com a data contada a partir de hoje ou, num evento de data marcada, com a data fixa. */
+export type ApresentacaoFicticia = Relativa<Apresentacao> | Apresentacao;
+/**
+ * Evento com o primeiro dia contado a partir de hoje e a duração em dias, ou
+ * com as datas fixas (evento real mostrado como exemplo, como o OstraCycle Origens).
+ */
+export type EventoFicticio = Omit<EventoAgenda, "dataInicio" | "dataFim"> &
+  ({ diasDepoisDeHoje: number; dias: number } | { dataInicio: string; dataFim: string });
 
 // Números inválidos de propósito, como nos anunciantes fictícios.
 const zap = (n: number) => `55229000001${String(n).padStart(2, "0")}`;
@@ -60,7 +66,7 @@ export const artistas: Artista[] = [
   },
 ];
 
-export const eventos: EventoRelativo[] = [
+export const eventos: EventoFicticio[] = [
   {
     id: "ev1",
     slug: "festival-de-inverno-da-praca",
@@ -89,14 +95,54 @@ export const eventos: EventoRelativo[] = [
       { nome: "Pastel da Feira", vende: "Pastel e caldo de cana" },
     ],
   },
+  {
+    // Evento real, cadastrado aqui como exemplo (pedido de 17/11/2026), com
+    // programação e barracas ILUSTRATIVAS: os artistas e barracas são os
+    // fictícios deste site. O cadastro real fica na produção.
+    id: "ev2",
+    slug: "ostracycle-origens",
+    nome: "OstraCycle Origens",
+    descricao:
+      "Três dias de ciclismo em Rio das Ostras: passeio ciclístico, pedal para as crianças, prova e premiação, com shows, praça de alimentação e barracas.",
+    origem: "avulso",
+    local: "Praça São Pedro",
+    bairroId: "centro",
+    dataInicio: "2026-11-27",
+    dataFim: "2026-11-29",
+    entrada: "gratuita",
+    ingressos: [],
+    abertoAoPublico: true,
+    classificacao: "livre",
+    cadeiraDePraia: true,
+    cooler: null,
+    ruasFechadas: "Ruas do percurso fechadas durante o passeio e a prova",
+    barracas: [
+      { nome: "Marmitas da Dona Cida", vende: "Caldos e comida caseira", anuncianteId: "a13" },
+      { nome: "Pizzaria Bella Ostras", vende: "Pizza no forno a lenha", anuncianteId: "c06" },
+      { nome: "Pedal Peças e Reparos", vende: "Câmaras, peças e conserto rápido de bicicleta", whatsapp: "5522900000097" },
+      { nome: "Açaí da Orla", vende: "Açaí, sucos e água de coco" },
+      { nome: "Pastel da Feira", vende: "Pastel e caldo de cana" },
+    ],
+  },
 ];
 
-export const apresentacoes: Relativa<Apresentacao>[] = [
+export const apresentacoes: ApresentacaoFicticia[] = [
   // Festival de Inverno da Praça
   { id: "ap01", artistaId: "ar3", eventoId: "ev1", diasDepoisDeHoje: 3, inicio: "14:00", fim: "15:30" },
   { id: "ap02", artistaId: "ar4", eventoId: "ev1", diasDepoisDeHoje: 3, inicio: "16:00", fim: "17:30" },
   { id: "ap03", artistaId: "ar1", eventoId: "ev1", diasDepoisDeHoje: 3, inicio: "18:00", fim: "20:00" },
   { id: "ap04", artistaId: "ar5", eventoId: "ev1", diasDepoisDeHoje: 3, inicio: "20:30", fim: "22:00" },
+  // OstraCycle Origens (datas fixas; programação ilustrativa)
+  { id: "oc01", eventoId: "ev2", data: "2026-11-27", inicio: "17:00", titulo: "Abertura e retirada dos kits" },
+  { id: "oc02", artistaId: "ar3", eventoId: "ev2", data: "2026-11-27", inicio: "19:00", fim: "21:00" },
+  { id: "oc03", artistaId: "ar1", eventoId: "ev2", data: "2026-11-27", inicio: "21:30", fim: "23:30" },
+  { id: "oc04", eventoId: "ev2", data: "2026-11-28", inicio: "07:00", titulo: "Largada do passeio ciclístico" },
+  { id: "oc05", eventoId: "ev2", data: "2026-11-28", inicio: "10:00", fim: "12:00", titulo: "Pedal kids" },
+  { id: "oc06", artistaId: "ar4", eventoId: "ev2", data: "2026-11-28", inicio: "16:00", fim: "18:00" },
+  { id: "oc07", artistaId: "ar2", eventoId: "ev2", data: "2026-11-28", inicio: "20:00", fim: "22:00" },
+  { id: "oc08", eventoId: "ev2", data: "2026-11-29", inicio: "07:00", titulo: "Largada da prova" },
+  { id: "oc09", eventoId: "ev2", data: "2026-11-29", inicio: "12:00", titulo: "Premiação" },
+  { id: "oc10", artistaId: "ar5", eventoId: "ev2", data: "2026-11-29", inicio: "14:00", fim: "17:00" },
   // Quiosque Maré Cheia
   { id: "ap05", artistaId: "ar3", anuncianteId: "c20", diasDepoisDeHoje: 0, inicio: "19:00", fim: "22:00" },
   { id: "ap06", artistaId: "ar1", anuncianteId: "c20", diasDepoisDeHoje: 1, inicio: "20:00", fim: "23:00" },

@@ -4,8 +4,29 @@
     {
       "name": "acheaqui-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3400,
+      "autoPort": false
+    },
+    {
+      "name": "acheaqui-exemplo",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "exec",
+        "-w",
+        "web",
+        "--",
+        "astro",
+        "dev",
+        "--mode",
+        "teste",
+        "--port",
+        "3403"
+      ],
+      "port": 3403,
       "autoPort": false
     }
   ]

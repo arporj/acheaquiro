@@ -120,7 +120,7 @@ Carro de som, cartazes e panfletos e prêmio de fim de ano (decisão de 29/10/20
 
 ## Execução local e credenciais
 
-- Portas (faixa 3400–3499, decisão de 06/11/2026): `npm run dev` em http://localhost:3400, prévia do Workers (`npm run preview -w web`) em 3401 e o inspetor dela em 3402. Supabase local no bloco 554xx (`supabase/config.toml`). Porta ocupada faz o comando falhar (`vite.server.strictPort` em `apps/web/astro.config.mjs`): descubra o que a ocupa e avise, sem trocar de porta. O `http://localhost:3400/**` fica em `additional_redirect_urls`, aplicado à produção por `supabase config push`.
+- Portas (faixa 3400–3499, decisão de 06/11/2026): `npm run dev` em http://localhost:3400, prévia do Workers (`npm run preview -w web`) em 3401 e o inspetor dela em 3402, e o site de apresentação local (`astro dev --mode teste`, configuração "acheaqui-exemplo" em `.claude/launch.json`) em 3403; o Astro só aceita um servidor de desenvolvimento por vez, então pare o da 3400 antes. Supabase local no bloco 554xx (`supabase/config.toml`). Porta ocupada faz o comando falhar (`vite.server.strictPort` em `apps/web/astro.config.mjs`): descubra o que a ocupa e avise, sem trocar de porta. O `http://localhost:3400/**` fica em `additional_redirect_urls`, aplicado à produção por `supabase config push`.
 - Valores locais em três arquivos, nenhum no Git (modelo com os nomes em `apps/web/.env.example`; decisão de 06/11/2026):
   - `apps/web/.env.local`: valores públicos do app (`PUBLIC_*`).
   - `apps/web/.dev.vars`: segredos do app no desenvolvimento; na produção, os mesmos nomes ficam nos segredos do Worker. `npm run importar:cnpj` lê este arquivo e o `.env.local`.
