@@ -1,0 +1,103 @@
+---
+// Agenda na administração: eventos próximos (e os que já passaram), com o
+// aviso de quando um evento publicado não aparece no site, e os atalhos para
+// artistas e estilos musicais. Regras em packages/domain/agenda.ts.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import { ROTULO_ORIGEM_EVENTO } from "@acheaqui/validation";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import Aviso from "@/components/conta/Aviso.astro";
+import { listarEventosAdmin, type FiltroEventosAdmin } from "@/lib/agenda";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const filtro: FiltroEventosAdmin = Astro.url.searchParams.get("ver") === "passados" ? "passados" : "proximos";
+const lista = await listarEventosAdmin(supabase, filtro);
+const eventos = lista.ok ? lista.dados : [];
+
+const ROTULO_SITUACAO = { rascunho: "Rascunho", publicado: "Publicado", cancelado: "Cancelado" } as const;
+const periodo = (inicio: string, fim: string) => (inicio === fim ? formatarData(inicio) : `${formatarData(inicio)} a ${formatarData(fim)}`);
+---
+
+<PaginaAdmin titulo="Agenda" descricao="Shows e eventos da cidade: cadastro, programação, barracas e publicação.">
+  {!lista.ok && <Aviso tipo="erro">{lista.erro.mensagem}</Aviso>}
+
+  <div class="mt-5 flex flex-wrap items-center gap-2">
+    <a href="/admin/agenda/novo" class={classesBotao("azul", "m")}>
+      <Icone nome="calendario" class="size-4" />
+      Novo evento
+    </a>
+    <a href="/admin/agenda/artistas" class={classesBotao("contorno", "m")}>
+      <Icone nome="musica" class="size-4" />
+      Artistas
+    </a>
+    <a href="/admin/agenda/estilos" class={classesBotao("contorno", "m")}>Estilos musicais</a>
+  </div>
+
+  <nav class="mt-6 flex gap-2" aria-label="Período">
+    <a
+      href="/admin/agenda"
+      aria-current={filtro === "proximos" ? "page" : undefined}
+      class="rounded-full px-4 py-2 text-sm font-bold ring-1 ring-azul-100 aria-[current=page]:bg-azul-600 aria-[current=page]:text-white"
+    >
+      Próximos e acontecendo
+    </a>
+    <a
+      href="/admin/agenda?ver=passados"
+      aria-current={filtro === "passados" ? "page" : undefined}
+      class="rounded-full px-4 py-2 text-sm font-bold ring-1 ring-azul-100 aria-[current=page]:bg-azul-600 aria-[current=page]:text-white"
+    >
+      Já terminaram
+    </a>
+  </nav>
+
+  {
+    lista.ok && eventos.length === 0 && (
+      <div class="mt-5 rounded-2xl bg-white p-6 text-center shadow-sm ring-1 ring-black/5">
+        <p class="font-bold text-azul-900">{filtro === "proximos" ? "Nenhum evento por vir." : "Nenhum evento terminado."}</p>
+        {filtro === "proximos" && <p class="mt-1 text-sm text-slate-600">Use "Novo evento" para cadastrar o primeiro.</p>}
+      </div>
+    )
+  }
+
+  <ul class="mt-5 space-y-3">
+    {
+      eventos.map((e) => (
+        <li class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+          <a href={`/admin/agenda/${e.id}`} class="flex flex-wrap items-start justify-between gap-3">
+            <span class="min-w-0">
+              <span class="block font-display text-lg font-bold text-azul-900 hover:underline">{e.nome}</span>
+              <span class="block text-sm text-slate-600">
+                {periodo(e.data_inicio, e.data_fim)} · {e.local}
+                {e.bairro && ` · ${e.bairro}`}
+              </span>
+              <span class="block text-xs font-semibold text-slate-500">
+                {ROTULO_ORIGEM_EVENTO[e.origem]}
+                {e.anunciante && ` · ${e.anunciante.nome}`}
+                {e.cortesia && " · Cortesia"}
+              </span>
+            </span>
+            <span class="flex flex-col items-end gap-1">
+              <span
+                class:list={[
+                  "rounded-full px-3 py-1 text-xs font-extrabold",
+                  e.situacao === "publicado" && !e.impedimento && "bg-zap-50 text-zap-700",
+                  e.situacao === "publicado" && e.impedimento && "bg-amarelo-200 text-azul-900",
+                  e.situacao === "rascunho" && "bg-slate-100 text-slate-600",
+                  e.situacao === "cancelado" && "bg-vermelho-500/10 text-vermelho-700",
+                ]}
+              >
+                {e.situacao === "publicado" ? (e.impedimento ? "Publicado, fora do site" : "No site") : ROTULO_SITUACAO[e.situacao]}
+              </span>
+            </span>
+          </a>
+          {e.impedimento && (
+            <p class="mt-2 flex items-start gap-1.5 text-sm font-semibold text-azul-900">
+              <Icone nome="info" class="mt-0.5 size-4 shrink-0 text-amarelo-500" />
+              {e.impedimento}
+            </p>
+          )}
+        </li>
+      ))
+    }
+  </ul>
+</PaginaAdmin>

@@ -1,0 +1,72 @@
+---
+// Estilos musicais (decisão 10 de 29/10/2026), editáveis. Nada é apagado: o
+// estilo desativado some das escolhas e continua nos artistas que já o têm.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import { listarEstilos, salvarEstilo } from "@/lib/agenda";
+import { limparCacheDoSite } from "@/lib/arquivos";
+
+const supabase = Astro.locals.supabase!;
+let erro = "";
+
+if (Astro.request.method === "POST") {
+  const r = await salvarEstilo(supabase, await Astro.request.formData());
+  if (r.ok) {
+    // O nome do estilo aparece na Agenda e nos artistas.
+    await limparCacheDoSite(Astro.url.origin);
+    return Astro.redirect("/admin/agenda/estilos?aviso=salvo", 303);
+  }
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const lista = await listarEstilos(supabase);
+if (!lista.ok) erro ||= lista.erro.mensagem;
+const aviso = Astro.url.searchParams.get("aviso") === "salvo" ? "Estilo salvo." : "";
+---
+
+<PaginaAdmin titulo="Estilos musicais" descricao="Os estilos que os artistas escolhem e que filtram a Agenda e a lista de artistas.">
+  <a href="/admin/agenda" class="mt-2 inline-flex items-center gap-1 text-sm font-bold text-azul-600 hover:underline">
+    <Icone nome="esquerda" class="size-4" />
+    Voltar para a Agenda
+  </a>
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <form method="post" class="mt-5 grid gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:grid-cols-[1fr_auto] sm:items-end">
+    <div>
+      <label class={classesRotulo} for="novo-estilo">Novo estilo</label>
+      <input id="novo-estilo" name="nome" required minlength="2" maxlength="40" class={classesCampo} />
+    </div>
+    <button type="submit" class={classesBotao("azul", "m")}>
+      <Icone nome="certo" class="size-4" />
+      Acrescentar
+    </button>
+  </form>
+
+  <ul class="mt-5 space-y-3">
+    {
+      (lista.ok ? lista.dados : []).map((e) => (
+        <li class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+          <form method="post" class="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+            <input type="hidden" name="id" value={e.id} />
+            <div>
+              <label class={classesRotulo} for={`estilo-${e.id}`}>Nome</label>
+              <input id={`estilo-${e.id}`} name="nome" value={e.nome} required minlength="2" maxlength="40" class={classesCampo} />
+            </div>
+            <div>
+              <label class={classesRotulo} for={`ativo-${e.id}`}>Situação</label>
+              <select id={`ativo-${e.id}`} name="ativo" class={classesCampo}>
+                <option value="sim" selected={e.ativo}>Ativo</option>
+                <option value="nao" selected={!e.ativo}>Desativado</option>
+              </select>
+            </div>
+            <button type="submit" class={classesBotao("contorno", "m")}>Salvar</button>
+          </form>
+        </li>
+      ))
+    }
+  </ul>
+</PaginaAdmin>

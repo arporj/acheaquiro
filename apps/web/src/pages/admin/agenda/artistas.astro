@@ -1,0 +1,136 @@
+---
+// Artistas da Agenda: nome, estilos e, para o artista anunciante (categoria
+// "Músicos e bandas"), o link com o anúncio, de onde vêm a foto, a descrição e
+// o contato. Formação, tipos de evento e vídeos só aparecem no site para o
+// artista anunciante (dadosPublicosDoArtista, packages/domain).
+import { Icone, Modal, classesBotao } from "@acheaqui/ui";
+import { MAXIMO_ESTILOS_ARTISTA, MAXIMO_VIDEOS_ARTISTA } from "@acheaqui/validation";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import { listarArtistasAdmin, listarEstilos, salvarArtista, type ArtistaAdmin } from "@/lib/agenda";
+import { limparCacheDoSite } from "@/lib/arquivos";
+
+const supabase = Astro.locals.supabase!;
+let erro = "";
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const id = String(f.get("id") ?? "");
+  const r = await salvarArtista(supabase, /^[0-9a-f-]{36}$/.test(id) ? id : null, f);
+  if (r.ok) {
+    await limparCacheDoSite(Astro.url.origin);
+    return Astro.redirect("/admin/agenda/artistas?aviso=salvo", 303);
+  }
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const [artistasR, estilosR] = await Promise.all([listarArtistasAdmin(supabase), listarEstilos(supabase)]);
+if (!artistasR.ok) erro ||= artistasR.erro.mensagem;
+if (!estilosR.ok) erro ||= estilosR.erro.mensagem;
+const artistas = artistasR.ok ? artistasR.dados : [];
+const estilos = estilosR.ok ? estilosR.dados : [];
+const nomeEstilo = new Map(estilos.map((e) => [e.id, e.nome]));
+const aviso = Astro.url.searchParams.get("aviso") === "salvo" ? "Artista salvo." : "";
+const vazio: ArtistaAdmin = { id: "", slug: "", nome: "", formacao: null, atende: [], videos: [], anunciante: null, estiloIds: [] };
+const linhasDeVideo = (a: ArtistaAdmin) => [...a.videos, ...Array.from({ length: Math.max(0, 2 - a.videos.length) }, () => ({ titulo: "", url: "" }))];
+---
+
+<PaginaAdmin titulo="Artistas" descricao="Quem se apresenta nos eventos da Agenda.">
+  <a href="/admin/agenda" class="mt-2 inline-flex items-center gap-1 text-sm font-bold text-azul-600 hover:underline">
+    <Icone nome="esquerda" class="size-4" />
+    Voltar para a Agenda
+  </a>
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  <button type="button" data-abrir-modal="artista-novo" class={classesBotao("azul", "m", "mt-5")}>
+    <Icone nome="musica" class="size-4" />
+    Novo artista
+  </button>
+
+  {
+    artistas.length === 0 && artistasR.ok && (
+      <div class="mt-5 rounded-2xl bg-white p-6 text-center shadow-sm ring-1 ring-black/5">
+        <p class="font-bold text-azul-900">Nenhum artista cadastrado.</p>
+        <p class="mt-1 text-sm text-slate-600">Cadastre os artistas antes de montar a programação dos eventos.</p>
+      </div>
+    )
+  }
+
+  <ul class="mt-5 space-y-3">
+    {
+      artistas.map((a) => (
+        <li class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+          <span class="min-w-0">
+            <span class="block font-bold text-azul-900">{a.nome}</span>
+            <span class="block text-sm text-slate-600">{a.estiloIds.map((id) => nomeEstilo.get(id)).filter(Boolean).join(", ")}</span>
+            <span class="block text-xs font-semibold text-slate-500">{a.anunciante ? `Anunciante: ${a.anunciante.nome}` : "Sem anúncio: aparece só com nome e estilos"}</span>
+          </span>
+          <button type="button" data-abrir-modal={`artista-${a.id}`} class={classesBotao("contorno", "p")}>
+            Editar
+          </button>
+        </li>
+      ))
+    }
+  </ul>
+
+  {
+    [vazio, ...artistas].map((a) => (
+      <Modal id={a.id ? `artista-${a.id}` : "artista-novo"} titulo={a.id ? `Editar: ${a.nome}` : "Novo artista"}>
+        <form method="post">
+          <input type="hidden" name="id" value={a.id} />
+          <label class={classesRotulo} for={`nome-${a.id}`}>
+            Nome do artista ou da banda
+          </label>
+          <input id={`nome-${a.id}`} name="nome" value={a.nome} required minlength="2" maxlength="80" class={classesCampo} />
+          <fieldset>
+            <legend class={classesRotulo}>Estilos (até {MAXIMO_ESTILOS_ARTISTA})</legend>
+            <div class="mt-1 grid grid-cols-2 gap-1">
+              {estilos
+                .filter((e) => e.ativo || a.estiloIds.includes(e.id))
+                .map((e) => (
+                  <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="estilo" value={e.id} checked={a.estiloIds.includes(e.id)} class="size-4" />
+                    {e.nome}
+                  </label>
+                ))}
+            </div>
+          </fieldset>
+          <label class={classesRotulo} for={`perfil-${a.id}`}>
+            Link do anúncio no Ache Aqui (opcional)
+          </label>
+          <input
+            id={`perfil-${a.id}`}
+            name="perfil"
+            value={a.anunciante ? `${Astro.url.origin}/perfil/${a.anunciante.slug}` : ""}
+            maxlength="300"
+            class={classesCampo}
+            placeholder="Só se o artista anuncia em Músicos e bandas"
+          />
+          <label class={classesRotulo} for={`formacao-${a.id}`}>
+            Formação (opcional)
+          </label>
+          <input id={`formacao-${a.id}`} name="formacao" value={a.formacao ?? ""} maxlength="120" class={classesCampo} placeholder="Ex.: voz, guitarra, baixo e bateria" />
+          <label class={classesRotulo} for={`atende-${a.id}`}>
+            Tipos de evento que aceita (um por linha, opcional)
+          </label>
+          <textarea id={`atende-${a.id}`} name="atende" rows="3" maxlength="400" class={`${classesCampo} h-auto py-3`}>{a.atende.join("\n")}</textarea>
+          <fieldset>
+            <legend class={classesRotulo}>Vídeos (até {MAXIMO_VIDEOS_ARTISTA}, link do YouTube ou do Instagram)</legend>
+            {linhasDeVideo(a).map((v) => (
+              <div class="mt-1 grid gap-1 sm:grid-cols-2">
+                <input name="video_titulo" value={v.titulo} maxlength="80" aria-label="Título do vídeo" placeholder="Título" class={classesCampo} />
+                <input name="video_url" value={v.url} maxlength="300" aria-label="Link do vídeo" placeholder="https://..." class={classesCampo} />
+              </div>
+            ))}
+          </fieldset>
+          <button type="submit" class={classesBotao("azul", "m", "mt-5 w-full")}>
+            Salvar artista
+          </button>
+        </form>
+      </Modal>
+    ))
+  }
+</PaginaAdmin>
