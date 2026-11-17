@@ -19,3 +19,4 @@ export * from "./previa";
 export * from "./negociacao";
 export * from "./visitas";
 export * from "./carrossel";
+export * from "./extras";
