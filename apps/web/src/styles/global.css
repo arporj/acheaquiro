@@ -35,14 +35,6 @@
 
   --font-display: var(--font-baloo), ui-rounded, system-ui, sans-serif;
   --font-sans: var(--font-nunito), system-ui, sans-serif;
-
-  --animate-carrossel: carrossel 40s linear infinite;
-
-  @keyframes carrossel {
-    to {
-      transform: translateX(-50%);
-    }
-  }
 }
 
 body {
@@ -114,12 +106,6 @@ body:has(.contador-visitas:not([hidden])) footer {
   }
   body:has(.barra-contato):has(.botao-duvidas):has(.contador-visitas:not([hidden])) footer {
     padding-bottom: 13.5rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-carrossel {
-    animation: none;
   }
 }
 

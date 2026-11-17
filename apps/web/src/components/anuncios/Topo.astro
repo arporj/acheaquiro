@@ -1,7 +1,9 @@
 ---
 // Cabeçalho + Banner Exclusivo + Carrossel (item 4.1),
 // presentes no topo de todas as páginas.
-import { bannerExclusivo, nomeBairro, anunciantesDoCarrossel } from "@/dados/consultas";
+import { composicaoCarrossel } from "@acheaqui/domain";
+import { bannerExclusivo, nomeBairro, anunciantesDoCarrossel, categoriasAtalho, listarExtras } from "@/dados/consultas";
+import { EXTRA_BANNER, EXTRA_CARROSSEL, type AnunciosDaCasa } from "@/lib/anunciosDaCasa";
 import Cabecalho from "../Cabecalho.astro";
 import FaixaAnuncios from "./FaixaAnuncios.astro";
 
@@ -10,14 +12,24 @@ interface Props {
 }
 
 const { pagina } = Astro.props;
-const exclusivo = await bannerExclusivo();
+const [exclusivo, carrossel, extras] = await Promise.all([bannerExclusivo(), anunciantesDoCarrossel(), listarExtras()]);
 const banner = exclusivo && {
   item: exclusivo.item,
   descricao: exclusivo.anunciante.descricao,
   bairro:
     exclusivo.anunciante.tipo === "comercio" ? await nomeBairro(exclusivo.anunciante.enderecos[0].bairroId) : "Rio das Ostras",
 };
+
+// Espaço sem anunciante mostra a propaganda do próprio Ache Aqui, só se o extra estiver à venda.
+const extraBanner = extras.find((e) => e.id === EXTRA_BANNER);
+const extraCarrossel = extras.find((e) => e.id === EXTRA_CARROSSEL);
+const composicao = extraCarrossel ? composicaoCarrossel(carrossel.length) : { atalhos: 0, convites: 0 };
+const casa: AnunciosDaCasa = {
+  banner: !banner && extraBanner ? { nome: extraBanner.nome, diariaCentavos: extraBanner.porDia?.diariaCentavos } : undefined,
+  atalhos: composicao.atalhos > 0 ? (await categoriasAtalho()).slice(0, composicao.atalhos) : [],
+  convites: composicao.convites,
+};
 ---
 
 <Cabecalho comBusca={pagina === "interna"} />
-<FaixaAnuncios pagina={pagina} banner={banner} carrossel={await anunciantesDoCarrossel()} />
+<FaixaAnuncios pagina={pagina} banner={banner} carrossel={carrossel} casa={casa} />

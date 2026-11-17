@@ -19,7 +19,7 @@ const { extras, regras } = Astro.props;
       const mensal = porDia ? null : valorExtra(extra, "mensal", false, regras);
       const fundador = porDia ? null : valorExtra(extra, "mensal", true, regras);
       return (
-        <li class="flex flex-col rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+        <li id={`extra-${extra.id}`} class="flex scroll-mt-4 flex-col rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
           <h3 class="font-display text-lg font-bold text-azul-900">{extra.nome}</h3>
           <p class="mt-1 flex-1 text-sm text-slate-600">{extra.descricao}</p>
           {porDia ? (
