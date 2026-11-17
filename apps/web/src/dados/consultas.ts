@@ -4,15 +4,21 @@
 // anunciantes existirem (etapa 2), mostra a lista de anunciantes vazia. A
 // página "em breve" não acessa o banco: usa as regras de src/mocks/planos.ts.
 import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, CotaPatrocinio, CotaPatrocinioVenda, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
-import { agruparCategorias, categoriaCombinaComBusca, dadosPublicosDoArtista, novaVagaAPartirDe, somarDias } from "@acheaqui/domain";
+import { agruparCategorias, categoriaCombinaComBusca, dadosPublicosDoArtista, diasDoEventoNoPeriodo, novaVagaAPartirDe, somarDias, somarMeses as somarMesesData } from "@acheaqui/domain";
 import {
   codigoRepresentanteValido,
   criarClientePublico,
   lerAnunciantePublico,
   lerAnunciantesPublicos,
+  lerArtistasPublicos,
   lerCatalogoPublico,
+  lerEventoPublico,
+  lerEventosDoArtista,
+  lerEventosPublicos,
   lerPatrocinioPublico,
   registrarCliquePatrocinio,
+  type ArtistaDoBanco,
+  type EventoDoBanco,
   type FiltroAnunciantes,
 } from "@acheaqui/supabase-client";
 import { ENDERECO_ARQUIVOS } from "@/lib/arquivos";
@@ -23,7 +29,7 @@ import { anunciantes as anunciantesFicticios } from "@/mocks/anunciantes";
 import { categorias, ordemAtalhos } from "@/mocks/categorias";
 import { bannerExclusivoId, linksDestacados, simulacaoComercios, carrosselIds } from "@/mocks/extras";
 import { bairros, cidadeAtual } from "@/mocks/localidades";
-import { apresentacoes as apresentacoesFicticias, artistas as artistasFicticios, eventos as eventosFicticios } from "@/mocks/agenda";
+import { apresentacoes as apresentacoesRelativas, artistas as artistasFicticios, eventos as eventosFicticios } from "@/mocks/agenda";
 import { cotasPatrocinio, patrocinadores as patrocinadoresFicticios } from "@/mocks/patrocinadores";
 import { extrasDisponiveis, planos, regrasCobranca } from "@/mocks/planos";
 
@@ -423,44 +429,64 @@ export async function indicacaoValida(codigo: string): Promise<boolean> {
   return codigoRepresentanteValido(clientePublico(), codigo);
 }
 
-// Agenda (módulo de eventos). Por enquanto só no site de apresentação.
+// Agenda (módulo de eventos). Na produção, do banco (migration da Agenda, de
+// 17/11/2026): o RLS só entrega os eventos publicados e liberados. No site de
+// apresentação, os dados fictícios de src/mocks/agenda.ts.
 
 /** Hoje em Rio das Ostras, AAAA-MM-DD. */
 export function hojeNaCidade(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 }
 
-/** Uma apresentação com o artista e o lugar já resolvidos, pronta para a tela. */
+/**
+ * Uma linha da Agenda, pronta para a tela: um artista ou uma atividade num dia
+ * e horário, ou o evento inteiro no dia sem programação (inicio vazio).
+ */
 export interface ItemAgenda {
   id: string;
   data: string;
+  /** HH:MM; vazio quando o evento não tem programação naquele dia ("o dia todo"). */
   inicio: string;
   fim?: string;
-  artista: Artista;
+  artista?: Artista;
+  /** Atividade sem artista, ou o nome do evento no dia sem programação. */
+  titulo?: string;
   lugar: { nome: string; href: string; bairroId: string; bairro: string; evento: boolean };
 }
 
-// As datas dos dados fictícios são relativas a hoje; por isso são calculadas
+/** Os eventos da Agenda podem começar até 12 meses à frente (decisão 8). */
+const MESES_DA_AGENDA = 12;
+
+const ordemAgenda = (x: ItemAgenda, y: ItemAgenda) => (x.data + x.inicio).localeCompare(y.data + y.inicio);
+
+// ---------------------------------------------------------------------------
+// Site de apresentação: dados fictícios com datas relativas a hoje, calculadas
 // a cada consulta (no Worker, o relógio só anda dentro da requisição).
-function eventosAgenda(): EventoAgenda[] {
+// ---------------------------------------------------------------------------
+
+function eventosFicticiosDeHoje(): EventoAgenda[] {
   if (!ficticio) return [];
   const hoje = hojeNaCidade();
-  return eventosFicticios.map(({ diasDepoisDeHoje, ...e }) => ({ ...e, data: somarDias(hoje, diasDepoisDeHoje) }));
+  return eventosFicticios.map(({ diasDepoisDeHoje, dias, ...e }) => ({
+    ...e,
+    dataInicio: somarDias(hoje, diasDepoisDeHoje),
+    dataFim: somarDias(hoje, diasDepoisDeHoje + dias - 1),
+  }));
 }
 
-function apresentacoesAgenda(): Apresentacao[] {
+function apresentacoesFicticias(): Apresentacao[] {
   if (!ficticio) return [];
   const hoje = hojeNaCidade();
-  return apresentacoesFicticias.map(({ diasDepoisDeHoje, ...a }) => ({ ...a, data: somarDias(hoje, diasDepoisDeHoje) }));
+  return apresentacoesRelativas.map(({ diasDepoisDeHoje, ...a }) => ({ ...a, data: somarDias(hoje, diasDepoisDeHoje) }));
 }
 
 // Só o artista com anúncio ativo mostra foto, contato e o resto do perfil (packages/domain).
-const artistas: Artista[] = (ficticio ? artistasFicticios : []).map((a) =>
+const artistasFicticiosPublicos: Artista[] = (ficticio ? artistasFicticios : []).map((a) =>
   dadosPublicosDoArtista(a, Boolean(a.anuncianteId && anunciantes.some((an) => an.id === a.anuncianteId))),
 );
 
-async function paraItemAgenda(a: Apresentacao, eventos: EventoAgenda[]): Promise<ItemAgenda | undefined> {
-  const artista = artistas.find((ar) => ar.id === a.artistaId);
+async function itemFicticio(a: Apresentacao, eventos: EventoAgenda[]): Promise<ItemAgenda | undefined> {
+  const artista = artistasFicticiosPublicos.find((ar) => ar.id === a.artistaId);
   if (!artista) return undefined;
   if (a.eventoId) {
     const evento = eventos.find((e) => e.id === a.eventoId);
@@ -475,18 +501,122 @@ async function paraItemAgenda(a: Apresentacao, eventos: EventoAgenda[]): Promise
   return { id: a.id, data: a.data, inicio: a.inicio, fim: a.fim, artista, lugar };
 }
 
-async function itensAgenda(filtro: (a: Apresentacao) => boolean): Promise<ItemAgenda[]> {
-  const eventos = eventosAgenda();
-  const itens = await Promise.all(apresentacoesAgenda().filter(filtro).map((a) => paraItemAgenda(a, eventos)));
-  return itens
-    .filter((i): i is ItemAgenda => Boolean(i))
-    .sort((x, y) => (x.data + x.inicio).localeCompare(y.data + y.inicio));
+async function itensFicticios(filtro: (a: Apresentacao) => boolean): Promise<ItemAgenda[]> {
+  const eventos = eventosFicticiosDeHoje();
+  const itens = await Promise.all(apresentacoesFicticias().filter(filtro).map((a) => itemFicticio(a, eventos)));
+  return itens.filter((i): i is ItemAgenda => Boolean(i)).sort(ordemAgenda);
 }
 
-/** Apresentações de hoje em diante, em ordem de data e horário. */
+// ---------------------------------------------------------------------------
+// Produção: banco
+// ---------------------------------------------------------------------------
+
+function artistaDoBanco(a: ArtistaDoBanco): Artista {
+  const artista: Artista = {
+    id: a.id,
+    slug: a.slug,
+    nome: a.nome,
+    estilos: a.estilos,
+    descricao: "",
+    cor: a.cor,
+    formacao: a.formacao ?? undefined,
+    atende: a.atende,
+    galeria: [],
+    videos: a.videos,
+    anuncianteId: a.anuncio?.id,
+    anuncioSlug: a.anuncio?.slug,
+  };
+  return dadosPublicosDoArtista(artista, a.anuncio !== null);
+}
+
+async function artistasDoBanco(): Promise<Artista[]> {
+  const r = await lerArtistasPublicos(clientePublico(), CIDADE);
+  if (!r.ok) throw new Error(`Artistas indisponíveis: ${r.erro.codigo}`);
+  return r.dados.map(artistaDoBanco);
+}
+
+function cartazDoBanco(chave: string | null, nome: string): Foto | undefined {
+  // A versão de 1.600 px em JPEG serve à página e à prévia do WhatsApp.
+  return chave ? { id: chave, url: `${ENDERECO_ARQUIVOS}/${chave}-1600.jpg`, legenda: `Cartaz de ${nome}` } : undefined;
+}
+
+function eventoDoBanco(e: EventoDoBanco): EventoAgenda {
+  return {
+    id: e.id,
+    slug: e.slug,
+    nome: e.nome,
+    descricao: e.descricao,
+    origem: e.origem,
+    produtor: e.produtor ?? undefined,
+    local: e.local,
+    endereco: e.endereco ?? undefined,
+    bairroId: e.bairroId,
+    anunciante: e.anunciante ?? undefined,
+    dataInicio: e.dataInicio,
+    dataFim: e.dataFim,
+    entrada: e.entrada,
+    couvertCentavos: e.couvertCentavos ?? undefined,
+    ingressos: e.ingressos,
+    abertoAoPublico: e.abertoAoPublico,
+    classificacao: e.classificacao ?? undefined,
+    cadeiraDePraia: e.cadeiraDePraia,
+    cooler: e.cooler,
+    ruasFechadas: e.ruasFechadas ?? undefined,
+    barracas: e.barracas.map((b) => ({ nome: b.nome, vende: b.vende, whatsapp: b.whatsapp ?? undefined, anuncioSlug: b.anuncioSlug ?? undefined })),
+    cartaz: cartazDoBanco(e.cartazChave, e.nome),
+  };
+}
+
+/**
+ * Linhas da Agenda de um evento entre `de` e `ate`: a programação de cada dia,
+ * ou o próprio evento no dia sem programação (o evento de vários dias aparece
+ * em cada dia em que acontece, decisão 11).
+ */
+async function itensDoEvento(e: EventoDoBanco, artistas: Map<string, Artista>, de: string, ate: string): Promise<ItemAgenda[]> {
+  const lugar = {
+    nome: e.origem === "comercio" && e.anunciante ? e.anunciante.nome : e.nome,
+    href: `/agenda/${e.slug}`,
+    bairroId: e.bairroId,
+    bairro: await nomeBairro(e.bairroId),
+    evento: true,
+  };
+  return diasDoEventoNoPeriodo({ inicio: e.dataInicio, fim: e.dataFim }, de, ate).flatMap((dia): ItemAgenda[] => {
+    const doDia = e.programacao.filter((p) => p.dia === dia);
+    if (doDia.length === 0) return [{ id: `${e.id}-${dia}`, data: dia, inicio: "", titulo: e.nome, lugar }];
+    return doDia.map((p) => ({
+      id: p.id,
+      data: dia,
+      inicio: p.inicio,
+      fim: p.fim ?? undefined,
+      artista: p.artistaId ? artistas.get(p.artistaId) : undefined,
+      titulo: p.titulo ?? undefined,
+      lugar,
+    }));
+  });
+}
+
+async function itensDoBanco(eventos: EventoDoBanco[], de: string, ate: string): Promise<ItemAgenda[]> {
+  const artistas = new Map((await artistasDoBanco()).map((a) => [a.id, a]));
+  const itens = await Promise.all(eventos.map((e) => itensDoEvento(e, artistas, de, ate)));
+  return itens.flat().sort(ordemAgenda);
+}
+
+async function eventosDoBanco(de: string, ate: string, anuncianteId?: string): Promise<EventoDoBanco[]> {
+  const r = await lerEventosPublicos(clientePublico(), CIDADE, { de, ate, anuncianteId });
+  if (!r.ok) throw new Error(`Agenda indisponível: ${r.erro.codigo}`);
+  return r.dados;
+}
+
+// ---------------------------------------------------------------------------
+// O que as páginas usam
+// ---------------------------------------------------------------------------
+
+/** Linhas de hoje até 12 meses à frente, em ordem de data e horário. */
 export async function agendaProximosDias(): Promise<ItemAgenda[]> {
   const hoje = hojeNaCidade();
-  return itensAgenda((a) => a.data >= hoje);
+  if (!catalogoDoBanco) return itensFicticios((a) => a.data >= hoje);
+  const ate = somarMesesData(hoje, MESES_DA_AGENDA);
+  return itensDoBanco(await eventosDoBanco(hoje, ate), hoje, ate);
 }
 
 /** Meses que a página da Agenda já leva prontos: 1 antes e 3 depois do mês atual. */
@@ -507,40 +637,82 @@ export function mesesNaPagina(): string[] {
   return meses;
 }
 
-/** Apresentações nos meses pedidos (AAAA-MM), de toda a cidade ou de um comércio. */
+/** Linhas nos meses pedidos (AAAA-MM), de toda a cidade ou de um comércio. */
 export async function agendaDosMeses(meses: string[], anuncianteId?: string): Promise<ItemAgenda[]> {
-  return itensAgenda((a) => meses.includes(a.data.slice(0, 7)) && (!anuncianteId || a.anuncianteId === anuncianteId));
+  if (!catalogoDoBanco) return itensFicticios((a) => meses.includes(a.data.slice(0, 7)) && (!anuncianteId || a.anuncianteId === anuncianteId));
+  if (meses.length === 0) return [];
+  const ordenados = [...meses].sort();
+  const de = `${ordenados[0]}-01`;
+  const ate = somarDias(somarMesesData(`${ordenados[ordenados.length - 1]}-01`, 1), -1);
+  const itens = await itensDoBanco(await eventosDoBanco(de, ate, anuncianteId), de, ate);
+  return itens.filter((i) => meses.includes(i.data.slice(0, 7)));
 }
 
-/** Bairros com alguma apresentação, em qualquer data, para o filtro de bairro. */
-export async function bairrosDaAgenda(): Promise<{ id: string; nome: string }[]> {
-  const itens = await itensAgenda(() => true);
+/** Bairros das linhas, para o filtro de bairro. */
+export function bairrosDosItens(itens: ItemAgenda[]): { id: string; nome: string }[] {
   return [...new Map(itens.map((i) => [i.lugar.bairroId, i.lugar.bairro])).entries()]
     .map(([id, nome]) => ({ id, nome }))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
+/** Estilos dos artistas das linhas, para o filtro de estilo (decisão 10). */
+export function estilosDosItens(itens: ItemAgenda[]): string[] {
+  return [...new Set(itens.flatMap((i) => i.artista?.estilos ?? []))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
 export async function agendaDoArtista(artistaId: string): Promise<ItemAgenda[]> {
-  return itensAgenda((a) => a.artistaId === artistaId);
+  if (!catalogoDoBanco) return itensFicticios((a) => a.artistaId === artistaId);
+  const r = await lerEventosDoArtista(clientePublico(), CIDADE, artistaId);
+  if (!r.ok) throw new Error(`Agenda do artista indisponível: ${r.erro.codigo}`);
+  const itens = await Promise.all(r.dados.map(async (e) => itensDoBanco([e], e.dataInicio, e.dataFim)));
+  return itens.flat().filter((i) => i.artista?.id === artistaId).sort(ordemAgenda);
 }
 
 export async function listarArtistas(): Promise<Artista[]> {
-  return [...artistas].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  const lista = catalogoDoBanco ? await artistasDoBanco() : artistasFicticiosPublicos;
+  return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
+/**
+ * Artista pelo endereço /artista/slug. Na produção, o artista anunciante traz
+ * do anúncio a foto, a descrição, as fotos e o contato.
+ */
 export async function artistaPorSlug(slug: string): Promise<Artista | undefined> {
-  return artistas.find((a) => a.slug === slug);
+  if (!catalogoDoBanco) return artistasFicticiosPublicos.find((a) => a.slug === slug);
+  const artista = (await artistasDoBanco()).find((a) => a.slug === slug);
+  if (!artista?.anuncioSlug) return artista;
+  const anuncio = await anunciantePorSlug(artista.anuncioSlug);
+  if (!anuncio) return artista;
+  return {
+    ...artista,
+    descricao: anuncio.descricao,
+    foto: anuncio.fotoPerfil.url ? anuncio.fotoPerfil : undefined,
+    galeria: anuncio.galeria,
+    whatsapp: anuncio.whatsapp,
+    instagram: anuncio.instagram,
+  };
 }
 
+/** Eventos de produtores e órgãos públicos, de hoje em diante (a lista "Eventos" da Agenda). */
 export async function listarEventos(): Promise<EventoAgenda[]> {
   const hoje = hojeNaCidade();
-  return eventosAgenda().filter((e) => e.data >= hoje);
+  if (!catalogoDoBanco) return eventosFicticiosDeHoje().filter((e) => e.dataFim >= hoje);
+  const eventos = await eventosDoBanco(hoje, somarMesesData(hoje, MESES_DA_AGENDA));
+  return eventos.filter((e) => e.origem === "avulso" || e.origem === "orgao_publico").map(eventoDoBanco);
 }
 
 export async function eventoPorSlug(slug: string): Promise<{ evento: EventoAgenda; programacao: ItemAgenda[] } | undefined> {
-  const evento = eventosAgenda().find((e) => e.slug === slug);
-  if (!evento) return undefined;
-  return { evento, programacao: await itensAgenda((a) => a.eventoId === evento.id) };
+  if (!catalogoDoBanco) {
+    const evento = eventosFicticiosDeHoje().find((e) => e.slug === slug);
+    if (!evento) return undefined;
+    return { evento, programacao: await itensFicticios((a) => a.eventoId === evento.id) };
+  }
+  const r = await lerEventoPublico(clientePublico(), CIDADE, slug);
+  if (!r.ok) throw new Error(`Evento indisponível: ${r.erro.codigo}`);
+  if (!r.dados) return undefined;
+  const programacao = await itensDoBanco([r.dados], r.dados.dataInicio, r.dados.dataFim);
+  // Na página do evento, o dia sem programação não vira linha.
+  return { evento: eventoDoBanco(r.dados), programacao: programacao.filter((i) => i.inicio !== "") };
 }
 
 export async function anuncianteSlugPorId(id: string): Promise<string | undefined> {

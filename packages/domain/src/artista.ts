@@ -6,7 +6,7 @@ import type { Artista } from "@acheaqui/types";
 /**
  * O que o visitante pode ver do artista. Sem anúncio ativo, ficam de fora foto,
  * capa, descrição, formação, tipos de evento, fotos, vídeos, Instagram e
- * WhatsApp: só nome, estilo e os shows.
+ * WhatsApp: só nome, estilos e os shows.
  */
 export function dadosPublicosDoArtista(artista: Artista, anuncianteAtivo: boolean): Artista {
   if (anuncianteAtivo) return artista;
@@ -14,7 +14,7 @@ export function dadosPublicosDoArtista(artista: Artista, anuncianteAtivo: boolea
     id: artista.id,
     slug: artista.slug,
     nome: artista.nome,
-    estilo: artista.estilo,
+    estilos: artista.estilos,
     cor: artista.cor,
     descricao: "",
     atende: [],

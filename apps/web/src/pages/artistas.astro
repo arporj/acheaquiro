@@ -9,13 +9,11 @@ import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
 import { dataCurtaComSemana, normalizar } from "@/lib/texto";
 
-const artistas = await listarArtistas();
-if (artistas.length === 0) return Astro.rewrite("/404");
+const [artistas, agenda] = await Promise.all([listarArtistas(), agendaProximosDias()]);
 guardarNoCache(Astro);
 
 const hoje = hojeNaCidade();
-const agenda = await agendaProximosDias();
-const cartoes = artistas.map((artista) => ({ artista, proximo: agenda.find((i) => i.artista.id === artista.id) }));
+const cartoes = artistas.map((artista) => ({ artista, proximo: agenda.find((i) => i.artista?.id === artista.id) }));
 ---
 
 <Layout titulo="Artistas e bandas de Rio das Ostras" descricao="Músicos, bandas e DJs que tocam em Rio das Ostras: próximos shows e contato para contratar.">
@@ -38,12 +36,12 @@ const cartoes = artistas.map((artista) => ({ artista, proximo: agenda.find((i) =
     <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {
         cartoes.map(({ artista, proximo }) => (
-          <li data-artista={normalizar(`${artista.nome} ${artista.estilo}`)}>
+          <li data-artista={normalizar(`${artista.nome} ${artista.estilos.join(" ")}`)}>
             <a href={`/artista/${artista.slug}`} class="flex h-full items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 hover:ring-azul-300">
               <AvatarArtista artista={artista} class="size-14" />
               <span class="min-w-0">
                 <span class="block font-bold text-azul-900">{artista.nome}</span>
-                <span class="block text-sm text-slate-500">{artista.estilo}</span>
+                <span class="block text-sm text-slate-500">{artista.estilos.join(", ")}</span>
                 <span class="mt-1 block text-xs font-bold text-vermelho-600 first-letter:uppercase">
                   {proximo
                     ? `Próximo show: ${proximo.data === hoje ? "hoje" : dataCurtaComSemana(proximo.data)}, ${proximo.inicio} · ${proximo.lugar.nome}`
@@ -55,6 +53,7 @@ const cartoes = artistas.map((artista) => ({ artista, proximo: agenda.find((i) =
         ))
       }
     </ul>
+    {artistas.length === 0 && <p class="mt-4 rounded-2xl bg-white p-6 text-center font-semibold text-slate-600 shadow-sm ring-1 ring-black/5">Nenhum artista na Agenda por enquanto.</p>}
     <p data-sem-artista hidden class="mt-4 text-center text-sm text-slate-500">Nenhum artista com esse nome ou estilo.</p>
   </main>
 </Layout>

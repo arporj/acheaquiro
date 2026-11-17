@@ -54,6 +54,7 @@ export function ligarAgendaCalendario(agenda: HTMLElement): void {
   const tituloDia = agenda.querySelector<HTMLElement>("[data-titulo-dia]")!;
   const vazio = agenda.querySelector<HTMLElement>("[data-vazio]")!;
   const bairro = agenda.querySelector<HTMLSelectElement>("[data-bairro]");
+  const estilo = agenda.querySelector<HTMLSelectElement>("[data-estilo]");
   const aviso = agenda.querySelector<HTMLElement>("[data-aviso-artista]");
 
   const hoje = hojeNaCidade();
@@ -67,7 +68,9 @@ export function ligarAgendaCalendario(agenda: HTMLElement): void {
   let diasNaFaixa = faixa ? diasQueCabem() : 0;
 
   const visivel = (item: HTMLElement) =>
-    (artista === "" || item.dataset.artista === artista) && (!bairro?.value || item.dataset.itemBairro === bairro.value);
+    (artista === "" || item.dataset.artista === artista) &&
+    (!bairro?.value || item.dataset.itemBairro === bairro.value) &&
+    (!estilo?.value || (item.dataset.estilos ?? "").includes(`|${estilo.value}|`));
 
   /** Dia mostrado ao abrir: hoje, se tiver show; senão o próximo dia com show; senão hoje. */
   function diaInicial(): string {
@@ -201,6 +204,7 @@ export function ligarAgendaCalendario(agenda: HTMLElement): void {
     irPara(inicioDoPeriodo(hoje));
   });
   bairro?.addEventListener("change", desenhar);
+  estilo?.addEventListener("change", desenhar);
   agenda.querySelector("[data-tirar-artista]")?.addEventListener("click", () => {
     artista = "";
     const url = new URL(location.href);

@@ -19,13 +19,9 @@ const patrocinioDisponivel = await temPatrocinioDisponivel();
 // e "Artistas" ficava sem acesso).
 const links = [
   { href: "/#categorias", rotulo: "Categorias" },
-  // Agenda e Artistas: por enquanto só no site de apresentação (módulo de eventos).
-  ...(ambiente === "apresentacao"
-    ? [
-        { href: "/agenda", rotulo: "Agenda" },
-        { href: "/artistas", rotulo: "Artistas" },
-      ]
-    : []),
+  // Agenda e Artistas: no site de apresentação e, desde 17/11/2026, na produção.
+  { href: "/agenda", rotulo: "Agenda" },
+  { href: "/artistas", rotulo: "Artistas" },
   { href: "/sobre", rotulo: "Como funciona" },
   { href: "/fundadores", rotulo: "Fundadores" },
   // Entrada de anunciantes, representantes e equipe (decisão de 22/10/2026). O site de apresentação não tem login.

@@ -1,6 +1,6 @@
 ---
-// Agenda de shows e eventos (módulo de eventos). Por enquanto só existe no
-// site de apresentação; sem nenhum artista, a página não existe.
+// Agenda de shows e eventos (módulo de eventos): na produção, do banco; no site
+// de apresentação, dados fictícios. Sem nada cadastrado, mostra o aviso de vazio.
 import { Icone } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
 import AgendaCalendario from "@/components/agenda/AgendaCalendario.astro";
@@ -8,18 +8,34 @@ import AvatarArtista from "@/components/agenda/AvatarArtista.astro";
 import { mostraConvitePatrocinio } from "@acheaqui/domain";
 import ConvitePatrocinio from "@/components/patrocinadores/ConvitePatrocinio.astro";
 import LinhaPatrocinio from "@/components/patrocinadores/LinhaPatrocinio.astro";
-import { agendaDosMeses, bairrosDaAgenda, listarArtistas, listarCotasPatrocinio, listarEventos, mesesNaPagina, nomeBairro, patrocinadorDaAgenda } from "@/dados/consultas";
+import {
+  agendaDosMeses,
+  bairrosDosItens,
+  estilosDosItens,
+  listarArtistas,
+  listarCotasPatrocinio,
+  listarEventos,
+  mesesNaPagina,
+  nomeBairro,
+  patrocinadorDaAgenda,
+} from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
 import { linkConvitePatrocinio } from "@/lib/convitePatrocinio";
 import { dataLonga, normalizar } from "@/lib/texto";
 
-const artistas = await listarArtistas();
-if (artistas.length === 0) return Astro.rewrite("/404");
-guardarNoCache(Astro);
-
 const meses = mesesNaPagina();
-const [itens, bairros, eventos, patrocinador, cotas] = await Promise.all([agendaDosMeses(meses), bairrosDaAgenda(), listarEventos(), patrocinadorDaAgenda(), listarCotasPatrocinio()]);
+const [artistas, itens, eventos, patrocinador, cotas] = await Promise.all([
+  listarArtistas(),
+  agendaDosMeses(meses),
+  listarEventos(),
+  patrocinadorDaAgenda(),
+  listarCotasPatrocinio(),
+]);
+guardarNoCache(Astro);
+const bairros = bairrosDosItens(itens);
+const estilos = estilosDosItens(itens);
+const vazia = itens.length === 0 && eventos.length === 0;
 const convite = mostraConvitePatrocinio(cotas.find((c) => c.cota === "agenda"), patrocinador !== undefined);
 const eventosComBairro = await Promise.all(eventos.map(async (e) => ({ ...e, bairro: await nomeBairro(e.bairroId) })));
 ---
@@ -42,7 +58,23 @@ const eventosComBairro = await Promise.all(eventos.map(async (e) => ({ ...e, bai
 
     <div class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <section aria-label="Shows por dia">
-        <AgendaCalendario itens={itens} meses={meses} bairros={bairros} filtroBairro filtroArtista />
+        {
+          vazia ? (
+            <div class="rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-black/5">
+              <Icone nome="calendario" class="mx-auto size-10 text-azul-300" />
+              <p class="mt-2 font-display text-lg font-bold text-azul-900">Ainda não há shows nem eventos na Agenda.</p>
+              <p class="mt-1 text-slate-600">
+                Vai fazer um evento ou tem música ao vivo no seu bar?{" "}
+                <a href="/anuncie" class="font-bold text-azul-600 hover:underline">
+                  Anuncie na Agenda
+                </a>
+                .
+              </p>
+            </div>
+          ) : (
+            <AgendaCalendario itens={itens} meses={meses} bairros={bairros} estilos={estilos} filtroBairro filtroArtista />
+          )
+        }
       </section>
 
       <aside class="space-y-6">
@@ -54,7 +86,9 @@ const eventosComBairro = await Promise.all(eventos.map(async (e) => ({ ...e, bai
                 {eventosComBairro.map((e) => (
                   <li>
                     <a href={`/agenda/${e.slug}`} class="block rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 hover:ring-azul-300">
-                      <span class="block text-xs font-bold text-vermelho-600 first-letter:uppercase">{dataLonga(e.data)}</span>
+                      <span class="block text-xs font-bold text-vermelho-600 first-letter:uppercase">
+                        {e.dataInicio === e.dataFim ? dataLonga(e.dataInicio) : `${dataLonga(e.dataInicio)} a ${dataLonga(e.dataFim)}`}
+                      </span>
                       <span class="block font-bold text-azul-900">{e.nome}</span>
                       <span class="text-sm text-slate-500">
                         {e.local} · {e.bairro}
@@ -67,6 +101,7 @@ const eventosComBairro = await Promise.all(eventos.map(async (e) => ({ ...e, bai
           )
         }
 
+        {artistas.length > 0 && (
         <section>
           <div class="mb-2 flex items-baseline justify-between">
             <h2 class="font-display text-lg font-bold text-azul-900">Artistas</h2>
@@ -79,12 +114,12 @@ const eventosComBairro = await Promise.all(eventos.map(async (e) => ({ ...e, bai
           <ul class="space-y-1">
             {
               artistas.map((a) => (
-                <li data-artista={normalizar(`${a.nome} ${a.estilo}`)}>
+                <li data-artista={normalizar(`${a.nome} ${a.estilos.join(" ")}`)}>
                   <a href={`/artista/${a.slug}`} class="flex items-center gap-3 rounded-xl p-2 hover:bg-white">
                     <AvatarArtista artista={a} class="size-9" />
                     <span>
                       <span class="block text-sm font-bold text-azul-900">{a.nome}</span>
-                      <span class="block text-xs text-slate-500">{a.estilo}</span>
+                      <span class="block text-xs text-slate-500">{a.estilos.join(", ")}</span>
                     </span>
                   </a>
                 </li>
@@ -93,6 +128,7 @@ const eventosComBairro = await Promise.all(eventos.map(async (e) => ({ ...e, bai
           </ul>
           <p data-sem-artista hidden class="px-2 text-sm text-slate-500">Nenhum artista com esse nome.</p>
         </section>
+        )}
       </aside>
     </div>
   </main>

@@ -10,3 +10,4 @@ export { lerPatrocinioPublico, registrarCliquePatrocinio } from "./patrocinio";
 export { registrarPedidoPerfil, type PedidoPerfilValidado } from "./pedidos";
 export { registrarDenuncia, type DenunciaValidada } from "./denuncias";
 export { codigoRepresentanteValido } from "./representantes";
+export { lerArtistasPublicos, lerEventoPublico, lerEventosDoArtista, lerEventosPublicos, type ArtistaDoBanco, type EventoDoBanco } from "./agenda";

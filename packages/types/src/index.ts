@@ -285,8 +285,8 @@ export interface Artista {
   id: string;
   slug: string;
   nome: string;
-  /** Estilo musical ou tipo de apresentação. */
-  estilo: string;
+  /** Estilos musicais (tabela editável, decisão 10 de 29/10/2026), em ordem alfabética. */
+  estilos: string[];
   descricao: string;
   /** Cor do avatar e da capa enquanto não houver foto. */
   cor: string;
@@ -306,6 +306,8 @@ export interface Artista {
   videos: { titulo: string; url: string }[];
   /** Quando o artista também é anunciante, o nome leva ao perfil. */
   anuncianteId?: string;
+  /** Endereço do perfil do anúncio (/perfil/slug), quando já se sabe. */
+  anuncioSlug?: string;
 }
 
 export interface Barraca {
@@ -313,28 +315,49 @@ export interface Barraca {
   vende: string;
   whatsapp?: string;
   anuncianteId?: string;
+  /** Endereço do perfil, quando a barraca já é anunciante. */
+  anuncioSlug?: string;
 }
 
-/** Evento com produtor (festival, feira), com programação e barracas. */
+/**
+ * Evento da Agenda: noite de show no comércio, show do artista, festa, feira,
+ * festival. Um ou mais dias, com programação e barracas (decisões 8 e 9 de 29/10/2026).
+ */
 export interface EventoAgenda {
   id: string;
   slug: string;
   nome: string;
   descricao: string;
-  produtor: string;
+  origem: OrigemEvento;
+  produtor?: string;
   local: string;
+  endereco?: string;
   bairroId: string;
+  /** Comércio onde acontece (comercio) ou artista anunciante (artista). */
+  anunciante?: { id: string; slug: string; nome: string };
   /** AAAA-MM-DD. */
-  data: string;
+  dataInicio: string;
+  dataFim: string;
+  entrada: "gratuita" | "couvert" | "ingressos";
+  couvertCentavos?: number;
+  ingressos: { nome: string; valorCentavos: number }[];
+  abertoAoPublico: boolean;
+  /** "livre", "12", "14", "16" ou "18"; sem valor, não informada. */
+  classificacao?: string;
+  /** null: não informado. */
+  cadeiraDePraia: boolean | null;
+  cooler: boolean | null;
+  ruasFechadas?: string;
   barracas: Barraca[];
   /** Cartaz ou foto do evento, em JPEG: aparece no topo da página e na prévia do link. */
   cartaz?: Foto;
 }
 
-/** Uma apresentação: num comércio com o extra de Agenda ou num evento. */
+/** Uma linha da programação: um artista ou uma atividade (largada, feira, premiação). */
 export interface Apresentacao {
   id: string;
-  artistaId: string;
+  artistaId?: string;
+  titulo?: string;
   /** AAAA-MM-DD. */
   data: string;
   /** HH:MM. */

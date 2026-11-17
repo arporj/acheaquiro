@@ -1,16 +1,19 @@
 ---
-// Página de um evento com produtor: programação por horário e barracas.
+// Página de um evento da Agenda: datas, lugar, entrada e as informações da
+// decisão 9 (só as informadas), a programação por dia e horário e as barracas.
 import { fotoParaPrevia, resumirTexto } from "@acheaqui/domain";
 import { Icone, classesBotao } from "@acheaqui/ui";
+import { ROTULO_CLASSIFICACAO, type ClassificacaoEtaria } from "@acheaqui/validation";
 import Topo from "@/components/anuncios/Topo.astro";
 import AvatarArtista from "@/components/agenda/AvatarArtista.astro";
 import BotaoCompartilhar from "@/components/BotaoCompartilhar.astro";
 import Secao from "@/components/perfil/Secao.astro";
-import { anuncianteSlugPorId, eventoPorSlug, nomeBairro } from "@/dados/consultas";
+import { anuncianteSlugPorId, eventoPorSlug, nomeBairro, type ItemAgenda } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
-import { linkWhatsApp } from "@/lib/contato";
-import { dataLonga } from "@/lib/texto";
+import { linkComoChegar, linkWhatsApp } from "@/lib/contato";
+import { formatarCentavos } from "@/lib/precos";
+import { dataCurtaComSemana, dataLonga } from "@/lib/texto";
 
 const encontrado = await eventoPorSlug(Astro.params.evento ?? "");
 if (!encontrado) return Astro.rewrite("/404");
@@ -20,12 +23,34 @@ const MENSAGEM_BARRACA = "Olá! Vi sua barraca no Ache Aqui RO e gostaria de uma
 
 const { evento, programacao } = encontrado;
 const bairro = await nomeBairro(evento.bairroId);
-const data = dataLonga(evento.data);
+const umDia = evento.dataInicio === evento.dataFim;
+const datas = umDia ? dataLonga(evento.dataInicio) : `${dataLonga(evento.dataInicio)} a ${dataLonga(evento.dataFim)}`;
 const barracas = await Promise.all(
-  evento.barracas.map(async (b) => ({ ...b, perfil: b.anuncianteId ? await anuncianteSlugPorId(b.anuncianteId) : undefined })),
+  evento.barracas.map(async (b) => ({ ...b, perfil: b.anuncioSlug ?? (b.anuncianteId ? await anuncianteSlugPorId(b.anuncianteId) : undefined) })),
 );
+// Programação agrupada por dia (o evento de vários dias mostra cada um).
+const dias = [...new Set(programacao.map((p) => p.data))].map((dia) => ({ dia, itens: programacao.filter((p) => p.data === dia) }));
+const enderecoMapa = evento.endereco ? `${evento.endereco} - ${bairro}, Rio das Ostras - RJ` : undefined;
+
+const entrada =
+  evento.entrada === "gratuita"
+    ? "Entrada gratuita"
+    : evento.entrada === "couvert" && evento.couvertCentavos
+      ? `Couvert artístico: ${formatarCentavos(evento.couvertCentavos)}`
+      : undefined;
+const simNao = (v: boolean | null, sim: string, nao: string) => (v === true ? sim : v === false ? nao : undefined);
+// Só o que foi informado aparece (decisão 9).
+const informacoes = [
+  !evento.abertoAoPublico ? "Evento fechado (não é aberto ao público)" : undefined,
+  evento.classificacao ? `Classificação: ${ROTULO_CLASSIFICACAO[evento.classificacao as ClassificacaoEtaria] ?? evento.classificacao}` : undefined,
+  simNao(evento.cadeiraDePraia, "Pode levar cadeira de praia", "Não pode levar cadeira de praia"),
+  simNao(evento.cooler, "Pode levar cooler", "Não pode levar cooler"),
+  evento.ruasFechadas ? `Ruas fechadas: ${evento.ruasFechadas}` : undefined,
+].filter((i): i is string => Boolean(i));
+
 // O link compartilhado é propaganda do evento: o cartaz, a data, o local e o texto (packages/domain/previa.ts).
-const resumo = resumirTexto(`${data.charAt(0).toUpperCase()}${data.slice(1)} · ${evento.local}, ${bairro}. ${evento.descricao}`);
+const resumo = resumirTexto(`${datas.charAt(0).toUpperCase()}${datas.slice(1)} · ${evento.local}, ${bairro}. ${evento.descricao}`);
+const nomeDoItem = (it: ItemAgenda) => it.artista?.nome ?? it.titulo ?? "";
 ---
 
 <Layout
@@ -48,77 +73,147 @@ const resumo = resumirTexto(`${data.charAt(0).toUpperCase()}${data.slice(1)} · 
           src={evento.cartaz.url}
           alt={evento.cartaz.legenda ?? `Cartaz de ${evento.nome}`}
           fetchpriority="high"
-          class="mt-2 aspect-[1200/630] w-full rounded-3xl object-cover shadow-sm"
+          class="mx-auto mt-2 max-h-[80vh] w-auto max-w-full rounded-3xl object-contain shadow-sm"
         />
       )
     }
 
     <section class="mt-2 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-6">
       <div class="flex items-start justify-between gap-3">
-        <div>
-          <p class="text-sm font-extrabold text-vermelho-600 first-letter:uppercase">{data}</p>
-          <h1 class="font-display text-3xl leading-tight font-extrabold text-azul-900">{evento.nome}</h1>
+        <div class="min-w-0">
+          <p class="text-sm font-extrabold text-vermelho-600 first-letter:uppercase">{datas}</p>
+          <h1 class="font-display text-3xl leading-tight font-extrabold break-words text-azul-900">{evento.nome}</h1>
           <p class="mt-1 flex items-center gap-1.5 text-slate-600">
-            <Icone nome="pin" class="size-4 text-vermelho-500" />
-            {evento.local} · {bairro}
+            <Icone nome="pin" class="size-4 shrink-0 text-vermelho-500" />
+            {
+              evento.anunciante && evento.origem === "comercio" ? (
+                <a href={`/perfil/${evento.anunciante.slug}`} class="font-bold text-azul-600 hover:underline">
+                  {evento.local}
+                </a>
+              ) : (
+                evento.local
+              )
+            }{" "}
+            · {bairro}
           </p>
+          {evento.endereco && <p class="mt-0.5 text-sm text-slate-500">{evento.endereco}</p>}
         </div>
         <BotaoCompartilhar caminho={`/agenda/${evento.slug}`} titulo={evento.nome} variante="botao" />
       </div>
-      <p class="mt-3 leading-relaxed text-slate-700">{evento.descricao}</p>
-      <p class="mt-2 text-sm text-slate-500">Produção: {evento.produtor}</p>
+      {evento.descricao && <p class="mt-3 leading-relaxed whitespace-pre-line text-slate-700">{evento.descricao}</p>}
+      {evento.produtor && <p class="mt-2 text-sm text-slate-500">Organização: {evento.produtor}</p>}
+      {
+        enderecoMapa && (
+          <a href={linkComoChegar({ endereco: enderecoMapa })} target="_blank" rel="noopener noreferrer" class={classesBotao("contorno", "m", "mt-4")}>
+            <Icone nome="rota" class="size-4" />
+            Como chegar
+          </a>
+        )
+      }
     </section>
 
-    <div class="mt-4 grid gap-4 md:grid-cols-2">
-      <Secao titulo="Programação">
-        <ol class="space-y-3">
-          {
-            programacao.map((it) => (
-              <li class="flex items-center gap-3">
-                <span class="w-14 shrink-0 text-center">
-                  <span class="block font-display text-lg leading-tight font-extrabold text-azul-900">{it.inicio}</span>
-                  {it.fim && <span class="block text-[0.7rem] font-bold text-slate-400">até {it.fim}</span>}
-                </span>
-                <a href={`/artista/${it.artista.slug}`} aria-hidden="true" tabindex="-1">
-                  <AvatarArtista artista={it.artista} class="size-10" />
-                </a>
+    {
+      (entrada || evento.ingressos.length > 0 || informacoes.length > 0) && (
+        <section class="mt-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-6" aria-labelledby="titulo-informacoes">
+          <h2 id="titulo-informacoes" class="font-display text-lg font-bold text-azul-900">
+            Informações
+          </h2>
+          <ul class="mt-2 space-y-1.5 text-slate-700">
+            {entrada && (
+              <li class="flex items-start gap-2">
+                <Icone nome="etiqueta" class="mt-0.5 size-4 shrink-0 text-azul-600" />
+                {entrada}
+              </li>
+            )}
+            {evento.ingressos.length > 0 && (
+              <li class="flex items-start gap-2">
+                <Icone nome="etiqueta" class="mt-0.5 size-4 shrink-0 text-azul-600" />
                 <span>
-                  <a href={`/artista/${it.artista.slug}`} class="block font-bold text-azul-900 hover:underline">
-                    {it.artista.nome}
-                  </a>
-                  <span class="text-xs text-slate-500">{it.artista.estilo}</span>
+                  Ingressos:{" "}
+                  {evento.ingressos.map((i) => `${i.nome} ${i.valorCentavos === 0 ? "grátis" : formatarCentavos(i.valorCentavos)}`).join(" · ")}
                 </span>
               </li>
-            ))
-          }
-        </ol>
-      </Secao>
+            )}
+            {informacoes.map((texto) => (
+              <li class="flex items-start gap-2">
+                <Icone nome="info" class="mt-0.5 size-4 shrink-0 text-azul-600" />
+                {texto}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
 
-      <Secao titulo="Barracas">
-        <ul class="divide-y divide-slate-100">
-          {
-            barracas.map((b) => (
-              <li class="flex items-center justify-between gap-3 py-2.5">
-                <span>
-                  {b.perfil ? (
-                    <a href={`/perfil/${b.perfil}`} class="font-bold text-azul-700 hover:underline">
-                      {b.nome}
+    <div class:list={["mt-4 grid gap-4", programacao.length > 0 && barracas.length > 0 && "md:grid-cols-2"]}>
+      {
+        programacao.length > 0 && (
+          <Secao titulo="Programação">
+            {dias.map((d) => (
+              <div class="mb-4 last:mb-0">
+                {!umDia && <h3 class="mb-2 text-sm font-extrabold text-vermelho-600 first-letter:uppercase">{dataCurtaComSemana(d.dia)}</h3>}
+                <ol class="space-y-3">
+                  {d.itens.map((it) => (
+                    <li class="flex items-center gap-3">
+                      <span class="w-14 shrink-0 text-center">
+                        <span class="block font-display text-lg leading-tight font-extrabold text-azul-900">{it.inicio}</span>
+                        {it.fim && <span class="block text-[0.7rem] font-bold text-slate-400">até {it.fim}</span>}
+                      </span>
+                      {it.artista ? (
+                        <a href={`/artista/${it.artista.slug}`} aria-hidden="true" tabindex="-1">
+                          <AvatarArtista artista={it.artista} class="size-10" />
+                        </a>
+                      ) : (
+                        <span class="grid size-10 shrink-0 place-items-center rounded-full bg-azul-50 text-azul-600" aria-hidden="true">
+                          <Icone nome="calendario" class="size-5" />
+                        </span>
+                      )}
+                      <span class="min-w-0">
+                        {it.artista ? (
+                          <a href={`/artista/${it.artista.slug}`} class="block font-bold text-azul-900 hover:underline">
+                            {nomeDoItem(it)}
+                          </a>
+                        ) : (
+                          <span class="block font-bold text-azul-900">{nomeDoItem(it)}</span>
+                        )}
+                        <span class="text-xs text-slate-500">{it.artista ? [it.artista.estilos.join(", "), it.titulo].filter(Boolean).join(" · ") : ""}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))}
+          </Secao>
+        )
+      }
+
+      {
+        barracas.length > 0 && (
+          <Secao titulo="Barracas">
+            <ul class="divide-y divide-slate-100">
+              {barracas.map((b) => (
+                <li class="flex items-center justify-between gap-3 py-2.5">
+                  <span class="min-w-0">
+                    {b.perfil ? (
+                      <a href={`/perfil/${b.perfil}`} class="font-bold text-azul-700 hover:underline">
+                        {b.nome}
+                      </a>
+                    ) : (
+                      <span class="font-bold text-azul-900">{b.nome}</span>
+                    )}
+                    <span class="block text-sm text-slate-500">{b.vende}</span>
+                  </span>
+                  {b.whatsapp && (
+                    <a href={linkWhatsApp(b.whatsapp, MENSAGEM_BARRACA)} target="_blank" rel="noopener noreferrer" class={classesBotao("contornoZap", "p", "shrink-0")}>
+                      WhatsApp
                     </a>
-                  ) : (
-                    <span class="font-bold text-azul-900">{b.nome}</span>
                   )}
-                  <span class="block text-sm text-slate-500">{b.vende}</span>
-                </span>
-                {b.whatsapp && (
-                  <a href={linkWhatsApp(b.whatsapp, MENSAGEM_BARRACA)} target="_blank" rel="noopener noreferrer" class={classesBotao("contornoZap", "p")}>
-                    WhatsApp
-                  </a>
-                )}
-              </li>
-            ))
-          }
-        </ul>
-      </Secao>
+                </li>
+              ))}
+            </ul>
+          </Secao>
+        )
+      }
     </div>
   </main>
 </Layout>

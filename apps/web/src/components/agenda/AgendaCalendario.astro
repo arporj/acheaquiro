@@ -8,6 +8,7 @@
 import { Icone } from "@acheaqui/ui";
 import ItemAgendaLista from "./ItemAgendaLista.astro";
 import type { ItemAgenda } from "@/dados/consultas";
+import { normalizar } from "@/lib/texto";
 
 interface Props {
   itens: ItemAgenda[];
@@ -17,6 +18,8 @@ interface Props {
   anuncianteId?: string;
   /** Opções do filtro de bairro. */
   bairros?: { id: string; nome: string }[];
+  /** Opções do filtro de estilo musical (decisão 10). */
+  estilos?: string[];
   /** No perfil do comércio o lugar é sempre o mesmo; não precisa repetir. */
   mostrarLugar?: boolean;
   filtroBairro?: boolean;
@@ -26,7 +29,7 @@ interface Props {
   formato?: "calendario" | "faixa";
 }
 
-const { itens, meses, anuncianteId, bairros = [], mostrarLugar = true, filtroBairro = false, filtroArtista = false, formato = "calendario" } =
+const { itens, meses, anuncianteId, bairros = [], estilos = [], mostrarLugar = true, filtroBairro = false, filtroArtista = false, formato = "calendario" } =
   Astro.props;
 const faixa = formato === "faixa";
 ---
@@ -47,6 +50,17 @@ const faixa = formato === "faixa";
           <select data-bairro class="bg-transparent font-bold outline-none">
             <option value="">Todos os bairros</option>
             {bairros.map((b) => <option value={b.id}>{b.nome}</option>)}
+          </select>
+        </label>
+      )
+    }
+    {
+      estilos.length > 1 && (
+        <label class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold shadow-sm ring-1 ring-black/5">
+          <Icone nome="musica" class="size-4 text-azul-600" />
+          <select data-estilo class="bg-transparent font-bold outline-none" aria-label="Estilo musical">
+            <option value="">Todos os estilos</option>
+            {estilos.map((e) => <option value={normalizar(e)}>{e}</option>)}
           </select>
         </label>
       )
@@ -102,7 +116,7 @@ const faixa = formato === "faixa";
     Não foi possível carregar este mês. Tente de novo em instantes.
   </p>
   <p data-vazio hidden class="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm font-semibold text-slate-500">
-    Nenhuma apresentação neste dia.
+    Nada na Agenda neste dia.
   </p>
 </div>
 

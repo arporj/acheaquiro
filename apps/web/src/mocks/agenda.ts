@@ -7,6 +7,8 @@ import type { Apresentacao, Artista, EventoAgenda } from "@acheaqui/types";
 import { fotoPerfil } from "./anunciantes";
 
 type Relativa<T extends { data: string }> = Omit<T, "data"> & { diasDepoisDeHoje: number };
+/** Evento com o primeiro dia contado a partir de hoje e a duração em dias. */
+export type EventoRelativo = Omit<EventoAgenda, "dataInicio" | "dataFim"> & { diasDepoisDeHoje: number; dias: number };
 
 // Números inválidos de propósito, como nos anunciantes fictícios.
 const zap = (n: number) => `55229000001${String(n).padStart(2, "0")}`;
@@ -17,7 +19,7 @@ const video = (titulo: string) => ({ titulo, url: "https://exemplo.invalid/video
 
 export const artistas: Artista[] = [
   {
-    id: "ar1", slug: "banda-mare-alta", nome: "Banda Maré Alta", estilo: "Pop rock", cor: "#2563EB",
+    id: "ar1", slug: "banda-mare-alta", nome: "Banda Maré Alta", estilos: ["Pop", "Rock"], cor: "#2563EB",
     descricao: "Clássicos do pop rock nacional e internacional, de Legião Urbana a Coldplay. Tocamos em bares, casamentos e festas de empresa, com som próprio.",
     formacao: "Voz, guitarra, baixo e bateria", atende: ["Bares e quiosques", "Casamentos", "Festas de empresa", "Aniversários"],
     anuncianteId: "a20", instagram: "bandamarealta", whatsapp: zap(1),
@@ -26,48 +28,57 @@ export const artistas: Artista[] = [
     videos: [video("Ao vivo no Festival de Inverno"), video("Medley pop rock anos 80")],
   },
   {
-    id: "ar2", slug: "samba-da-praca", nome: "Samba da Praça", estilo: "Samba e pagode", cor: "#E8660C",
+    id: "ar2", slug: "samba-da-praca", nome: "Samba da Praça", estilos: ["Pagode", "Samba"], cor: "#E8660C",
     descricao: "Roda de samba com repertório de raiz e pagode dos anos 90, toda sexta e sábado no Boteco da Praça.",
     formacao: "Voz, cavaquinho, pandeiro, surdo e tantã", atende: ["Bares e quiosques", "Aniversários", "Feijoadas"],
     whatsapp: zap(2), galeria: fotos("ar2-g", ["Roda no Boteco da Praça", "Feijoada de aniversário"]), videos: [video("Roda de samba ao vivo")],
   },
   {
-    id: "ar3", slug: "julia-voz-e-violao", nome: "Júlia Voz e Violão", estilo: "MPB", cor: "#D81B7A",
+    id: "ar3", slug: "julia-voz-e-violao", nome: "Júlia Voz e Violão", estilos: ["MPB"], cor: "#D81B7A",
     descricao: "MPB e bossa nova em formato acústico, para jantares, cerimônias e fins de tarde.",
     formacao: "Voz e violão", atende: ["Bares e quiosques", "Casamentos", "Jantares"],
     anuncianteId: "a19", instagram: "juliavozeviolao", whatsapp: zap(3),
     foto: fotoPerfil("ar3-perfil", "Júlia"), capa: foto("ar3-capa", "Show acústico no quiosque"), galeria: [foto("ar3-g-1", "Pôr do sol no quiosque"), foto("ar3-g-2", "Cerimônia de casamento"), foto("ar3-g-3", "Show acústico")], videos: [video("Garota de Ipanema (acústico)")],
   },
   {
-    id: "ar4", slug: "trio-forro-do-litoral", nome: "Trio Forró do Litoral", estilo: "Forró", cor: "#15803D",
+    id: "ar4", slug: "trio-forro-do-litoral", nome: "Trio Forró do Litoral", estilos: ["Forró"], cor: "#15803D",
     descricao: "Sanfona, zabumba e triângulo: forró pé de serra para dançar a noite toda.",
     formacao: "Sanfona, zabumba e triângulo", atende: ["Bares e quiosques", "Festas juninas", "Aniversários"],
     whatsapp: zap(4), galeria: fotos("ar4-g", ["Arraiá da praça", "Festival de Inverno"]), videos: [],
   },
   {
-    id: "ar5", slug: "dj-leo-batida", nome: "DJ Léo Batida", estilo: "DJ", cor: "#7E3FC4",
+    id: "ar5", slug: "dj-leo-batida", nome: "DJ Léo Batida", estilos: ["Eletrônica/DJ"], cor: "#7E3FC4",
     descricao: "Flashback, sertanejo e eletrônico, com som e iluminação próprios.",
     atende: ["Bares e quiosques", "Casamentos", "Aniversários", "Formaturas"],
     anuncianteId: "a18", instagram: "djleobatida", galeria: fotos("ar5-g", ["Pista lotada", "Equipamento", "Formatura"]), videos: [video("Set flashback")],
   },
   {
-    id: "ar6", slug: "rafa-sertanejo", nome: "Rafa Sertanejo", estilo: "Sertanejo", cor: "#9A5B2E",
+    id: "ar6", slug: "rafa-sertanejo", nome: "Rafa Sertanejo", estilos: ["Sertanejo"], cor: "#9A5B2E",
     descricao: "Sertanejo universitário e modão, em voz e violão ou com banda completa.",
     formacao: "Voz e violão, ou banda com 4 músicos", atende: ["Bares e quiosques", "Aniversários", "Rodeios"],
     whatsapp: zap(6), galeria: [], videos: [],
   },
 ];
 
-export const eventos: Relativa<EventoAgenda>[] = [
+export const eventos: EventoRelativo[] = [
   {
     id: "ev1",
     slug: "festival-de-inverno-da-praca",
     nome: "Festival de Inverno da Praça",
     descricao: "Um dia inteiro de música, comida e artesanato na Praça São Pedro, com entrada gratuita.",
+    origem: "avulso",
     produtor: "Associação Cultural Litoral Vivo",
     local: "Praça São Pedro",
     bairroId: "centro",
     diasDepoisDeHoje: 3,
+    dias: 1,
+    entrada: "gratuita",
+    ingressos: [],
+    abertoAoPublico: true,
+    classificacao: "livre",
+    cadeiraDePraia: true,
+    cooler: false,
+    ruasFechadas: "Rua da Praça, entre a Av. Amazonas e a Rua Teresópolis, das 12h às 23h",
     // Recorte da capa da Banda Maré Alta (ar1-capa) em 1200 × 630, o tamanho da prévia do WhatsApp.
     cartaz: { id: "ev1-cartaz", legenda: "Show ao pôr do sol", url: "/mock/fotos/ev1-cartaz.jpg" },
     barracas: [

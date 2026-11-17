@@ -7,7 +7,8 @@ import { normalizar } from "@/lib/texto";
  */
 export function ligarBuscaArtista(): void {
   const campo = document.querySelector<HTMLInputElement>("[data-busca-artista]");
-  const itens = [...document.querySelectorAll<HTMLElement>("[data-artista]")];
+  // As linhas do calendário também têm data-artista (filtro por artista); ficam de fora.
+  const itens = [...document.querySelectorAll<HTMLElement>("[data-artista]:not([data-dia])")];
   const vazio = document.querySelector<HTMLElement>("[data-sem-artista]");
   campo?.addEventListener("input", () => {
     const termo = normalizar(campo.value);
