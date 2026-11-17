@@ -166,6 +166,11 @@ describe("vencimento", () => {
     expect(efeitoDoVencimento("profissional")).toBe("escondido_por_vencimento");
     expect(efeitoDoVencimento("comercio")).toBe("plano_gratuito");
   });
+
+  it("antes da aprovação (pagou antes do aceite): autônomo sem plano, comércio no Gratuito", () => {
+    expect(efeitoDoVencimento("profissional", false)).toBe("sem_plano");
+    expect(efeitoDoVencimento("comercio", false)).toBe("plano_gratuito");
+  });
 });
 
 describe("perdeCondicaoFundador", () => {

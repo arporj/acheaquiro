@@ -20,7 +20,15 @@ const WHATSAPP_EQUIPE = "5521988520666";
 
 interface Aviso {
   id: string;
-  tipo: "lembrete_7_dias" | "lembrete_vencimento" | "plano_vencido" | "aviso_preco" | "escala_fundador" | "proposta" | "denuncia";
+  tipo:
+    | "lembrete_7_dias"
+    | "lembrete_vencimento"
+    | "plano_vencido"
+    | "aviso_preco"
+    | "escala_fundador"
+    | "proposta"
+    | "denuncia"
+    | "pagamento_antes_do_aceite";
   para: string;
   tentativas: number;
   dados: {
@@ -46,6 +54,13 @@ interface Aviso {
     /** Denúncia de perfil, para os administradores: o perfil e o motivo (sem o texto de quem denunciou). */
     slug?: string;
     motivo?: string;
+    /** Pagamento antes do aceite (17/11/2026): valor, dia, início da validade e último dia para desistir. */
+    valorCentavos?: number;
+    pagoEm?: string;
+    periodoInicio?: string;
+    desistirAte?: string;
+    /** Plano vencido de quem pagou e ainda não foi aprovado. */
+    antesDaAprovacao?: boolean;
   };
 }
 
@@ -76,6 +91,19 @@ function montar(
     ? `Como Fundador, a renovação é anual e precisa ser paga até ${limite} para você manter o selo e o desconto.`
     : "";
 
+  if (aviso.tipo === "pagamento_antes_do_aceite") {
+    return {
+      assunto: "Recebemos o seu pagamento no Ache Aqui RO",
+      paragrafos: [
+        `Recebemos em ${data(d.pagoEm)} o pagamento de ${reais(d.valorCentavos ?? 0)} do plano ${plano} de ${d.nome}.`,
+        "O seu anúncio só aparece no site depois que você conferir o cadastro e aceitar os Termos de Uso e a Política de Privacidade. Use o link do convite que enviamos para este e-mail, ou entre na sua conta pelo botão abaixo.",
+        `A validade do plano conta a partir de ${data(d.periodoInicio)}, mesmo que o aceite fique para depois.`,
+        `Se quiser desistir, você pode pedir o dinheiro de volta até ${data(d.desistirAte)}, pelo WhatsApp da equipe.`,
+        "Precisa de ajuda para conferir e aceitar? Fale com a equipe pelo WhatsApp.",
+      ],
+      botao: { texto: "Conferir e aceitar", link: `${PRODUCAO}/anunciante` },
+    };
+  }
   if (aviso.tipo === "proposta") {
     return {
       assunto: `Proposta do Ache Aqui RO para ${d.nome ?? "o seu perfil"}`,
@@ -142,6 +170,20 @@ function montar(
         fundador,
       ],
       botao: pagar,
+    };
+  }
+  if (d.antesDaAprovacao) {
+    return {
+      assunto: "O seu plano no Ache Aqui RO venceu",
+      paragrafos: [
+        `O plano ${plano} de ${d.nome} venceu em ${data(d.venceEm)} e não foi renovado, antes de o cadastro ser aceito e aprovado.`,
+        d.tipo === "comercio"
+          ? "Quando o cadastro for aprovado, o seu comércio entra no plano Gratuito."
+          : "Quando o cadastro for aprovado, o perfil só vai para o ar com um novo pagamento.",
+        d.eraFundador ? "Com isso, você também deixou de ser Fundador." : "",
+        "Para voltar ao plano ou para ajuda com o cadastro, fale com a equipe pelo WhatsApp.",
+      ],
+      botao: { texto: "Falar com a equipe", link: linkEquipe("Quero voltar ao meu plano") },
     };
   }
   return {

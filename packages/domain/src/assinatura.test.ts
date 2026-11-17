@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { calcularPagamentoPlano, periodoDoPagamento, podeDevolver, valorProporcionalUpgrade, type EntradaPagamentoPlano } from "./assinatura";
+import {
+  calcularPagamentoPlano,
+  periodoDoPagamento,
+  podeDevolver,
+  prazoParaDesistir,
+  valorProporcionalUpgrade,
+  type EntradaPagamentoPlano,
+} from "./assinatura";
 
 const regras = {
   escalaDescontoFundador: [{ ateAno: 3, percentual: 50 }, { percentual: 25 }],
@@ -65,6 +72,13 @@ describe("podeDevolver", () => {
     expect(podeDevolver({ numero: 1, pagoEm: "2026-11-10", hoje: "2026-11-17" })).toBe(true);
     expect(podeDevolver({ numero: 1, pagoEm: "2026-11-10", hoje: "2026-11-18" })).toBe(false);
     expect(podeDevolver({ numero: 2, pagoEm: "2026-11-10", hoje: "2026-11-11" })).toBe(false);
+  });
+});
+
+describe("prazoParaDesistir", () => {
+  it("7 dias depois do pagamento, inclusive na virada do mês", () => {
+    expect(prazoParaDesistir("2026-11-17")).toBe("2026-11-24");
+    expect(prazoParaDesistir("2026-11-28")).toBe("2026-12-05");
   });
 });
 

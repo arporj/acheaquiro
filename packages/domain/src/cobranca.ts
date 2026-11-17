@@ -179,9 +179,16 @@ export function situacaoCobranca(assinatura: { venceEm: DataISO; hoje: DataISO; 
   return assinatura.hoje <= somarDias(assinatura.venceEm, assinatura.toleranciaDias) ? "em_atraso" : "vencida";
 }
 
-/** Plano vencido sem pagamento: autônomo fica escondido; comércio vai para o Gratuito. */
-export function efeitoDoVencimento(tipo: TipoAnunciante): "escondido_por_vencimento" | "plano_gratuito" {
-  return tipo === "profissional" ? "escondido_por_vencimento" : "plano_gratuito";
+/**
+ * Plano vencido sem pagamento: autônomo fica escondido; comércio vai para o
+ * Gratuito. Quem pagou antes do aceite e ainda não foi aprovado (decisão de
+ * 17/11/2026): o autônomo fica sem plano e, aprovado, espera um novo
+ * pagamento; o comércio vai para o Gratuito. Repetida em SQL
+ * (interno.aplicar_vencimentos): mudou uma, muda a outra.
+ */
+export function efeitoDoVencimento(tipo: TipoAnunciante, aprovado = true): "escondido_por_vencimento" | "plano_gratuito" | "sem_plano" {
+  if (tipo === "comercio") return "plano_gratuito";
+  return aprovado ? "escondido_por_vencimento" : "sem_plano";
 }
 
 /**

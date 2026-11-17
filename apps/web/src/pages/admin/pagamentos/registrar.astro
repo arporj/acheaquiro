@@ -7,7 +7,7 @@ import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
 import { ROTULO_SITUACAO } from "@/lib/anunciantesAdmin";
-import { calcular, hojeNaCidade, lerContexto, lerEscolha, registrarPagamento } from "@/lib/pagamentos";
+import { SITUACOES_ANTES_DA_APROVACAO, calcular, hojeNaCidade, lerContexto, lerEscolha, registrarPagamento } from "@/lib/pagamentos";
 import { formatarCentavos } from "@/lib/precos";
 import { formatarData } from "@/lib/texto";
 
@@ -35,7 +35,10 @@ if (Astro.request.method === "POST" && contexto.ok) {
     const arquivo = enviado.get("comprovante");
     const comprovante = arquivo instanceof File && arquivo.size > 0 ? new Uint8Array(await arquivo.arrayBuffer()) : null;
     const r = await registrarPagamento(supabase, contexto.dados, enviado, comprovante, Astro.url.origin);
-    if (r.ok) return Astro.redirect(`/admin/pagamentos/${r.dados.id}?aviso=registrado`, 303);
+    if (r.ok) {
+      const aviso = SITUACOES_ANTES_DA_APROVACAO.includes(contexto.dados.anunciante.status) ? "antes-do-aceite" : "registrado";
+      return Astro.redirect(`/admin/pagamentos/${r.dados.id}?aviso=${aviso}`, 303);
+    }
     erro = r.erro.mensagem;
     campos = r.erro.campos ?? {};
     Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
@@ -58,6 +61,14 @@ const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
 <PaginaAdmin titulo="Registrar pagamento" descricao={ctx?.anunciante.nome}>
   <p class="mt-2 text-sm"><a href="/admin/pagamentos" class="font-bold text-azul-600 hover:underline">← Pagamentos</a></p>
   {erro && <Aviso tipo="erro">{erro}</Aviso>}
+  {
+    ctx && SITUACOES_ANTES_DA_APROVACAO.includes(ctx.anunciante.status) && (
+      <Aviso tipo="info">
+        O anunciante ainda não aceitou o cadastro. O pagamento fica registrado, mas o anúncio só aparece depois do aceite e da aprovação da
+        equipe. Ele recebe um e-mail com o pagamento e o prazo para desistir (7 dias depois do pagamento).
+      </Aviso>
+    )
+  }
 
   {
     ctx && valores && (

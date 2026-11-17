@@ -662,8 +662,10 @@ export const ORIGENS_DA_ACAO: Record<AcaoSituacao, readonly Situacao[]> = {
 export const PEDE_MOTIVO: readonly AcaoSituacao[] = ["correcao", "recusar", "suspender"];
 
 /**
- * Aprovar publica quando o plano já está em vigor ou quando o escolhido é
- * gratuito; com plano pago escolhido, o cadastro espera o Pix.
+ * Aprovar publica quando o plano já está em vigor (inclusive o pago antes do
+ * aceite) ou quando o escolhido é gratuito; com plano pago escolhido e sem
+ * pagamento, o cadastro espera o Pix. Recusar cadastro com pagamento não
+ * devolvido é barrado pelo banco (interno.impedir_recusa_com_pagamento).
  */
 export async function mudarSituacao(
   supabase: SupabaseClient,

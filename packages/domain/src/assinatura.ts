@@ -64,11 +64,20 @@ export function periodoDoPagamento(entrada: {
 }
 
 /**
+ * Último dia para desistir de uma contratação: 7 dias depois do pagamento,
+ * mesmo que o anunciante ainda não tenha aceitado o cadastro (decisão de
+ * 17/11/2026). O banco repete a conta no e-mail do pagamento antes do aceite.
+ */
+export function prazoParaDesistir(pagoEm: DataISO): DataISO {
+  return somarDias(pagoEm, DIAS_PARA_DESISTIR);
+}
+
+/**
  * A devolução vale para o primeiro pagamento de uma contratação, em até 7 dias
  * depois dele (decisão 11). Renovação não tem devolução.
  */
 export function podeDevolver(pagamento: { numero: number; pagoEm: DataISO; hoje: DataISO }): boolean {
-  return pagamento.numero === 1 && pagamento.hoje <= somarDias(pagamento.pagoEm, DIAS_PARA_DESISTIR);
+  return pagamento.numero === 1 && pagamento.hoje <= prazoParaDesistir(pagamento.pagoEm);
 }
 
 export interface EntradaPagamentoPlano {

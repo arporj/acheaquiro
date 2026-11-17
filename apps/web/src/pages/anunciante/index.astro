@@ -4,12 +4,13 @@
 // que foi cadastrado, aceita os Termos e a Política e envia para análise. O
 // comércio importado da Receita vai para o ar na hora, no lugar do importado
 // (interno.trocar_importado), e a equipe confere depois.
+import { prazoParaDesistir } from "@acheaqui/domain";
 import { Icone, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
 import LinkContatoEquipe from "@/components/institucional/LinkContatoEquipe.astro";
 import { obterRegrasCobranca } from "@/dados/consultas";
-import { enviarParaAnalise, lerMeuCadastro, representanteDoCadastro } from "@/lib/anunciante";
+import { enviarParaAnalise, lerMeuCadastro, pagamentoDoCadastro, representanteDoCadastro } from "@/lib/anunciante";
 import { ROTULO_SITUACAO, lerOpcoes } from "@/lib/anunciantesAdmin";
 import { formatarTelefone, mensagemEquipe } from "@/lib/contato";
 import { DOCUMENTOS, enderecoDocumento } from "@/lib/documentosLegais";
@@ -47,11 +48,16 @@ if (Astro.request.method === "POST" && cadastro) {
 
 const conferir = cadastro?.status === "aguardando_anunciante";
 const aguardandoPagamento = cadastro?.status === "aguardando_pagamento";
-const [opcoes, representante] = await Promise.all([
+const antesDaAprovacao = conferir || cadastro?.status === "em_analise";
+const [opcoes, representante, pagamento] = await Promise.all([
   conferir || aguardandoPagamento ? lerOpcoes(supabase, await obterRegrasCobranca()) : Promise.resolve(null),
   conferir && cadastro ? representanteDoCadastro(supabase, cadastro.id) : Promise.resolve(null),
+  antesDaAprovacao && cadastro ? pagamentoDoCadastro(supabase, cadastro.id) : Promise.resolve(null),
 ]);
 if (opcoes && !opcoes.ok) erro ||= opcoes.erro.mensagem;
+if (pagamento && !pagamento.ok) erro ||= pagamento.erro.mensagem;
+// Pagou antes do aceite (decisão de 17/11/2026): o anúncio espera o aceite e a aprovação; o prazo para desistir conta do pagamento.
+const pagoEm = pagamento?.ok ? pagamento.dados?.pagoEm : undefined;
 // Propostas dos representantes ainda abertas (plano 3B.1).
 const propostas = cadastro && !conferir ? await listarPropostas(supabase, { anuncianteId: cadastro.id }) : null;
 if (propostas && !propostas.ok) erro ||= propostas.erro.mensagem;
@@ -107,6 +113,17 @@ const privacidade = DOCUMENTOS.privacidade;
   <p class="mt-1 text-slate-600">Você entrou como <strong class="text-tinta">{usuario.email}</strong>.</p>
   {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
   {erro && <Aviso tipo="erro">{erro}</Aviso>}
+  {
+    pagoEm && (
+      <Aviso tipo="info">
+        Recebemos o seu pagamento em {formatarData(pagoEm)}.{" "}
+        {conferir
+          ? "O seu anúncio só aparece no site depois que você conferir o cadastro abaixo, aceitar os Termos e enviar, e a equipe aprovar."
+          : "O seu anúncio vai para o ar quando a equipe aprovar o cadastro."}{" "}
+        Se quiser desistir, você pode pedir o dinheiro de volta até {formatarData(prazoParaDesistir(pagoEm))}, pelo WhatsApp da equipe.
+      </Aviso>
+    )
+  }
 
   {
     conferir && cadastro && o && (
@@ -145,9 +162,12 @@ const privacidade = DOCUMENTOS.privacidade;
                 {valor.valor !== "Grátis" && `, ${periodicidade === "anual" ? "anual" : "mensal"}`}: {valor.valor}
               </p>
               {valor.fundador && <p class="mt-1 text-sm font-bold text-zap-700">{valor.fundador}, pagando até o prazo dos Fundadores.</p>}
-              {valor.valor !== "Grátis" && (
-                <p class="mt-1 text-sm text-slate-600">O pagamento é combinado com a equipe depois que o cadastro for aprovado, por Pix ou cartão.</p>
-              )}
+              {valor.valor !== "Grátis" &&
+                (pagoEm ? (
+                  <p class="mt-1 text-sm text-slate-600">Pago em {formatarData(pagoEm)}.</p>
+                ) : (
+                  <p class="mt-1 text-sm text-slate-600">O pagamento é combinado com a equipe depois que o cadastro for aprovado, por Pix ou cartão.</p>
+                ))}
             </>
           ) : (
             <p class="mt-2 text-slate-600">Plano ainda não escolhido. Fale com a equipe.</p>

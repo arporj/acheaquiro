@@ -32,6 +32,24 @@ export async function lerMeuCadastro(supabase: SupabaseClient, usuarioId: string
   return lerAnunciante(supabase, data.id as string);
 }
 
+/**
+ * Dia do pagamento do plano ainda não devolvido, para o aviso de quem pagou
+ * antes do aceite (decisão de 17/11/2026); null se não houver.
+ */
+export async function pagamentoDoCadastro(supabase: SupabaseClient, anuncianteId: string): Promise<Resultado<{ pagoEm: string } | null>> {
+  const { data, error } = await supabase
+    .from("pagamentos")
+    .select("pago_em")
+    .eq("anunciante_id", anuncianteId)
+    .eq("tipo", "plano")
+    .is("devolvido_em", null)
+    .order("pago_em")
+    .limit(1)
+    .maybeSingle();
+  if (error) return mensagemDoBanco(error, "pagamentoDoCadastro");
+  return { ok: true, dados: data ? { pagoEm: data.pago_em as string } : null };
+}
+
 /** Nome do representante que fez o cadastro; null se foi a equipe. */
 export async function representanteDoCadastro(supabase: SupabaseClient, anuncianteId: string): Promise<Resultado<string | null>> {
   const { data, error } = await supabase.rpc("representante_do_meu_cadastro", { p_anunciante: anuncianteId });

@@ -189,8 +189,20 @@ export interface ContextoPagamento {
   proposta: Proposta | null;
 }
 
-/** Situações em que o cadastro recebe pagamento (a função do banco confere de novo). */
-export const SITUACOES_QUE_PAGAM: readonly Situacao[] = ["aguardando_pagamento", "publicado", "pausado", "escondido_por_vencimento"];
+/**
+ * Situações em que o cadastro recebe pagamento (a função do banco confere de
+ * novo). Antes da aprovação, só depois do convite (decisão de 17/11/2026): o
+ * anúncio só aparece com o aceite e a aprovação, e o prazo para desistir conta
+ * do pagamento.
+ */
+export const SITUACOES_ANTES_DA_APROVACAO: readonly Situacao[] = ["aguardando_anunciante", "em_analise"];
+export const SITUACOES_QUE_PAGAM: readonly Situacao[] = [
+  ...SITUACOES_ANTES_DA_APROVACAO,
+  "aguardando_pagamento",
+  "publicado",
+  "pausado",
+  "escondido_por_vencimento",
+];
 
 /**
  * Tudo o que o pagamento do plano precisa. Com propostaId, a proposta de
@@ -334,8 +346,11 @@ export interface Calculado extends PagamentoPlanoCalculado {
 
 /** O que o pagamento grava, pelas regras de packages/domain. */
 export async function calcular(contexto: ContextoPagamento, escolha: EscolhaPagamento, hoje = hojeNaCidade()): Promise<Resultado<Calculado>> {
+  if (contexto.anunciante.status === "rascunho") {
+    return falha("CONFLITO", "Envie o convite ao anunciante antes de registrar o pagamento.");
+  }
   if (!SITUACOES_QUE_PAGAM.includes(contexto.anunciante.status)) {
-    return falha("CONFLITO", "O cadastro precisa estar aprovado para receber pagamento.");
+    return falha("CONFLITO", "Este cadastro não recebe pagamento na situação atual.");
   }
   const proposta = contexto.proposta;
   if (proposta) {

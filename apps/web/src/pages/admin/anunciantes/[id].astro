@@ -2,6 +2,7 @@
 // Um anunciante na administração: situação e ações (aprovar, pedir correção,
 // recusar, suspender, reativar), convite do cadastro assistido, edição do
 // perfil, histórico de atendimento (de todos) e as últimas alterações. Toda ação passa pela auditoria do banco.
+import { prazoParaDesistir } from "@acheaqui/domain";
 import { Icone, Modal, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
@@ -29,7 +30,7 @@ import {
 } from "@/lib/anunciantesAdmin";
 import { formatarTelefone } from "@/lib/contato";
 import { listarEquipe } from "@/lib/equipe";
-import { ROTULO_FORMA, SITUACOES_QUE_PAGAM, agendarReducao, hojeNaCidade, listarDoAnunciante } from "@/lib/pagamentos";
+import { ROTULO_FORMA, SITUACOES_ANTES_DA_APROVACAO, SITUACOES_QUE_PAGAM, agendarReducao, hojeNaCidade, listarDoAnunciante } from "@/lib/pagamentos";
 import { ROTULO_PROPOSTA, lerContextoProposta, listarPropostas, situacaoVisivel } from "@/lib/propostas";
 import { formatarCentavos } from "@/lib/precos";
 import { formatarData } from "@/lib/texto";
@@ -117,6 +118,11 @@ const [opcoes, historico, equipe, atendimentos, pagamentos, naoProcurar, planoAt
   lerContextoProposta(supabase, id),
   listarPropostas(supabase, { anuncianteId: id }),
 ]);
+// Pago antes do aceite (decisão de 17/11/2026): o anúncio espera o aceite e a aprovação.
+const pagoAntesDoAceite =
+  lido.ok && SITUACOES_ANTES_DA_APROVACAO.includes(lido.dados.status) && pagamentos.ok
+    ? pagamentos.dados.find((p) => !p.devolvido && !p.upgrade)
+    : undefined;
 // Mudança de plano (plano 3B.1): maior na hora, com a diferença proporcional; menor, agendada para a renovação (decisão S2).
 const plano = planoAtual.ok ? planoAtual.dados : null;
 const assinatura = plano?.assinatura ?? null;
@@ -297,6 +303,15 @@ const caixa = "rounded-xl bg-fundo p-3";
             )}
           </div>
           {!pagamentos.ok && <Aviso tipo="erro" class="mt-3">{pagamentos.erro.mensagem}</Aviso>}
+          {pagoAntesDoAceite && (
+            <Aviso tipo="info" class="mt-3">
+              Pago em {formatarData(pagoAntesDoAceite.pagoEm)}, aguardando o aceite do anunciante. O anúncio vai para o ar quando ele aceitar e a
+              equipe aprovar. Ele pode desistir até {formatarData(prazoParaDesistir(pagoAntesDoAceite.pagoEm))}.
+            </Aviso>
+          )}
+          {a.status === "rascunho" && (
+            <p class="mt-3 text-sm text-slate-600">Para registrar um pagamento, envie o convite ao anunciante primeiro.</p>
+          )}
           {assinatura && plano && (
             <div class="mt-3 rounded-xl bg-fundo p-3 text-sm">
               <p>
