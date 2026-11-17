@@ -122,7 +122,7 @@ export async function listarEmAtraso(supabase: SupabaseClient): Promise<Resultad
   const { toleranciaVencimentoDias: tolerancia } = await obterRegrasCobranca();
   const { data, error } = await supabase
     .from("assinaturas")
-    .select("anunciante_id, periodicidade, vence_em, anunciante:anunciantes(nome, tipo), plano:planos(nome)")
+    .select("anunciante_id, periodicidade, vence_em, anunciante:anunciantes(nome, tipo), plano:planos!assinaturas_plano_id_fkey(nome)")
     .lt("vence_em", hoje)
     .gte("vence_em", somarDias(hoje, -tolerancia))
     .order("vence_em");
@@ -501,9 +501,10 @@ export interface PagamentoLista {
   upgrade: boolean;
 }
 
+// pagamentos tem duas ligações com planos (plano_id e plano_anterior_id): a junção diz qual usar.
 const COLUNAS_LISTA =
   "id, anunciante_id, tipo, periodicidade, numero, valor_centavos, forma, parcelas, pago_em, devolvido_em, tipo_devolucao, " +
-  "anunciante:anunciantes(nome), plano:planos(nome), conta:contas_recebimento(nome)";
+  "anunciante:anunciantes(nome), plano:planos!pagamentos_plano_id_fkey(nome), conta:contas_recebimento(nome)";
 
 type LinhaLista = {
   id: string;
