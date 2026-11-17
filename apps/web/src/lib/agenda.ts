@@ -147,7 +147,7 @@ export interface EventoAdmin extends EventoResumoAdmin {
 
 const CAMPOS_RESUMO =
   "id, slug, nome, origem, situacao, data_inicio, data_fim, local, cortesia_em, bairros(nome), " +
-  "anunciantes(id, nome, slug, status, categoria_principal_id, planos(inclui_agenda), anunciante_categorias(categoria_id))";
+  "anunciantes(id, nome, slug, status, categoria_principal_id, planos!anunciantes_plano_id_fkey(inclui_agenda), anunciante_categorias(categoria_id))";
 
 type LinhaResumo = Omit<EventoResumoAdmin, "bairro" | "anunciante" | "cortesia" | "impedimento"> & {
   cortesia_em: string | null;
