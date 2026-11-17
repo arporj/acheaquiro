@@ -272,6 +272,15 @@ export interface Patrocinador {
 
 // Agenda de shows e eventos (módulo de eventos, decisão de 21 e 22/10/2026).
 
+/**
+ * De onde vem o evento da Agenda, o que define quem paga (decisão 8 de 29/10/2026):
+ * - comercio: bar ou outro comércio com o extra Agenda ou com o plano que a inclui (Premium);
+ * - artista: show do artista anunciante, sem custo extra;
+ * - avulso: produtor, festa, feira, festival, pago por bloco de 7 dias ou dado como cortesia;
+ * - orgao_publico: gratuito, só cadastrado pela equipe.
+ */
+export type OrigemEvento = "comercio" | "artista" | "avulso" | "orgao_publico";
+
 export interface Artista {
   id: string;
   slug: string;

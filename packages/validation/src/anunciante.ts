@@ -3,6 +3,7 @@
 // checagens da tabela (migration 20261022100000_perfis_anunciantes.sql).
 import { z } from "zod";
 import { esquemaEmail } from "./acesso";
+import { textoOpcional, uuidOuVazio } from "./comum";
 import { esquemaSite, esquemaWhatsapp } from "./patrocinio";
 
 export const FORMAS_PAGAMENTO = ["pix", "cartao", "dinheiro"] as const;
@@ -13,26 +14,12 @@ const textoLimpo = (minimo: number, maximo: number, rotulo: string) =>
     .transform((v) => v.trim().replace(/\s+/g, " "))
     .pipe(z.string().min(minimo, `Informe ${rotulo}.`).max(maximo, `${rotulo[0]!.toUpperCase()}${rotulo.slice(1)}: no máximo ${maximo} letras.`));
 
-const textoOpcional = (maximo: number, rotulo: string) =>
-  z
-    .string()
-    .optional()
-    .transform((v) => (v ?? "").trim())
-    .pipe(z.string().max(maximo, `${rotulo}: no máximo ${maximo} letras.`));
-
 /** "@perfil", "instagram.com/perfil" ou "perfil" viram "perfil". */
 const esquemaInstagram = z
   .string()
   .optional()
   .transform((v) => (v ?? "").trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/\/.*$/, ""))
   .refine((v) => v === "" || /^[A-Za-z0-9._]{1,30}$/.test(v), "Instagram inválido: use só o nome do perfil, como @pizzariadoze.");
-
-const uuidOuVazio = (mensagem: string) =>
-  z
-    .string()
-    .optional()
-    .transform((v) => (v ?? "").trim())
-    .refine((v) => v === "" || z.uuid().safeParse(v).success, mensagem);
 
 const listaDeIds = z.array(z.uuid("Escolha inválida.")).max(200).transform((ids) => [...new Set(ids)]);
 

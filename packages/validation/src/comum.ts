@@ -21,3 +21,19 @@ export const reaisEmCentavos = (nome: string, { permiteZero = false } = {}) =>
         .refine((reais) => reais <= 1_000_000, `${nome}: valor alto demais.`),
     )
     .transform((reais) => Math.round(reais * 100));
+
+/** Texto opcional, sem espaços nas pontas (as quebras de linha ficam); vazio vira "". */
+export const textoOpcional = (maximo: number, rotulo: string) =>
+  z
+    .string()
+    .optional()
+    .transform((v) => (v ?? "").trim())
+    .pipe(z.string().max(maximo, `${rotulo}: no máximo ${maximo} letras.`));
+
+/** Código (uuid) opcional: vazio fica "". */
+export const uuidOuVazio = (mensagem: string) =>
+  z
+    .string()
+    .optional()
+    .transform((v) => (v ?? "").trim())
+    .refine((v) => v === "" || z.uuid().safeParse(v).success, mensagem);

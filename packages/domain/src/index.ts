@@ -13,6 +13,7 @@ export * from "./categorias";
 export * from "./horario";
 export * from "./patrocinio";
 export * from "./artista";
+export * from "./agenda";
 export * from "./upgrade";
 export * from "./previa";
 export * from "./negociacao";
