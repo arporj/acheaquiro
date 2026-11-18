@@ -9,6 +9,8 @@ import {
   impedimentoParaAparecerNaAgenda,
   precoEventoAvulso,
   problemaNasDatasDoEvento,
+  representantePodeEditarEvento,
+  situacaoParaOCliente,
   ultimoDiaParaComecar,
 } from "./agenda";
 
@@ -127,5 +129,43 @@ describe("mês e período do evento", () => {
   });
   it("período sem nenhum dia do evento devolve lista vazia", () => {
     expect(diasDoEventoNoPeriodo(evento, "2027-01-01", "2027-01-31")).toEqual([]);
+  });
+});
+
+describe("situacaoParaOCliente", () => {
+  const base = { origem: "avulso" as const, situacao: "publicado" as const, liberado: true, blocos: 1, blocosPagos: 1 };
+  it("publicado e liberado: no site", () => {
+    expect(situacaoParaOCliente(base)).toBe("Publicado e no site.");
+  });
+  it("avulso sem pagamento: diz quantos blocos faltam", () => {
+    expect(situacaoParaOCliente({ ...base, liberado: false, blocos: 2, blocosPagos: 0 })).toBe(
+      "Publicado, mas aparece no site depois do pagamento de 2 blocos de 7 dias. Fale com a equipe para pagar.",
+    );
+    expect(situacaoParaOCliente({ ...base, liberado: false, blocos: 2, blocosPagos: 1 })).toContain("1 bloco de 7 dias");
+  });
+  it("comércio e artista sem liberação: o que falta", () => {
+    expect(situacaoParaOCliente({ ...base, origem: "comercio", liberado: false })).toContain("extra Agenda");
+    expect(situacaoParaOCliente({ ...base, origem: "artista", liberado: false })).toContain("Músicos e bandas");
+  });
+  it("órgão público nunca espera nada", () => {
+    expect(situacaoParaOCliente({ ...base, origem: "orgao_publico", liberado: false })).toBe("Publicado e no site.");
+  });
+  it("rascunho: avisa o que vai faltar depois de publicar", () => {
+    expect(situacaoParaOCliente({ ...base, situacao: "rascunho" })).toBe("Rascunho: ainda não aparece no site. Publique quando estiver pronto.");
+    expect(situacaoParaOCliente({ ...base, situacao: "rascunho", liberado: false, blocosPagos: 0 })).toBe(
+      "Rascunho: ainda não aparece no site. Publicado, aparece no site depois do pagamento de 1 bloco de 7 dias. Fale com a equipe para pagar.",
+    );
+  });
+  it("cancelado", () => {
+    expect(situacaoParaOCliente({ ...base, situacao: "cancelado" })).toBe("Cancelado: não aparece no site.");
+  });
+});
+
+describe("representantePodeEditarEvento", () => {
+  it("só o rascunho que o cliente ainda não publicou", () => {
+    expect(representantePodeEditarEvento({ situacao: "rascunho", publicadoEm: null })).toBe(true);
+    expect(representantePodeEditarEvento({ situacao: "rascunho", publicadoEm: "2026-11-20T10:00:00Z" })).toBe(false);
+    expect(representantePodeEditarEvento({ situacao: "publicado", publicadoEm: "2026-11-20T10:00:00Z" })).toBe(false);
+    expect(representantePodeEditarEvento({ situacao: "cancelado", publicadoEm: null })).toBe(false);
   });
 });

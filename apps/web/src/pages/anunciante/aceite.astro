@@ -1,0 +1,67 @@
+---
+// Aceite da versão em vigor dos Termos de Uso e da Política de Privacidade
+// antes de usar a área (item 15 dos Termos): o anunciante, quando os textos
+// mudam, e o cliente convidado para um evento, no primeiro acesso. O
+// middleware traz para cá; quem confere o cadastro assistido aceita lá.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import { aceitarDocumentosVigentes, aceitePendente } from "@/lib/anunciante";
+import { DOCUMENTOS, enderecoDocumento } from "@/lib/documentosLegais";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+const pedido = Astro.url.searchParams.get("voltar") ?? "";
+// Só volta para dentro da área do anunciante.
+const voltar = /^\/anunciante(\/[a-z0-9/-]*)?$/.test(pedido) && pedido !== "/anunciante/aceite" ? pedido : "/anunciante";
+let erro = "";
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  if (form.get("aceite") !== "sim") {
+    erro = "Marque que leu e aceita os Termos de Uso e a Política de Privacidade para continuar.";
+    Astro.response.status = 400;
+  } else {
+    const r = await aceitarDocumentosVigentes(supabase, usuario.id);
+    if (r.ok) return Astro.redirect(voltar, 303);
+    erro = r.erro.mensagem;
+    Astro.response.status = 500;
+  }
+} else {
+  const pendente = await aceitePendente(supabase, usuario.id);
+  if (pendente.ok && !pendente.dados) return Astro.redirect(voltar, 303);
+  if (!pendente.ok) erro = pendente.erro.mensagem;
+}
+
+const termos = DOCUMENTOS.termos;
+const privacidade = DOCUMENTOS.privacidade;
+---
+
+<PaginaAcesso titulo="Termos de Uso e Política de Privacidade" logado>
+  <p class="mt-1 text-slate-600">Você entrou como <strong class="text-tinta">{usuario.email}</strong>.</p>
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+  <p class="mt-4 text-slate-700">
+    Para usar a sua área no Ache Aqui RO, leia e aceite a versão em vigor dos Termos de Uso e da Política de Privacidade. Se você já aceitou uma versão
+    anterior, os textos mudaram desde então.
+  </p>
+  <form method="post" class="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+    <label class="flex items-start gap-3 font-semibold">
+      <input type="checkbox" name="aceite" value="sim" required class="mt-1 size-5 shrink-0 accent-azul-600" />
+      <span>
+        Li e aceito os{" "}
+        <a href={enderecoDocumento("termos")} target="_blank" class="text-azul-600 underline">
+          {termos.titulo} (versão {termos.vigente})
+        </a>{" "}
+        e a{" "}
+        <a href={enderecoDocumento("privacidade")} target="_blank" class="text-azul-600 underline">
+          {privacidade.titulo} (versão {privacidade.vigente})
+        </a>
+        .
+      </span>
+    </label>
+    <button type="submit" class={classesBotao("azul", "g", "mt-5")}>
+      <Icone nome="certo" class="size-5" />
+      Aceitar e continuar
+    </button>
+  </form>
+</PaginaAcesso>

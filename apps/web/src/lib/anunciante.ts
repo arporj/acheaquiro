@@ -57,6 +57,49 @@ export async function representanteDoCadastro(supabase: SupabaseClient, anuncian
   return { ok: true, dados: (data as string | null) ?? null };
 }
 
+/** Documentos em vigor que a conta ainda não aceitou (Termos de Uso e Política de Privacidade). */
+async function documentosQueFaltam(supabase: SupabaseClient, usuarioId: string): Promise<Resultado<(typeof DOCUMENTOS_DO_CADASTRO)[number][]>> {
+  const { data: aceitos, error } = await supabase
+    .from("aceites_documentos")
+    .select("documento, versao")
+    .eq("usuario_id", usuarioId)
+    .in("documento", [...DOCUMENTOS_DO_CADASTRO]);
+  if (error) return mensagemDoBanco(error, "documentosQueFaltam");
+  return {
+    ok: true,
+    dados: DOCUMENTOS_DO_CADASTRO.filter((documento) => !aceitos.some((a) => a.documento === documento && a.versao === DOCUMENTOS[documento].vigente)),
+  };
+}
+
+/** Grava o aceite das versões em vigor dos Termos e da Política que a conta ainda não aceitou. */
+export async function aceitarDocumentosVigentes(supabase: SupabaseClient, usuarioId: string): Promise<Resultado<null>> {
+  const faltam = await documentosQueFaltam(supabase, usuarioId);
+  if (!faltam.ok) return faltam;
+  if (faltam.dados.length === 0) return { ok: true, dados: null };
+  const { error } = await supabase
+    .from("aceites_documentos")
+    .insert(faltam.dados.map((documento) => ({ usuario_id: usuarioId, documento, versao: DOCUMENTOS[documento].vigente })));
+  if (error) return mensagemDoBanco(error, "aceitarDocumentosVigentes");
+  return { ok: true, dados: null };
+}
+
+/**
+ * A conta precisa aceitar a versão em vigor dos Termos e da Política antes de
+ * usar a área (item 15 dos Termos: o novo aceite no próximo acesso; o cliente
+ * convidado para um evento, no primeiro). Quem está conferindo o cadastro
+ * assistido aceita na própria conferência, ao enviar.
+ */
+export async function aceitePendente(supabase: SupabaseClient, usuarioId: string): Promise<Resultado<boolean>> {
+  const [faltam, cadastro] = await Promise.all([
+    documentosQueFaltam(supabase, usuarioId),
+    supabase.from("anunciantes").select("status").eq("usuario_id", usuarioId).maybeSingle(),
+  ]);
+  if (!faltam.ok) return faltam;
+  if (cadastro.error) return mensagemDoBanco(cadastro.error, "aceitePendente: cadastro");
+  if (faltam.dados.length === 0) return { ok: true, dados: false };
+  return { ok: true, dados: !["rascunho", "aguardando_anunciante"].includes(cadastro.data?.status ?? "") };
+}
+
 /**
  * Grava o aceite das versões em vigor dos Termos e da Política (os que faltam)
  * e envia o cadastro para análise. Se o envio falhar, o aceite fica gravado:
@@ -65,19 +108,8 @@ export async function representanteDoCadastro(supabase: SupabaseClient, anuncian
 export async function enviarParaAnalise(supabase: SupabaseClient, usuarioId: string, cadastro: AnuncianteAdmin): Promise<Resultado<null>> {
   if (cadastro.status !== "aguardando_anunciante") return falha("CONFLITO", "Este cadastro já foi enviado.");
 
-  const { data: aceitos, error: erroLeitura } = await supabase
-    .from("aceites_documentos")
-    .select("documento, versao")
-    .eq("usuario_id", usuarioId)
-    .in("documento", [...DOCUMENTOS_DO_CADASTRO]);
-  if (erroLeitura) return mensagemDoBanco(erroLeitura, "enviarParaAnalise: aceites");
-  const faltam = DOCUMENTOS_DO_CADASTRO.filter(
-    (documento) => !aceitos.some((a) => a.documento === documento && a.versao === DOCUMENTOS[documento].vigente),
-  ).map((documento) => ({ usuario_id: usuarioId, documento, versao: DOCUMENTOS[documento].vigente }));
-  if (faltam.length > 0) {
-    const { error } = await supabase.from("aceites_documentos").insert(faltam);
-    if (error) return mensagemDoBanco(error, "enviarParaAnalise: aceite");
-  }
+  const aceite = await aceitarDocumentosVigentes(supabase, usuarioId);
+  if (!aceite.ok) return aceite;
 
   const { data, error } = await supabase
     .from("anunciantes")

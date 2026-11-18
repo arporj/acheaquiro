@@ -1,0 +1,55 @@
+---
+// Lista dos eventos da conta do cliente ou dos cadastrados pelo representante,
+// com a situação (rascunho, publicado, cancelado) e o período.
+import { ROTULO_ORIGEM_EVENTO } from "@acheaqui/validation";
+import type { EventoDaConta } from "@/lib/agenda";
+import { formatarData } from "@/lib/texto";
+
+interface Props {
+  eventos: EventoDaConta[];
+  /** Endereço da página de cada evento: base/id. */
+  base: string;
+  vazio: string;
+}
+
+const { eventos, base, vazio } = Astro.props;
+const ROTULO_SITUACAO = { rascunho: "Rascunho", publicado: "Publicado", cancelado: "Cancelado" } as const;
+const periodo = (inicio: string, fim: string) => (inicio === fim ? formatarData(inicio) : `${formatarData(inicio)} a ${formatarData(fim)}`);
+---
+
+{
+  eventos.length === 0 ? (
+    <div class="mt-5 rounded-2xl bg-white p-6 text-center shadow-sm ring-1 ring-black/5">
+      <p class="font-bold text-azul-900">{vazio}</p>
+    </div>
+  ) : (
+    <ul class="mt-5 space-y-3">
+      {eventos.map((e) => (
+        <li>
+          <a href={`${base}/${e.id}`} class="flex flex-wrap items-start justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 hover:ring-azul-200">
+            <span class="min-w-0">
+              <span class="block font-display text-lg font-bold text-azul-900">{e.nome}</span>
+              <span class="block text-sm text-slate-600">
+                {periodo(e.data_inicio, e.data_fim)} · {e.local}
+              </span>
+              <span class="block text-xs font-semibold text-slate-500">
+                {ROTULO_ORIGEM_EVENTO[e.origem]}
+                {e.anunciante && ` · ${e.anunciante.nome}`}
+              </span>
+            </span>
+            <span
+              class:list={[
+                "rounded-full px-3 py-1 text-xs font-extrabold",
+                e.situacao === "publicado" && "bg-zap-50 text-zap-700",
+                e.situacao === "rascunho" && "bg-slate-100 text-slate-600",
+                e.situacao === "cancelado" && "bg-vermelho-500/10 text-vermelho-700",
+              ]}
+            >
+              {ROTULO_SITUACAO[e.situacao]}
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  )
+}

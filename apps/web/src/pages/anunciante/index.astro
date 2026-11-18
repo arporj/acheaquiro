@@ -263,7 +263,29 @@ const privacidade = DOCUMENTOS.privacidade;
     )
   }
 
-  {lido.ok && !cadastro && <p class="mt-6 text-slate-600">A sua conta ainda não tem um cadastro de anunciante. Fale com a equipe para anunciar.</p>}
+  {
+    lido.ok && !cadastro && (
+      <p class="mt-6 text-slate-600">
+        A sua conta ainda não tem um anúncio. Para anunciar o seu trabalho ou o seu comércio,{" "}
+        <LinkContatoEquipe mensagem={mensagemEquipe("Quero anunciar")} class="font-bold text-azul-600 hover:underline">
+          fale com a equipe
+        </LinkContatoEquipe>
+        .
+      </p>
+    )
+  }
+
+  {
+    !conferir && (
+      <a href="/anunciante/eventos" class="mt-6 flex items-center gap-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 hover:ring-azul-200">
+        <Icone nome="calendario" class="size-6 shrink-0 text-azul-600" />
+        <span>
+          <span class="block font-display text-lg font-bold text-azul-900">Meus eventos</span>
+          <span class="block text-sm text-slate-600">Shows, festas, feiras e festivais na Agenda do site.</span>
+        </span>
+      </a>
+    )
+  }
 
   {
     !conferir && (

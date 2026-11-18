@@ -1,0 +1,34 @@
+---
+// Meus eventos (conta de cliente, decisões K1 e K2 de 17/11/2026): os eventos
+// avulsos da conta e os do comércio ou do artista que a pessoa anuncia, com a
+// situação de cada um. O cliente cria o evento como rascunho e publica quando
+// quiser; o evento aparece na Agenda quando está liberado.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import ListaEventosDaConta from "@/components/agenda/ListaEventosDaConta.astro";
+import { listarEventosDoCliente } from "@/lib/agenda";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+const lista = await listarEventosDoCliente(supabase, usuario.id);
+---
+
+<PaginaAcesso titulo="Meus eventos" logado largura="larga">
+  <a href="/anunciante" class="mt-1 inline-block text-sm font-bold text-azul-600 hover:underline">← Área do anunciante</a>
+  <p class="mt-2 text-slate-600">Shows, festas, feiras e festivais na Agenda do site. Cadastre, acrescente a programação e as barracas e publique.</p>
+  {!lista.ok && <Aviso tipo="erro">{lista.erro.mensagem}</Aviso>}
+  <a href="/anunciante/eventos/novo" class={classesBotao("azul", "m", "mt-5")}>
+    <Icone nome="calendario" class="size-4" />
+    Novo evento
+  </a>
+  {
+    lista.ok && (
+      <ListaEventosDaConta
+        eventos={lista.dados}
+        base="/anunciante/eventos"
+        vazio="Você ainda não tem eventos. Use “Novo evento” para cadastrar o primeiro."
+      />
+    )
+  }
+</PaginaAcesso>

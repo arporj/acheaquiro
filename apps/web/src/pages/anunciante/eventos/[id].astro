@@ -1,0 +1,126 @@
+---
+// Um evento do cliente (/anunciante/eventos/novo cria): publicação, dados,
+// cartaz, programação e barracas (decisões K1 e K2 de 17/11/2026). O cliente
+// cria como rascunho e publica quando quiser; publicado, o evento vai direto
+// para o site se estiver liberado (pago, com a Agenda ou de artista
+// anunciante), e a equipe confere depois. O banco confere tudo de novo
+// (migration 20261118012727).
+import { DIAS_POR_BLOCO_EVENTO, momentoLocal, situacaoParaOCliente, ultimoDiaParaComecar } from "@acheaqui/domain";
+import type { OrigemEvento } from "@acheaqui/types";
+import FormularioEvento from "@/components/agenda/FormularioEvento.astro";
+import PartesDoEvento from "@/components/agenda/PartesDoEvento.astro";
+import PublicacaoDoEvento from "@/components/agenda/PublicacaoDoEvento.astro";
+import Aviso from "@/components/conta/Aviso.astro";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import LinkContatoEquipe from "@/components/institucional/LinkContatoEquipe.astro";
+import {
+  AVISOS_DO_EVENTO,
+  executarAcaoDoEvento,
+  lerEventoAdmin,
+  lerSituacaoDoEvento,
+  listarArtistasAdmin,
+  listarBairros,
+  listarMeusAnuncios,
+  type AcaoDoEvento,
+} from "@/lib/agenda";
+import { mensagemEquipe } from "@/lib/contato";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+const idParametro = Astro.params.id ?? "";
+const novo = idParametro === "novo";
+const hoje = momentoLocal(new Date()).data;
+
+const ACOES: readonly AcaoDoEvento[] = ["salvar", "situacao", "cartaz", "tirar-cartaz", "programacao", "apagar-programacao", "barraca", "apagar-barraca"];
+const aviso = AVISOS_DO_EVENTO[Astro.url.searchParams.get("aviso") ?? ""];
+let erro = "";
+
+// Só o dono vê a página do evento (situacao_do_evento é null para os outros).
+const situacaoR = novo ? null : await lerSituacaoDoEvento(supabase, idParametro);
+if (situacaoR && !situacaoR.ok && situacaoR.erro.codigo === "NAO_ENCONTRADO") return Astro.rewrite("/404");
+
+if (Astro.request.method === "POST") {
+  const r = await executarAcaoDoEvento(supabase, Astro.request, novo ? null : idParametro, ACOES, {
+    origemDoSite: Astro.url.origin,
+    dono: { usuarioId: usuario.id },
+  });
+  if (r.ok) return Astro.redirect(`/anunciante/eventos/${r.dados.id}?aviso=${r.dados.aviso}`, 303);
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const [eventoR, bairrosR, artistasR, anunciosR] = await Promise.all([
+  novo ? Promise.resolve(null) : lerEventoAdmin(supabase, idParametro),
+  listarBairros(supabase),
+  novo ? Promise.resolve(null) : listarArtistasAdmin(supabase),
+  listarMeusAnuncios(supabase, usuario.id),
+]);
+if (eventoR && !eventoR.ok && eventoR.erro.codigo === "NAO_ENCONTRADO") return Astro.rewrite("/404");
+for (const r of [eventoR, bairrosR, anunciosR, situacaoR]) if (r && !r.ok) erro ||= r.erro.mensagem;
+const evento = eventoR?.ok ? eventoR.dados : null;
+const situacao = situacaoR?.ok ? situacaoR.dados : null;
+const anuncios = anunciosR.ok ? anunciosR.dados : [];
+
+// O cliente escolhe o evento avulso ou, se anuncia, o do comércio ou o show dele como artista.
+const origens: { valor: OrigemEvento; rotulo: string }[] = [
+  ...(anuncios.some((a) => a.tipo === "comercio") ? [{ valor: "comercio" as const, rotulo: "No meu comércio" }] : []),
+  ...(anuncios.some((a) => a.tipo === "profissional") ? [{ valor: "artista" as const, rotulo: "Show meu, como artista" }] : []),
+  { valor: "avulso", rotulo: "Evento avulso (festa, feira, festival ou show em outro lugar)" },
+];
+const texto =
+  evento && situacao
+    ? situacaoParaOCliente({
+        origem: evento.origem,
+        situacao: evento.situacao,
+        liberado: situacao.liberado,
+        blocos: situacao.blocos,
+        blocosPagos: situacao.blocosPagos,
+      })
+    : "";
+const titulo = novo ? "Novo evento" : (evento?.nome ?? "Evento");
+const secao = "mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:p-5";
+---
+
+<PaginaAcesso titulo={titulo} logado largura="larga">
+  <a href="/anunciante/eventos" class="mt-1 inline-block text-sm font-bold text-azul-600 hover:underline">← Meus eventos</a>
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  {
+    novo && (
+      <p class="mt-3 text-slate-700">
+        Cadastre os dados do evento; depois acrescente a programação, as barracas e o cartaz, e publique. O evento avulso é cobrado por bloco de{" "}
+        {DIAS_POR_BLOCO_EVENTO} dias, do primeiro ao último dia, e aparece no site depois do pagamento. Se desistir, você recebe o dinheiro de volta até 7
+        dias depois do pagamento, desde que seja até a véspera do primeiro dia do evento.
+      </p>
+    )
+  }
+
+  {
+    evento && situacao && (
+      <PublicacaoDoEvento evento={evento} texto={texto} noSite={evento.situacao === "publicado" && situacao.liberado}>
+        {!situacao.liberado && evento.situacao !== "cancelado" && (
+          <p class="mt-3">
+            <LinkContatoEquipe mensagem={mensagemEquipe(`Quero colocar o evento "${evento.nome}" na Agenda`)} class="font-bold text-azul-600 hover:underline">
+              Fale com a equipe
+            </LinkContatoEquipe>
+          </p>
+        )}
+      </PublicacaoDoEvento>
+    )
+  }
+
+  <section class={secao} aria-labelledby="titulo-dados">
+    <h2 id="titulo-dados" class="font-display text-lg font-bold text-azul-900">Dados do evento</h2>
+    <FormularioEvento
+      evento={evento}
+      bairros={bairrosR.ok ? bairrosR.dados : []}
+      origens={origens}
+      anuncios={anuncios}
+      hoje={hoje}
+      ultimoDia={ultimoDiaParaComecar(hoje)}
+    />
+  </section>
+
+  {evento && <PartesDoEvento evento={evento} artistas={artistasR?.ok ? artistasR.dados : []} />}
+</PaginaAcesso>

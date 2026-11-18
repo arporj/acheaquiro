@@ -1,0 +1,83 @@
+---
+// Quadro "Publicação" de um evento: a situação, publicar, voltar para rascunho
+// e cancelar (com o modal de confirmação). Na administração e na área do
+// cliente; o que mais cada área mostra (cortesia, pagamento, conferência,
+// organizador) entra no espaço do quadro.
+import { Icone, Modal, classesBotao } from "@acheaqui/ui";
+import type { EventoAdmin } from "@/lib/agenda";
+
+interface Props {
+  evento: EventoAdmin;
+  /** A situação em texto, para quem está vendo. */
+  texto: string;
+  /** O evento publicado aparece no site agora. */
+  noSite: boolean;
+  /** Mostra os botões de publicar, voltar para rascunho e cancelar. */
+  podePublicar?: boolean;
+}
+
+const { evento, texto, noSite, podePublicar = true } = Astro.props;
+---
+
+<section class="mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:p-5" aria-labelledby="titulo-publicacao">
+  <h2 id="titulo-publicacao" class="font-display text-lg font-bold text-azul-900">Publicação</h2>
+  <p class="mt-1 text-sm text-slate-700">{texto}</p>
+  <div class="mt-3 flex flex-wrap gap-2">
+    {
+      podePublicar && evento.situacao !== "publicado" && (
+        <form method="post">
+          <input type="hidden" name="acao" value="situacao" />
+          <input type="hidden" name="situacao" value="publicado" />
+          <button type="submit" class={classesBotao("zap", "m")}>
+            <Icone nome="certo" class="size-4" />
+            Publicar
+          </button>
+        </form>
+      )
+    }
+    {
+      podePublicar && evento.situacao === "publicado" && (
+        <form method="post">
+          <input type="hidden" name="acao" value="situacao" />
+          <input type="hidden" name="situacao" value="rascunho" />
+          <button type="submit" class={classesBotao("contorno", "m")}>
+            Voltar para rascunho
+          </button>
+        </form>
+      )
+    }
+    {
+      podePublicar && evento.situacao !== "cancelado" && (
+        <button type="button" data-abrir-modal="modal-cancelar" class={classesBotao("contorno", "m")}>
+          Cancelar o evento
+        </button>
+      )
+    }
+    {
+      noSite && (
+        <a href={`/agenda/${evento.slug}`} target="_blank" rel="noopener" class={classesBotao("fantasma", "m")}>
+          Ver no site
+        </a>
+      )
+    }
+  </div>
+  <slot />
+</section>
+
+{
+  podePublicar && evento.situacao !== "cancelado" && (
+    <Modal id="modal-cancelar" titulo="Cancelar o evento?">
+      <p class="text-slate-700">O evento sai da Agenda e a página dele deixa de abrir. Dá para publicar de novo depois.</p>
+      <form method="post" class="mt-4 flex flex-wrap justify-end gap-2">
+        <input type="hidden" name="acao" value="situacao" />
+        <input type="hidden" name="situacao" value="cancelado" />
+        <button type="button" data-modal-fechar class={classesBotao("contorno", "m")}>
+          Voltar
+        </button>
+        <button type="submit" class={classesBotao("perigo", "m")}>
+          Cancelar o evento
+        </button>
+      </form>
+    </Modal>
+  )
+}

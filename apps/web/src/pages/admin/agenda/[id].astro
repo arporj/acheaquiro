@@ -1,138 +1,65 @@
 ---
 // Um evento da Agenda na administração (/admin/agenda/novo cria): dados,
-// publicação, cortesia (decisão C1 de 17/11/2026), cartaz, programação e
-// barracas. Regras em packages/domain/agenda.ts; o banco repete as travas.
-import { blocosDoEventoAvulso, diasDoEventoNoPeriodo, momentoLocal, ultimoDiaParaComecar } from "@acheaqui/domain";
-import { Icone, Modal, classesBotao } from "@acheaqui/ui";
-import {
-  CLASSIFICACOES_ETARIAS,
-  MAXIMO_INGRESSOS,
-  ORIGENS_EVENTO,
-  ROTULO_CLASSIFICACAO,
-  ROTULO_ENTRADA,
-  ROTULO_ORIGEM_EVENTO,
-  TAMANHOS_FOTO,
-  TIPOS_ENTRADA,
-  type TamanhoFoto,
-} from "@acheaqui/validation";
+// publicação, cortesia (decisão C1 de 17/11/2026), conferência do evento
+// publicado por um cliente (K1), organizador (conta de cliente), pagamento do
+// evento avulso, cartaz, programação e barracas. Regras em
+// packages/domain/agenda.ts; o banco repete as travas.
+import { blocosDoEventoAvulso, momentoLocal, ultimoDiaParaComecar } from "@acheaqui/domain";
+import { classesBotao } from "@acheaqui/ui";
+import { ORIGENS_EVENTO, ROTULO_ORIGEM_EVENTO } from "@acheaqui/validation";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import FormularioEvento from "@/components/agenda/FormularioEvento.astro";
+import PartesDoEvento from "@/components/agenda/PartesDoEvento.astro";
+import PublicacaoDoEvento from "@/components/agenda/PublicacaoDoEvento.astro";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
 import {
-  adicionarBarraca,
-  adicionarProgramacao,
-  apagarBarraca,
-  apagarProgramacao,
+  AVISOS_DO_EVENTO,
+  executarAcaoDoEvento,
   lerEventoAdmin,
+  lerSituacaoDoEvento,
   listarArtistasAdmin,
   listarBairros,
-  mudarSituacaoEvento,
-  salvarCartaz,
-  salvarCortesia,
-  salvarEvento,
-  tirarCartaz,
+  type AcaoDoEvento,
   type EventoAdmin,
 } from "@/lib/agenda";
-import { limparCacheDoSite } from "@/lib/arquivos";
 import { lerContextoEvento } from "@/lib/extras";
 import { formatarCentavos } from "@/lib/precos";
-import { dataCurtaComSemana, formatarData } from "@/lib/texto";
-import type { Resultado } from "@acheaqui/types";
+import { formatarData } from "@/lib/texto";
 
 const supabase = Astro.locals.supabase!;
 const idParametro = Astro.params.id ?? "";
 const novo = idParametro === "novo";
 const hoje = momentoLocal(new Date()).data;
 
-const AVISOS: Record<string, string> = {
-  criado: "Evento criado. Agora acrescente a programação, as barracas e o cartaz, e publique.",
-  salvo: "Evento salvo.",
-  situacao: "Situação do evento alterada.",
-  cortesia: "Cortesia alterada.",
-  cartaz: "Cartaz alterado.",
-  programacao: "Programação alterada.",
-  barraca: "Barracas alteradas.",
-};
-const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
+const ACOES: readonly AcaoDoEvento[] = [
+  "salvar",
+  "situacao",
+  "cortesia",
+  "conferido",
+  "organizador",
+  "cartaz",
+  "tirar-cartaz",
+  "programacao",
+  "apagar-programacao",
+  "barraca",
+  "apagar-barraca",
+];
+const aviso = AVISOS_DO_EVENTO[Astro.url.searchParams.get("aviso") ?? ""];
 let erro = "";
 
-/** Três versões do cartaz (até 2 MB cada) mais os campos de texto. */
-const TAMANHO_MAXIMO_PEDIDO = 6 * 1024 * 1024 + 64 * 1024;
-
 if (Astro.request.method === "POST") {
-  const tamanho = Number(Astro.request.headers.get("content-length") ?? "0");
-  let resultado: Resultado<unknown>;
-  let chaveAviso = "";
-  let destino = idParametro;
-  if (!tamanho || tamanho > TAMANHO_MAXIMO_PEDIDO) {
-    resultado = { ok: false, erro: { codigo: "DADOS_INVALIDOS", mensagem: "Envio maior que o permitido (cartaz de até 2 MB)." } };
-  } else {
-    const f = await Astro.request.formData();
-    const campo = (nome: string) => String(f.get(nome) ?? "").slice(0, 300);
-    switch (novo ? "salvar" : campo("acao")) {
-      case "salvar": {
-        const r = await salvarEvento(supabase, novo ? null : idParametro, f);
-        if (r.ok) destino = r.dados.id;
-        resultado = r;
-        chaveAviso = novo ? "criado" : "salvo";
-        break;
-      }
-      case "situacao":
-        resultado = await mudarSituacaoEvento(supabase, idParametro, campo("situacao"));
-        chaveAviso = "situacao";
-        break;
-      case "cortesia":
-        resultado = await salvarCortesia(supabase, idParametro, campo("motivo"));
-        chaveAviso = "cortesia";
-        break;
-      case "cartaz": {
-        const versoes: Partial<Record<TamanhoFoto, Uint8Array>> = {};
-        for (const t of TAMANHOS_FOTO) {
-          const arquivo = f.get(`cartaz_${t}`);
-          if (arquivo instanceof File && arquivo.size > 0) versoes[t] = new Uint8Array(await arquivo.arrayBuffer());
-        }
-        resultado = await salvarCartaz(supabase, idParametro, versoes);
-        chaveAviso = "cartaz";
-        break;
-      }
-      case "tirar-cartaz":
-        resultado = await tirarCartaz(supabase, idParametro);
-        chaveAviso = "cartaz";
-        break;
-      case "programacao":
-        resultado = await adicionarProgramacao(supabase, idParametro, f);
-        chaveAviso = "programacao";
-        break;
-      case "apagar-programacao":
-        resultado = await apagarProgramacao(supabase, idParametro, campo("item"));
-        chaveAviso = "programacao";
-        break;
-      case "barraca":
-        resultado = await adicionarBarraca(supabase, idParametro, f);
-        chaveAviso = "barraca";
-        break;
-      case "apagar-barraca":
-        resultado = await apagarBarraca(supabase, idParametro, campo("barraca"));
-        chaveAviso = "barraca";
-        break;
-      default:
-        resultado = { ok: false, erro: { codigo: "DADOS_INVALIDOS", mensagem: "Ação desconhecida." } };
-    }
-  }
-  if (resultado.ok) {
-    // O que muda num evento publicado aparece na Agenda, na página do evento e nos perfis: limpa o cache do site.
-    const { data: atual } = await supabase.from("eventos").select("situacao").eq("id", destino).maybeSingle();
-    if (atual?.situacao === "publicado" || chaveAviso === "situacao") await limparCacheDoSite(Astro.url.origin);
-    return Astro.redirect(`/admin/agenda/${destino}?aviso=${chaveAviso}`, 303);
-  }
-  erro = resultado.erro.mensagem;
-  Astro.response.status = resultado.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  const r = await executarAcaoDoEvento(supabase, Astro.request, novo ? null : idParametro, ACOES, { origemDoSite: Astro.url.origin });
+  if (r.ok) return Astro.redirect(`/admin/agenda/${r.dados.id}?aviso=${r.dados.aviso}`, 303);
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
 }
 
-const [eventoR, bairrosR, artistasR] = await Promise.all([
+const [eventoR, bairrosR, artistasR, situacaoR] = await Promise.all([
   novo ? Promise.resolve(null) : lerEventoAdmin(supabase, idParametro),
   listarBairros(supabase),
   novo ? Promise.resolve(null) : listarArtistasAdmin(supabase),
+  novo ? Promise.resolve(null) : lerSituacaoDoEvento(supabase, idParametro),
 ]);
 // Evento avulso: os blocos de 7 dias pagos e o que falta pagar (decisões E1 a E3 de 17/11/2026).
 const pagamentoR = eventoR?.ok && eventoR.dados.origem === "avulso" ? await lerContextoEvento(supabase, eventoR.dados.id) : null;
@@ -144,71 +71,72 @@ if (!bairrosR.ok) erro ||= bairrosR.erro.mensagem;
 const evento: EventoAdmin | null = eventoR?.ok ? eventoR.dados : null;
 const bairros = bairrosR.ok ? bairrosR.dados : [];
 const artistas = artistasR?.ok ? artistasR.dados : [];
+const organizador = situacaoR?.ok ? situacaoR.dados.organizador : null;
 
-const ultimoDia = ultimoDiaParaComecar(hoje);
-const diasDoEvento = evento ? diasDoEventoNoPeriodo({ inicio: evento.data_inicio, fim: evento.data_fim }, evento.data_inicio, evento.data_fim) : [];
-const reais = (centavos: number | null | undefined) => (centavos == null ? "" : (centavos / 100).toFixed(2).replace(".", ","));
-const simNao = (v: boolean | null | undefined) => (v === true ? "sim" : v === false ? "nao" : "");
-const ingressos = [...(evento?.ingressos ?? []), ...Array.from({ length: Math.max(0, 3 - (evento?.ingressos.length ?? 0)) }, () => null)];
-const enderecoPerfil = evento?.anunciante ? `${Astro.url.origin}/perfil/${evento.anunciante.slug}` : "";
-const programacaoPorDia = diasDoEvento.map((dia) => ({ dia, itens: (evento?.programacao ?? []).filter((p) => p.dia === dia) }));
+const textoPublicacao = !evento
+  ? ""
+  : evento.situacao === "rascunho"
+    ? "Rascunho: não aparece no site."
+    : evento.situacao === "cancelado"
+      ? "Cancelado: saiu da Agenda."
+      : evento.impedimento
+        ? `Publicado, mas fora do site: ${evento.impedimento}`
+        : "Publicado e no site.";
+const origens = ORIGENS_EVENTO.map((valor) => ({ valor, rotulo: ROTULO_ORIGEM_EVENTO[valor] }));
 const titulo = novo ? "Novo evento" : (evento?.nome ?? "Evento");
+const divisoria = "mt-5 border-t border-slate-100 pt-4";
 ---
 
 <PaginaAdmin titulo={titulo} descricao={novo ? "Cadastre o evento; depois acrescente a programação, as barracas e o cartaz." : undefined}>
-  <a href="/admin/agenda" class="mt-2 inline-flex items-center gap-1 text-sm font-bold text-azul-600 hover:underline">
-    <Icone nome="esquerda" class="size-4" />
-    Voltar para a Agenda
-  </a>
+  <a href="/admin/agenda" class="mt-2 inline-flex items-center gap-1 text-sm font-bold text-azul-600 hover:underline">← Voltar para a Agenda</a>
   {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
   {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
   {
     evento && (
-      <section class="mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:p-5" aria-labelledby="titulo-publicacao">
-        <h2 id="titulo-publicacao" class="font-display text-lg font-bold text-azul-900">
-          Publicação
-        </h2>
-        <p class="mt-1 text-sm text-slate-700">
-          {evento.situacao === "rascunho" && "Rascunho: só a equipe vê."}
-          {evento.situacao === "cancelado" && "Cancelado: saiu da Agenda."}
-          {evento.situacao === "publicado" && !evento.impedimento && "Publicado e no site."}
-          {evento.situacao === "publicado" && evento.impedimento && `Publicado, mas fora do site: ${evento.impedimento}`}
-        </p>
-        <div class="mt-3 flex flex-wrap gap-2">
-          {evento.situacao !== "publicado" && (
-            <form method="post">
-              <input type="hidden" name="acao" value="situacao" />
-              <input type="hidden" name="situacao" value="publicado" />
-              <button type="submit" class={classesBotao("zap", "m")}>
-                <Icone nome="certo" class="size-4" />
-                Publicar
+      <PublicacaoDoEvento evento={evento} texto={textoPublicacao} noSite={evento.situacao === "publicado" && !evento.impedimento}>
+        {evento.situacao === "publicado" && evento.conferido_em === null && (
+          <div class={divisoria}>
+            <h3 class="font-bold text-azul-900">Para conferir</h3>
+            <p class="mt-1 text-sm text-slate-700">
+              O cliente publicou ou mudou este evento, e ele já está no site. Confira os dados, o cartaz, a programação e as barracas. Se algo estiver errado,
+              volte para rascunho e fale com o cliente.
+            </p>
+            <form method="post" class="mt-2">
+              <input type="hidden" name="acao" value="conferido" />
+              <button type="submit" class={classesBotao("azul", "p")}>
+                Conferido
               </button>
             </form>
-          )}
-          {evento.situacao === "publicado" && (
-            <form method="post">
-              <input type="hidden" name="acao" value="situacao" />
-              <input type="hidden" name="situacao" value="rascunho" />
-              <button type="submit" class={classesBotao("contorno", "m")}>
-                Voltar para rascunho
-              </button>
-            </form>
-          )}
-          {evento.situacao !== "cancelado" && (
-            <button type="button" data-abrir-modal="modal-cancelar" class={classesBotao("contorno", "m")}>
-              Cancelar o evento
-            </button>
-          )}
-          {evento.situacao === "publicado" && !evento.impedimento && (
-            <a href={`/agenda/${evento.slug}`} target="_blank" rel="noopener" class={classesBotao("fantasma", "m")}>
-              Ver no site
-            </a>
-          )}
-        </div>
+          </div>
+        )}
 
         {evento.origem === "avulso" && (
-          <div class="mt-5 border-t border-slate-100 pt-4">
+          <div class={divisoria}>
+            <h3 class="font-bold text-azul-900">Organizador</h3>
+            <p class="mt-1 text-sm text-slate-700">
+              {organizador
+                ? `Conta de ${organizador}: vê e altera o evento na área dele.`
+                : "Sem conta de organizador: só a equipe altera o evento."}
+            </p>
+            <form method="post" class="mt-2 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+              <input type="hidden" name="acao" value="organizador" />
+              <div>
+                <label class={classesRotulo} for="email-organizador">
+                  E-mail do organizador
+                </label>
+                <input id="email-organizador" name="email" type="email" inputmode="email" maxlength="200" value={organizador ?? ""} class={classesCampo} />
+                <p class="mt-1 text-xs text-slate-500">Sem conta, ele recebe um e-mail para criar a senha. Deixe vazio para tirar o organizador.</p>
+              </div>
+              <button type="submit" class={classesBotao("contorno", "m")}>
+                Salvar organizador
+              </button>
+            </form>
+          </div>
+        )}
+
+        {evento.origem === "avulso" && (
+          <div class={divisoria}>
             <h3 class="font-bold text-azul-900">Cortesia</h3>
             {evento.cortesia_motivo ? (
               <form method="post" class="mt-1">
@@ -238,8 +166,9 @@ const titulo = novo ? "Novo evento" : (evento?.nome ?? "Evento");
             )}
           </div>
         )}
+
         {pagamento && (
-          <div class="mt-5 border-t border-slate-100 pt-4">
+          <div class={divisoria}>
             <h3 class="font-bold text-azul-900">Pagamento</h3>
             {(() => {
               const blocos = blocosDoEventoAvulso(pagamento.evento.dataInicio, pagamento.evento.dataFim);
@@ -253,14 +182,18 @@ const titulo = novo ? "Novo evento" : (evento?.nome ?? "Evento");
                   </p>
                   {pagamento.blocosPagos > 0 && (
                     <p class="mt-1 text-xs text-slate-500">
-                      As datas só mudam dentro dos blocos pagos (até {pagamento.blocosPagos * 7} dias). Para aumentar o evento, registre o pagamento dos blocos que faltam.
+                      As datas só mudam dentro dos blocos pagos (até {pagamento.blocosPagos * 7} dias). Para aumentar o evento, registre o pagamento dos blocos que
+                      faltam.
                     </p>
                   )}
                   {pagamento.pagamentos.length > 0 && (
                     <ul class="mt-2 space-y-1 text-sm">
                       {pagamento.pagamentos.map((p) => (
                         <li>
-                          <a href={`/admin/pagamentos/${p.id}`} class:list={["font-bold text-azul-600 hover:underline", p.devolvido && "text-slate-400 line-through"]}>
+                          <a
+                            href={`/admin/pagamentos/${p.id}`}
+                            class:list={["font-bold text-azul-600 hover:underline", p.devolvido && "text-slate-400 line-through"]}
+                          >
                             {formatarData(p.pagoEm)} · {p.blocos} bloco{p.blocos === 1 ? "" : "s"} · {formatarCentavos(p.valorCentavos)}
                           </a>
                           {p.devolvido && <span class="ml-2 text-xs font-extrabold text-vermelho-700">Devolvido</span>}
@@ -278,357 +211,14 @@ const titulo = novo ? "Novo evento" : (evento?.nome ?? "Evento");
             })()}
           </div>
         )}
-      </section>
+      </PublicacaoDoEvento>
     )
   }
 
   <section class="mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:p-5" aria-labelledby="titulo-dados">
     <h2 id="titulo-dados" class="font-display text-lg font-bold text-azul-900">Dados do evento</h2>
-    <form method="post" data-form-evento>
-      <input type="hidden" name="acao" value="salvar" />
-      <div class="grid gap-x-4 sm:grid-cols-2">
-        <div class="sm:col-span-2">
-          <label class={classesRotulo} for="origem">De onde vem o evento</label>
-          <select id="origem" name="origem" required class={classesCampo} data-origem>
-            {ORIGENS_EVENTO.map((o) => <option value={o} selected={(evento?.origem ?? "avulso") === o}>{ROTULO_ORIGEM_EVENTO[o]}</option>)}
-          </select>
-        </div>
-        <div class="sm:col-span-2" data-so-com-anunciante hidden={!evento || (evento.origem !== "comercio" && evento.origem !== "artista")}>
-          <label class={classesRotulo} for="perfil">Link do perfil do comércio ou do artista</label>
-          <input id="perfil" name="perfil" value={enderecoPerfil} maxlength="300" class={classesCampo} placeholder="https://acheaquiro.com.br/perfil/..." />
-          <p class="mt-1 text-xs text-slate-500">Copie o endereço da página do perfil no site.</p>
-        </div>
-        <div class="sm:col-span-2">
-          <label class={classesRotulo} for="nome">Nome do evento</label>
-          <input id="nome" name="nome" value={evento?.nome ?? ""} required minlength="3" maxlength="100" class={classesCampo} />
-        </div>
-        <div class="sm:col-span-2">
-          <label class={classesRotulo} for="descricao">Descrição</label>
-          <textarea id="descricao" name="descricao" maxlength="2000" rows="4" class={`${classesCampo} h-auto py-3`}>{evento?.descricao ?? ""}</textarea>
-        </div>
-        <div>
-          <label class={classesRotulo} for="produtor">Quem organiza (opcional)</label>
-          <input id="produtor" name="produtor" value={evento?.produtor ?? ""} maxlength="80" class={classesCampo} />
-        </div>
-        <div>
-          <label class={classesRotulo} for="local">Nome do lugar</label>
-          <input id="local" name="local" value={evento?.local ?? ""} required minlength="2" maxlength="100" class={classesCampo} placeholder="Ex.: Praça São Pedro" />
-        </div>
-        <div>
-          <label class={classesRotulo} for="endereco">Endereço (opcional)</label>
-          <input id="endereco" name="endereco" value={evento?.endereco ?? ""} maxlength="160" class={classesCampo} />
-        </div>
-        <div>
-          <label class={classesRotulo} for="bairro">Bairro</label>
-          <select id="bairro" name="bairro" required class={classesCampo}>
-            <option value="">Escolha</option>
-            {bairros.map((b) => <option value={b.id} selected={evento?.bairro_id === b.id}>{b.nome}</option>)}
-          </select>
-        </div>
-        <div>
-          <label class={classesRotulo} for="data_inicio">Primeiro dia</label>
-          <input id="data_inicio" name="data_inicio" type="date" value={evento?.data_inicio ?? ""} min={hoje} max={ultimoDia} required class={classesCampo} />
-        </div>
-        <div>
-          <label class={classesRotulo} for="data_fim">Último dia</label>
-          <input id="data_fim" name="data_fim" type="date" value={evento?.data_fim ?? ""} min={hoje} required class={classesCampo} />
-        </div>
-        <div>
-          <label class={classesRotulo} for="entrada">Entrada</label>
-          <select id="entrada" name="entrada" required class={classesCampo} data-entrada>
-            {TIPOS_ENTRADA.map((t) => <option value={t} selected={(evento?.entrada ?? "gratuita") === t}>{ROTULO_ENTRADA[t]}</option>)}
-          </select>
-        </div>
-        <div data-so-couvert hidden={evento?.entrada !== "couvert"}>
-          <label class={classesRotulo} for="couvert">Valor do couvert (R$)</label>
-          <input id="couvert" name="couvert" inputmode="decimal" value={reais(evento?.couvert_centavos)} class={classesCampo} placeholder="15,00" />
-        </div>
-        <fieldset class="sm:col-span-2" data-so-ingressos hidden={evento?.entrada !== "ingressos"}>
-          <legend class={classesRotulo}>Ingressos (até {MAXIMO_INGRESSOS} tipos; deixe em branco o que não usar)</legend>
-          <div class="space-y-2" data-lista-ingressos>
-            {
-              ingressos.map((i) => (
-                <div class="grid grid-cols-[1fr_8rem] gap-2">
-                  <input name="ingresso_nome" value={i?.nome ?? ""} maxlength="40" aria-label="Tipo de ingresso" placeholder="Ex.: Inteira" class={classesCampo} />
-                  <input name="ingresso_valor" value={reais(i?.valorCentavos)} inputmode="decimal" aria-label="Valor (R$)" placeholder="R$" class={classesCampo} />
-                </div>
-              ))
-            }
-          </div>
-          <button type="button" data-mais-ingresso class={classesBotao("fantasma", "p", "mt-2")}>Mais um tipo</button>
-        </fieldset>
-        <div>
-          <label class={classesRotulo} for="aberto_ao_publico">Aberto ao público</label>
-          <select id="aberto_ao_publico" name="aberto_ao_publico" class={classesCampo}>
-            <option value="sim" selected={evento?.aberto_ao_publico !== false}>Sim</option>
-            <option value="nao" selected={evento?.aberto_ao_publico === false}>Não</option>
-          </select>
-        </div>
-        <div>
-          <label class={classesRotulo} for="classificacao">Classificação etária</label>
-          <select id="classificacao" name="classificacao" class={classesCampo}>
-            <option value="">Não informada</option>
-            {CLASSIFICACOES_ETARIAS.map((c) => <option value={c} selected={evento?.classificacao === c}>{ROTULO_CLASSIFICACAO[c]}</option>)}
-          </select>
-        </div>
-        <div>
-          <label class={classesRotulo} for="cadeira_de_praia">Pode levar cadeira de praia</label>
-          <select id="cadeira_de_praia" name="cadeira_de_praia" class={classesCampo}>
-            <option value="" selected={simNao(evento?.cadeira_de_praia) === ""}>Não informado</option>
-            <option value="sim" selected={simNao(evento?.cadeira_de_praia) === "sim"}>Sim</option>
-            <option value="nao" selected={simNao(evento?.cadeira_de_praia) === "nao"}>Não</option>
-          </select>
-        </div>
-        <div>
-          <label class={classesRotulo} for="cooler">Pode levar cooler</label>
-          <select id="cooler" name="cooler" class={classesCampo}>
-            <option value="" selected={simNao(evento?.cooler) === ""}>Não informado</option>
-            <option value="sim" selected={simNao(evento?.cooler) === "sim"}>Sim</option>
-            <option value="nao" selected={simNao(evento?.cooler) === "nao"}>Não</option>
-          </select>
-        </div>
-        <div class="sm:col-span-2">
-          <label class={classesRotulo} for="ruas_fechadas">Ruas fechadas (opcional)</label>
-          <input id="ruas_fechadas" name="ruas_fechadas" value={evento?.ruas_fechadas ?? ""} maxlength="300" class={classesCampo} />
-        </div>
-      </div>
-      <button type="submit" class={classesBotao("azul", "m", "mt-5")}>
-        <Icone nome="certo" class="size-4" />
-        {novo ? "Criar evento" : "Salvar dados"}
-      </button>
-    </form>
+    <FormularioEvento evento={evento} bairros={bairros} origens={origens} hoje={hoje} ultimoDia={ultimoDiaParaComecar(hoje)} origemLivre />
   </section>
 
-  {
-    evento && (
-      <>
-        <section class="mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:p-5" aria-labelledby="titulo-cartaz">
-          <h2 id="titulo-cartaz" class="font-display text-lg font-bold text-azul-900">
-            Cartaz
-          </h2>
-          <p class="mt-1 text-sm text-slate-600">Aparece no topo da página do evento e na prévia do link no WhatsApp.</p>
-          {evento.cartaz && <img src={evento.cartaz} alt={`Cartaz de ${evento.nome}`} class="mt-3 max-h-80 rounded-2xl ring-1 ring-black/5" />}
-          <form method="post" enctype="multipart/form-data" data-form-cartaz class="mt-3">
-            <input type="hidden" name="acao" value="cartaz" />
-            <label class={classesRotulo} for="escolher-cartaz">
-              {evento.cartaz ? "Trocar o cartaz" : "Escolher o cartaz"}
-            </label>
-            <input id="escolher-cartaz" type="file" accept="image/*" required data-escolher-cartaz class={`${classesCampo} py-2`} />
-            {TAMANHOS_FOTO.map((t) => (
-              <input type="file" name={`cartaz_${t}`} data-cartaz-versao={t} hidden />
-            ))}
-            <p data-erro-cartaz hidden class="mt-1 text-sm font-semibold text-vermelho-700" />
-            <button type="submit" class={classesBotao("azul", "m", "mt-3")}>
-              Enviar cartaz
-            </button>
-          </form>
-          {evento.cartaz && (
-            <form method="post" class="mt-2">
-              <input type="hidden" name="acao" value="tirar-cartaz" />
-              <button type="submit" class={classesBotao("fantasma", "p")}>
-                Tirar o cartaz
-              </button>
-            </form>
-          )}
-        </section>
-
-        <section class="mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:p-5" aria-labelledby="titulo-programacao">
-          <h2 id="titulo-programacao" class="font-display text-lg font-bold text-azul-900">
-            Programação
-          </h2>
-          <p class="mt-1 text-sm text-slate-600">
-            Artistas e atividades, com o horário. O artista que não está na lista é cadastrado em{" "}
-            <a href="/admin/agenda/artistas" class="font-bold text-azul-600 hover:underline">
-              Artistas
-            </a>
-            .
-          </p>
-          {evento.programacao.length === 0 && <p class="mt-3 text-sm font-semibold text-slate-500">Nenhum horário cadastrado.</p>}
-          {programacaoPorDia
-            .filter((d) => d.itens.length > 0)
-            .map((d) => (
-              <div class="mt-4">
-                <h3 class="text-sm font-extrabold text-azul-900 first-letter:uppercase">{dataCurtaComSemana(d.dia)}</h3>
-                <ul class="mt-1 divide-y divide-slate-100">
-                  {d.itens.map((p) => (
-                    <li class="flex items-center justify-between gap-3 py-2">
-                      <span>
-                        <span class="font-bold">
-                          {p.inicio}
-                          {p.fim && ` às ${p.fim}`}
-                        </span>{" "}
-                        · {p.artista ? p.artista.nome : p.titulo}
-                        {p.artista && p.titulo && <span class="text-slate-500"> ({p.titulo})</span>}
-                      </span>
-                      <form method="post">
-                        <input type="hidden" name="acao" value="apagar-programacao" />
-                        <input type="hidden" name="item" value={p.id} />
-                        <button type="submit" class={classesBotao("fantasma", "p")} aria-label={`Apagar ${p.inicio} ${p.artista?.nome ?? p.titulo}`}>
-                          <Icone nome="fechar" class="size-4" />
-                        </button>
-                      </form>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          <form method="post" class="mt-4 grid gap-x-3 border-t border-slate-100 pt-2 sm:grid-cols-4">
-            <input type="hidden" name="acao" value="programacao" />
-            <div>
-              <label class={classesRotulo} for="dia">
-                Dia
-              </label>
-              <select id="dia" name="dia" required class={classesCampo}>
-                {diasDoEvento.map((d) => (
-                  <option value={d}>{dataCurtaComSemana(d)}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label class={classesRotulo} for="inicio">
-                Começa
-              </label>
-              <input id="inicio" name="inicio" type="time" required class={classesCampo} />
-            </div>
-            <div>
-              <label class={classesRotulo} for="fim">
-                Termina (opcional)
-              </label>
-              <input id="fim" name="fim" type="time" class={classesCampo} />
-            </div>
-            <div>
-              <label class={classesRotulo} for="artista">
-                Artista
-              </label>
-              <select id="artista" name="artista" class={classesCampo}>
-                <option value="">Nenhum (só atividade)</option>
-                {artistas.map((a) => (
-                  <option value={a.id}>{a.nome}</option>
-                ))}
-              </select>
-            </div>
-            <div class="sm:col-span-3">
-              <label class={classesRotulo} for="titulo">
-                Atividade (sem artista) ou observação
-              </label>
-              <input id="titulo" name="titulo" maxlength="80" class={classesCampo} placeholder="Ex.: Largada do pedal" />
-            </div>
-            <div class="flex items-end">
-              <button type="submit" class={classesBotao("azul", "m", "mt-3 w-full")}>
-                Acrescentar
-              </button>
-            </div>
-          </form>
-        </section>
-
-        <section class="mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:p-5" aria-labelledby="titulo-barracas">
-          <h2 id="titulo-barracas" class="font-display text-lg font-bold text-azul-900">
-            Barracas
-          </h2>
-          {evento.barracas.length === 0 && <p class="mt-3 text-sm font-semibold text-slate-500">Nenhuma barraca cadastrada.</p>}
-          <ul class="mt-2 divide-y divide-slate-100">
-            {evento.barracas.map((b) => (
-              <li class="flex items-center justify-between gap-3 py-2">
-                <span>
-                  <span class="font-bold">{b.nome}</span> · {b.vende}
-                  {b.whatsapp && <span class="text-slate-500"> · WhatsApp publicado</span>}
-                  {b.anunciante && <span class="text-slate-500"> · perfil {b.anunciante.nome}</span>}
-                </span>
-                <form method="post">
-                  <input type="hidden" name="acao" value="apagar-barraca" />
-                  <input type="hidden" name="barraca" value={b.id} />
-                  <button type="submit" class={classesBotao("fantasma", "p")} aria-label={`Apagar a barraca ${b.nome}`}>
-                    <Icone nome="fechar" class="size-4" />
-                  </button>
-                </form>
-              </li>
-            ))}
-          </ul>
-          <form method="post" class="mt-2 grid gap-x-3 border-t border-slate-100 pt-2 sm:grid-cols-2">
-            <input type="hidden" name="acao" value="barraca" />
-            <div>
-              <label class={classesRotulo} for="barraca-nome">
-                Nome da barraca
-              </label>
-              <input id="barraca-nome" name="nome" required minlength="2" maxlength="60" class={classesCampo} />
-            </div>
-            <div>
-              <label class={classesRotulo} for="barraca-vende">
-                O que vende
-              </label>
-              <input id="barraca-vende" name="vende" required minlength="2" maxlength="80" class={classesCampo} />
-            </div>
-            <div>
-              <label class={classesRotulo} for="barraca-whatsapp">
-                WhatsApp (opcional)
-              </label>
-              <input id="barraca-whatsapp" name="whatsapp" inputmode="tel" maxlength="20" class={classesCampo} placeholder="(22) 99999-0000" />
-              <label class="mt-2 flex items-start gap-2 text-sm">
-                <input type="checkbox" name="whatsapp_autorizado" value="sim" class="mt-1 size-4" />
-                <span>O barraqueiro autorizou publicar o WhatsApp.</span>
-              </label>
-            </div>
-            <div>
-              <label class={classesRotulo} for="barraca-perfil">
-                Link do perfil no Ache Aqui (opcional)
-              </label>
-              <input id="barraca-perfil" name="perfil" maxlength="300" class={classesCampo} placeholder="Se a barraca já anuncia" />
-            </div>
-            <div class="sm:col-span-2">
-              <button type="submit" class={classesBotao("azul", "m", "mt-4")}>
-                Acrescentar barraca
-              </button>
-            </div>
-          </form>
-        </section>
-
-        <Modal id="modal-cancelar" titulo="Cancelar o evento?">
-          <p class="text-slate-700">O evento sai da Agenda e a página dele deixa de abrir. Dá para publicar de novo depois.</p>
-          <form method="post" class="mt-4 flex flex-wrap justify-end gap-2">
-            <input type="hidden" name="acao" value="situacao" />
-            <input type="hidden" name="situacao" value="cancelado" />
-            <button type="button" data-modal-fechar class={classesBotao("contorno", "m")}>
-              Voltar
-            </button>
-            <button type="submit" class={classesBotao("perigo", "m")}>
-              Cancelar o evento
-            </button>
-          </form>
-        </Modal>
-      </>
-    )
-  }
+  {evento && <PartesDoEvento evento={evento} artistas={artistas} linkArtistas="/admin/agenda/artistas" />}
 </PaginaAdmin>
-
-<script>
-  import { ligarCartaz } from "@/lib/cartazNavegador";
-
-  const formCartaz = document.querySelector<HTMLFormElement>("[data-form-cartaz]");
-  if (formCartaz) ligarCartaz(formCartaz);
-
-  // Mostra só os campos que valem para a origem e para a entrada escolhidas.
-  const form = document.querySelector<HTMLFormElement>("[data-form-evento]");
-  if (form) {
-    const origem = form.querySelector<HTMLSelectElement>("[data-origem]")!;
-    const entrada = form.querySelector<HTMLSelectElement>("[data-entrada]")!;
-    const atualizar = () => {
-      form.querySelector<HTMLElement>("[data-so-com-anunciante]")!.hidden = origem.value !== "comercio" && origem.value !== "artista";
-      form.querySelector<HTMLElement>("[data-so-couvert]")!.hidden = entrada.value !== "couvert";
-      form.querySelector<HTMLElement>("[data-so-ingressos]")!.hidden = entrada.value !== "ingressos";
-    };
-    origem.addEventListener("change", atualizar);
-    entrada.addEventListener("change", atualizar);
-    atualizar();
-
-    const lista = form.querySelector<HTMLElement>("[data-lista-ingressos]")!;
-    const mais = form.querySelector<HTMLButtonElement>("[data-mais-ingresso]")!;
-    mais.addEventListener("click", () => {
-      if (lista.children.length >= 10) return;
-      const linha = lista.lastElementChild!.cloneNode(true) as HTMLElement;
-      for (const campo of linha.querySelectorAll("input")) campo.value = "";
-      lista.append(linha);
-      linha.querySelector("input")!.focus();
-      mais.hidden = lista.children.length >= 10;
-    });
-  }
-</script>

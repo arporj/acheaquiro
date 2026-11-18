@@ -1,0 +1,34 @@
+---
+// Eventos que o representante cadastrou para os clientes (decisão K3 de
+// 17/11/2026): ele monta o rascunho e o entrega ao cliente, que confere e
+// publica. Depois da primeira publicação, só o cliente e a equipe alteram.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import ListaEventosDaConta from "@/components/agenda/ListaEventosDaConta.astro";
+import Aviso from "@/components/conta/Aviso.astro";
+import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
+import { listarEventosDoRepresentante } from "@/lib/agenda";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+const lista = await listarEventosDoRepresentante(supabase, usuario.id);
+---
+
+<PaginaRepresentante
+  titulo="Eventos"
+  descricao="Monte o evento do cliente na Agenda: dados, programação, barracas e cartaz. Quem publica é o cliente, na área dele."
+>
+  {!lista.ok && <Aviso tipo="erro">{lista.erro.mensagem}</Aviso>}
+  <a href="/representante/eventos/novo" class={classesBotao("azul", "m", "mt-5")}>
+    <Icone nome="calendario" class="size-4" />
+    Novo evento
+  </a>
+  {
+    lista.ok && (
+      <ListaEventosDaConta
+        eventos={lista.dados}
+        base="/representante/eventos"
+        vazio="Você ainda não cadastrou eventos. Use “Novo evento” para montar o primeiro para um cliente."
+      />
+    )
+  }
+</PaginaRepresentante>

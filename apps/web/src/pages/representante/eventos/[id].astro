@@ -1,0 +1,150 @@
+---
+// Um evento cadastrado pelo representante (/representante/eventos/novo cria),
+// decisão K3 de 17/11/2026: ele monta o rascunho (dados, organizador,
+// programação, barracas e cartaz) e o cliente publica na área dele, o que vale
+// como o aceite. Depois da primeira publicação, o representante só vê. O
+// banco confere tudo de novo (migration 20261118012727).
+import { momentoLocal, representantePodeEditarEvento, situacaoParaOCliente, ultimoDiaParaComecar } from "@acheaqui/domain";
+import { classesBotao } from "@acheaqui/ui";
+import type { OrigemEvento } from "@acheaqui/types";
+import FormularioEvento from "@/components/agenda/FormularioEvento.astro";
+import PartesDoEvento from "@/components/agenda/PartesDoEvento.astro";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
+import {
+  AVISOS_DO_EVENTO,
+  executarAcaoDoEvento,
+  lerEventoAdmin,
+  lerSituacaoDoEvento,
+  listarArtistasAdmin,
+  listarBairros,
+  type AcaoDoEvento,
+} from "@/lib/agenda";
+
+const supabase = Astro.locals.supabase!;
+const idParametro = Astro.params.id ?? "";
+const novo = idParametro === "novo";
+const hoje = momentoLocal(new Date()).data;
+
+const ACOES: readonly AcaoDoEvento[] = ["salvar", "organizador", "cartaz", "tirar-cartaz", "programacao", "apagar-programacao", "barraca", "apagar-barraca"];
+const aviso = AVISOS_DO_EVENTO[Astro.url.searchParams.get("aviso") ?? ""];
+let erro = "";
+
+// Só o representante que cadastrou vê a página (situacao_do_evento é null para os outros).
+const situacaoR = novo ? null : await lerSituacaoDoEvento(supabase, idParametro);
+if (situacaoR && !situacaoR.ok && situacaoR.erro.codigo === "NAO_ENCONTRADO") return Astro.rewrite("/404");
+
+if (Astro.request.method === "POST") {
+  const r = await executarAcaoDoEvento(supabase, Astro.request, novo ? null : idParametro, ACOES, { origemDoSite: Astro.url.origin });
+  if (r.ok) return Astro.redirect(`/representante/eventos/${r.dados.id}?aviso=${r.dados.aviso}`, 303);
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const [eventoR, bairrosR, artistasR] = await Promise.all([
+  novo ? Promise.resolve(null) : lerEventoAdmin(supabase, idParametro),
+  listarBairros(supabase),
+  novo ? Promise.resolve(null) : listarArtistasAdmin(supabase),
+]);
+if (eventoR && !eventoR.ok && eventoR.erro.codigo === "NAO_ENCONTRADO") return Astro.rewrite("/404");
+for (const r of [eventoR, bairrosR, situacaoR]) if (r && !r.ok) erro ||= r.erro.mensagem;
+const evento = eventoR?.ok ? eventoR.dados : null;
+const situacao = situacaoR?.ok ? situacaoR.dados : null;
+const editavel = novo || (evento !== null && representantePodeEditarEvento({ situacao: evento.situacao, publicadoEm: evento.publicado_em }));
+
+const origens: { valor: OrigemEvento; rotulo: string }[] = [
+  { valor: "avulso", rotulo: "Evento avulso (produtor, festa, feira, festival)" },
+  { valor: "comercio", rotulo: "No comércio do cliente (extra Agenda ou plano com a Agenda)" },
+  { valor: "artista", rotulo: "Show do artista anunciante" },
+];
+const texto =
+  evento && situacao
+    ? situacaoParaOCliente({
+        origem: evento.origem,
+        situacao: evento.situacao,
+        liberado: situacao.liberado,
+        blocos: situacao.blocos,
+        blocosPagos: situacao.blocosPagos,
+      })
+    : "";
+const titulo = novo ? "Novo evento" : (evento?.nome ?? "Evento");
+const secao = "mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:p-5";
+---
+
+<PaginaRepresentante titulo={titulo} descricao={novo ? "Cadastre os dados; depois escolha o organizador e acrescente a programação, as barracas e o cartaz." : undefined}>
+  <a href="/representante/eventos" class="mt-2 inline-block text-sm font-bold text-azul-600 hover:underline">← Eventos</a>
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  {
+    evento && situacao && (
+      <section class={secao} aria-labelledby="titulo-situacao">
+        <h2 id="titulo-situacao" class="font-display text-lg font-bold text-azul-900">
+          Situação
+        </h2>
+        <p class="mt-1 text-sm text-slate-700">{texto}</p>
+        {editavel ? (
+          <p class="mt-2 text-sm text-slate-600">
+            {evento.origem === "avulso"
+              ? "Quando o rascunho estiver pronto, escolha o organizador abaixo: ele confere e publica na área dele. Depois disso, só ele e a equipe alteram o evento."
+              : "O dono do anúncio vê o rascunho na área dele e publica quando conferir. Depois disso, só ele e a equipe alteram o evento."}
+          </p>
+        ) : (
+          <p class="mt-2 text-sm text-slate-600">O cliente já publicou o evento: agora só ele e a equipe alteram.</p>
+        )}
+        {evento.situacao === "publicado" && situacao.liberado && (
+          <a href={`/agenda/${evento.slug}`} target="_blank" rel="noopener" class={classesBotao("fantasma", "m", "mt-2")}>
+            Ver no site
+          </a>
+        )}
+
+        {evento.origem === "avulso" && (
+          <div class="mt-5 border-t border-slate-100 pt-4">
+            <h3 class="font-bold text-azul-900">Organizador</h3>
+            <p class="mt-1 text-sm text-slate-700">
+              {situacao.organizador ? `Conta de ${situacao.organizador}.` : "Ainda sem organizador: o cliente não vê o evento."}
+            </p>
+            {editavel && (
+              <form method="post" class="mt-2 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                <input type="hidden" name="acao" value="organizador" />
+                <div>
+                  <label class={classesRotulo} for="email-organizador">
+                    E-mail do cliente
+                  </label>
+                  <input
+                    id="email-organizador"
+                    name="email"
+                    type="email"
+                    inputmode="email"
+                    required
+                    maxlength="200"
+                    value={situacao.organizador ?? ""}
+                    class={classesCampo}
+                  />
+                  <p class="mt-1 text-xs text-slate-500">Sem conta no site, ele recebe um e-mail para criar a senha e ver o evento.</p>
+                </div>
+                <button type="submit" class={classesBotao("azul", "m")}>
+                  Entregar ao cliente
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+      </section>
+    )
+  }
+
+  {
+    editavel && (
+      <section class={secao} aria-labelledby="titulo-dados">
+        <h2 id="titulo-dados" class="font-display text-lg font-bold text-azul-900">
+          Dados do evento
+        </h2>
+        <FormularioEvento evento={evento} bairros={bairrosR.ok ? bairrosR.dados : []} origens={origens} hoje={hoje} ultimoDia={ultimoDiaParaComecar(hoje)} />
+      </section>
+    )
+  }
+
+  {evento && editavel && <PartesDoEvento evento={evento} artistas={artistasR?.ok ? artistasR.dados : []} />}
+</PaginaRepresentante>

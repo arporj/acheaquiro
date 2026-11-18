@@ -91,6 +91,54 @@ export function impedimentoParaAparecerNaAgenda(evento: EventoParaLiberar): stri
   }
 }
 
+export type SituacaoDoEvento = "rascunho" | "publicado" | "cancelado";
+
+/** O que o cliente e o representante sabem do evento (o banco calcula em public.situacao_do_evento). */
+export interface EventoParaOCliente {
+  origem: OrigemEvento;
+  situacao: SituacaoDoEvento;
+  /** Aparece na Agenda quando publicado (interno.evento_liberado). */
+  liberado: boolean;
+  /** avulso: blocos de 7 dias do evento e os já pagos. */
+  blocos: number;
+  blocosPagos: number;
+}
+
+const plural = (n: number, singular: string, varios: string) => `${n} ${n === 1 ? singular : varios}`;
+
+/** O que falta para o evento aparecer na Agenda, em texto para quem não é da equipe; null se nada falta. */
+function faltaParaAparecer(e: EventoParaOCliente): string | null {
+  if (e.liberado) return null;
+  switch (e.origem) {
+    case "avulso": {
+      const faltam = Math.max(1, e.blocos - e.blocosPagos);
+      return `aparece no site depois do pagamento de ${plural(faltam, "bloco", "blocos")} de 7 dias. Fale com a equipe para pagar.`;
+    }
+    case "comercio":
+      return "aparece na Agenda só com o anúncio do comércio no ar e o extra Agenda ou um plano que inclua a Agenda.";
+    case "artista":
+      return "aparece na Agenda só com o anúncio do artista no ar, na categoria Músicos e bandas.";
+    case "orgao_publico":
+      return null;
+  }
+}
+
+/**
+ * Situação do evento para o cliente e o representante (decisões K1 e K2 de
+ * 17/11/2026): o evento publicado vai direto para o site quando está liberado.
+ */
+export function situacaoParaOCliente(e: EventoParaOCliente): string {
+  const falta = faltaParaAparecer(e);
+  if (e.situacao === "cancelado") return "Cancelado: não aparece no site.";
+  if (e.situacao === "rascunho") return `Rascunho: ainda não aparece no site.${falta ? ` Publicado, ${falta}` : " Publique quando estiver pronto."}`;
+  return falta ? `Publicado, mas ${falta}` : "Publicado e no site.";
+}
+
+/** O representante edita o evento que cadastrou enquanto é rascunho e o cliente ainda não o publicou (decisão K3). */
+export function representantePodeEditarEvento(e: { situacao: SituacaoDoEvento; publicadoEm: string | null }): boolean {
+  return e.situacao === "rascunho" && e.publicadoEm === null;
+}
+
 export interface EstiloMusical {
   id: string;
   nome: string;

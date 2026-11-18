@@ -1,0 +1,226 @@
+---
+// Dados do evento, o mesmo formulário na administração, na área do cliente e
+// na do representante. Quem pode escolher cada origem vem de quem usa: a
+// administração e o representante colam o link do perfil do comércio ou do
+// artista; o cliente escolhe entre os anúncios dele.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import type { OrigemEvento } from "@acheaqui/types";
+import { CLASSIFICACOES_ETARIAS, MAXIMO_INGRESSOS, ROTULO_CLASSIFICACAO, ROTULO_ENTRADA, TIPOS_ENTRADA } from "@acheaqui/validation";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import type { EventoAdmin } from "@/lib/agenda";
+
+interface Props {
+  evento: EventoAdmin | null;
+  bairros: { id: string; nome: string }[];
+  /** Origens que quem usa pode escolher; com uma só, o campo some. */
+  origens: { valor: OrigemEvento; rotulo: string }[];
+  /** Anúncios do cliente para o evento do comércio ou do artista; ausente: campo do link do perfil. */
+  anuncios?: { slug: string; nome: string }[];
+  hoje: string;
+  ultimoDia: string;
+  /** Depois de criado, só a administração muda a origem e o anúncio (o banco recusa para os outros). */
+  origemLivre?: boolean;
+}
+
+const { evento, bairros, origens, anuncios, hoje, ultimoDia, origemLivre = false } = Astro.props;
+const novo = !evento;
+const origemAtual = evento?.origem ?? origens[0]?.valor ?? "avulso";
+const travarOrigem = !novo && !origemLivre;
+const reais = (centavos: number | null | undefined) => (centavos == null ? "" : (centavos / 100).toFixed(2).replace(".", ","));
+const simNao = (v: boolean | null | undefined) => (v === true ? "sim" : v === false ? "nao" : "");
+const ingressos = [...(evento?.ingressos ?? []), ...Array.from({ length: Math.max(0, 3 - (evento?.ingressos.length ?? 0)) }, () => null)];
+const comAnuncio = origemAtual === "comercio" || origemAtual === "artista";
+const enderecoPerfil = evento?.anunciante ? `${Astro.url.origin}/perfil/${evento.anunciante.slug}` : "";
+---
+
+<form method="post" data-form-evento>
+  <input type="hidden" name="acao" value="salvar" />
+  <div class="grid gap-x-4 sm:grid-cols-2">
+    {
+      origens.length > 1 && !travarOrigem ? (
+        <div class="sm:col-span-2">
+          <label class={classesRotulo} for="origem">
+            De onde vem o evento
+          </label>
+          <select id="origem" name="origem" required class={classesCampo} data-origem>
+            {origens.map((o) => (
+              <option value={o.valor} selected={origemAtual === o.valor}>
+                {o.rotulo}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <input type="hidden" name="origem" value={origemAtual} data-origem />
+      )
+    }
+    {
+      anuncios ? (
+        <div class="sm:col-span-2" data-so-com-anunciante hidden={!comAnuncio}>
+          <label class={classesRotulo} for="perfil">
+            Anúncio
+          </label>
+          <select id="perfil" name="perfil" class={classesCampo} disabled={!novo}>
+            {anuncios.map((a) => (
+              <option value={a.slug} selected={evento?.anunciante?.slug === a.slug}>
+                {a.nome}
+              </option>
+            ))}
+          </select>
+          {!novo && evento?.anunciante && <input type="hidden" name="perfil" value={evento.anunciante.slug} />}
+        </div>
+      ) : (
+        <div class="sm:col-span-2" data-so-com-anunciante hidden={!comAnuncio}>
+          <label class={classesRotulo} for="perfil">
+            Link do perfil do comércio ou do artista
+          </label>
+          <input id="perfil" name="perfil" value={enderecoPerfil} maxlength="300" readonly={!novo && travarOrigem} class={classesCampo} placeholder="https://acheaquiro.com.br/perfil/..." />
+          <p class="mt-1 text-xs text-slate-500">Copie o endereço da página do perfil no site.</p>
+        </div>
+      )
+    }
+    <div class="sm:col-span-2">
+      <label class={classesRotulo} for="nome">Nome do evento</label>
+      <input id="nome" name="nome" value={evento?.nome ?? ""} required minlength="3" maxlength="100" class={classesCampo} />
+    </div>
+    <div class="sm:col-span-2">
+      <label class={classesRotulo} for="descricao">Descrição</label>
+      <textarea id="descricao" name="descricao" maxlength="2000" rows="4" class={`${classesCampo} h-auto py-3`}>{evento?.descricao ?? ""}</textarea>
+    </div>
+    <div>
+      <label class={classesRotulo} for="produtor">Quem organiza (opcional)</label>
+      <input id="produtor" name="produtor" value={evento?.produtor ?? ""} maxlength="80" class={classesCampo} />
+    </div>
+    <div>
+      <label class={classesRotulo} for="local">Nome do lugar</label>
+      <input id="local" name="local" value={evento?.local ?? ""} required minlength="2" maxlength="100" class={classesCampo} placeholder="Ex.: Praça São Pedro" />
+    </div>
+    <div>
+      <label class={classesRotulo} for="endereco">Endereço (opcional)</label>
+      <input id="endereco" name="endereco" value={evento?.endereco ?? ""} maxlength="160" class={classesCampo} />
+    </div>
+    <div>
+      <label class={classesRotulo} for="bairro">Bairro</label>
+      <select id="bairro" name="bairro" required class={classesCampo}>
+        <option value="">Escolha</option>
+        {
+          bairros.map((b) => (
+            <option value={b.id} selected={evento?.bairro_id === b.id}>
+              {b.nome}
+            </option>
+          ))
+        }
+      </select>
+    </div>
+    <div>
+      <label class={classesRotulo} for="data_inicio">Primeiro dia</label>
+      <input id="data_inicio" name="data_inicio" type="date" value={evento?.data_inicio ?? ""} min={hoje} max={ultimoDia} required class={classesCampo} />
+    </div>
+    <div>
+      <label class={classesRotulo} for="data_fim">Último dia</label>
+      <input id="data_fim" name="data_fim" type="date" value={evento?.data_fim ?? ""} min={hoje} required class={classesCampo} />
+    </div>
+    <div>
+      <label class={classesRotulo} for="entrada">Entrada</label>
+      <select id="entrada" name="entrada" required class={classesCampo} data-entrada>
+        {
+          TIPOS_ENTRADA.map((t) => (
+            <option value={t} selected={(evento?.entrada ?? "gratuita") === t}>
+              {ROTULO_ENTRADA[t]}
+            </option>
+          ))
+        }
+      </select>
+    </div>
+    <div data-so-couvert hidden={evento?.entrada !== "couvert"}>
+      <label class={classesRotulo} for="couvert">Valor do couvert (R$)</label>
+      <input id="couvert" name="couvert" inputmode="decimal" value={reais(evento?.couvert_centavos)} class={classesCampo} placeholder="15,00" />
+    </div>
+    <fieldset class="sm:col-span-2" data-so-ingressos hidden={evento?.entrada !== "ingressos"}>
+      <legend class={classesRotulo}>Ingressos (até {MAXIMO_INGRESSOS} tipos; deixe em branco o que não usar)</legend>
+      <div class="space-y-2" data-lista-ingressos>
+        {
+          ingressos.map((i) => (
+            <div class="grid grid-cols-[1fr_8rem] gap-2">
+              <input name="ingresso_nome" value={i?.nome ?? ""} maxlength="40" aria-label="Tipo de ingresso" placeholder="Ex.: Inteira" class={classesCampo} />
+              <input name="ingresso_valor" value={reais(i?.valorCentavos)} inputmode="decimal" aria-label="Valor (R$)" placeholder="R$" class={classesCampo} />
+            </div>
+          ))
+        }
+      </div>
+      <button type="button" data-mais-ingresso class={classesBotao("fantasma", "p", "mt-2")}>Mais um tipo</button>
+    </fieldset>
+    <div>
+      <label class={classesRotulo} for="aberto_ao_publico">Aberto ao público</label>
+      <select id="aberto_ao_publico" name="aberto_ao_publico" class={classesCampo}>
+        <option value="sim" selected={evento?.aberto_ao_publico !== false}>Sim</option>
+        <option value="nao" selected={evento?.aberto_ao_publico === false}>Não</option>
+      </select>
+    </div>
+    <div>
+      <label class={classesRotulo} for="classificacao">Classificação etária</label>
+      <select id="classificacao" name="classificacao" class={classesCampo}>
+        <option value="">Não informada</option>
+        {
+          CLASSIFICACOES_ETARIAS.map((c) => (
+            <option value={c} selected={evento?.classificacao === c}>
+              {ROTULO_CLASSIFICACAO[c]}
+            </option>
+          ))
+        }
+      </select>
+    </div>
+    <div>
+      <label class={classesRotulo} for="cadeira_de_praia">Pode levar cadeira de praia</label>
+      <select id="cadeira_de_praia" name="cadeira_de_praia" class={classesCampo}>
+        <option value="" selected={simNao(evento?.cadeira_de_praia) === ""}>Não informado</option>
+        <option value="sim" selected={simNao(evento?.cadeira_de_praia) === "sim"}>Sim</option>
+        <option value="nao" selected={simNao(evento?.cadeira_de_praia) === "nao"}>Não</option>
+      </select>
+    </div>
+    <div>
+      <label class={classesRotulo} for="cooler">Pode levar cooler</label>
+      <select id="cooler" name="cooler" class={classesCampo}>
+        <option value="" selected={simNao(evento?.cooler) === ""}>Não informado</option>
+        <option value="sim" selected={simNao(evento?.cooler) === "sim"}>Sim</option>
+        <option value="nao" selected={simNao(evento?.cooler) === "nao"}>Não</option>
+      </select>
+    </div>
+    <div class="sm:col-span-2">
+      <label class={classesRotulo} for="ruas_fechadas">Ruas fechadas (opcional)</label>
+      <input id="ruas_fechadas" name="ruas_fechadas" value={evento?.ruas_fechadas ?? ""} maxlength="300" class={classesCampo} />
+    </div>
+  </div>
+  <button type="submit" class={classesBotao("azul", "m", "mt-5")}>
+    <Icone nome="certo" class="size-4" />
+    {novo ? "Criar evento" : "Salvar dados"}
+  </button>
+</form>
+
+<script>
+  // Mostra só os campos que valem para a origem e para a entrada escolhidas.
+  const form = document.querySelector<HTMLFormElement>("[data-form-evento]");
+  if (form) {
+    const origem = form.querySelector<HTMLInputElement | HTMLSelectElement>("[data-origem]")!;
+    const entrada = form.querySelector<HTMLSelectElement>("[data-entrada]")!;
+    const atualizar = () => {
+      form.querySelector<HTMLElement>("[data-so-com-anunciante]")!.hidden = origem.value !== "comercio" && origem.value !== "artista";
+      form.querySelector<HTMLElement>("[data-so-couvert]")!.hidden = entrada.value !== "couvert";
+      form.querySelector<HTMLElement>("[data-so-ingressos]")!.hidden = entrada.value !== "ingressos";
+    };
+    origem.addEventListener("change", atualizar);
+    entrada.addEventListener("change", atualizar);
+    atualizar();
+
+    const lista = form.querySelector<HTMLElement>("[data-lista-ingressos]")!;
+    const mais = form.querySelector<HTMLButtonElement>("[data-mais-ingresso]")!;
+    mais.addEventListener("click", () => {
+      if (lista.children.length >= 10) return;
+      const linha = lista.lastElementChild!.cloneNode(true) as HTMLElement;
+      for (const campo of linha.querySelectorAll("input")) campo.value = "";
+      lista.append(linha);
+      linha.querySelector("input")!.focus();
+      mais.hidden = lista.children.length >= 10;
+    });
+  }
+</script>

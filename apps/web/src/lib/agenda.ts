@@ -1,7 +1,8 @@
-// Agenda na administração: eventos (dados, cartaz, programação, barracas,
-// publicação e cortesia), artistas e estilos musicais. Tudo com a sessão de
-// quem está logado, para a auditoria registrar quem fez; o RLS decide o que
-// cada papel pode alterar. Regras em packages/domain/agenda.ts e esquemas em
+// Agenda: eventos (dados, cartaz, programação, barracas, publicação e
+// cortesia), artistas e estilos musicais, na administração, na área do cliente
+// e na do representante (conta de cliente, decisões K1 a K3 de 17/11/2026).
+// Tudo com a sessão de quem está logado, para a auditoria registrar quem fez;
+// o RLS decide o que cada papel pode alterar (migration 20261118012727). Regras em packages/domain/agenda.ts e esquemas em
 // packages/validation/agenda.ts; o banco repete as travas (migration da Agenda).
 import { blocosDoEventoAvulso, impedimentoParaAparecerNaAgenda, momentoLocal, problemaNasDatasDoEvento, diaDentroDoEvento } from "@acheaqui/domain";
 import type { OrigemEvento, Resultado } from "@acheaqui/types";
@@ -21,7 +22,8 @@ import {
   type TipoEntrada,
 } from "@acheaqui/validation";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { apagarArquivosPublicos, caminhoFoto, caminhosFoto, enderecoPublico, gravarArquivoPublico } from "./arquivos";
+import { apagarArquivosPublicos, caminhoFoto, caminhosFoto, enderecoPublico, gravarArquivoPublico, limparCacheDoSite } from "./arquivos";
+import { clienteServico } from "./sessao";
 import { paraSlug } from "./texto";
 
 const CIDADE = "rio-das-ostras";
@@ -141,6 +143,9 @@ export interface EventoAdmin extends EventoResumoAdmin {
   cartaz: string | null;
   cortesia_motivo: string | null;
   cortesia_em: string | null;
+  usuario_id: string | null;
+  publicado_em: string | null;
+  conferido_em: string | null;
   programacao: ItemProgramacaoAdmin[];
   barracas: BarracaAdmin[];
 }
@@ -192,11 +197,17 @@ function paraResumo(linha: LinhaResumo, musicos: string | null): EventoResumoAdm
   };
 }
 
-export type FiltroEventosAdmin = "proximos" | "passados";
+export type FiltroEventosAdmin = "proximos" | "passados" | "conferir";
 
+/**
+ * Eventos na administração. "conferir": os publicados por clientes, ou mudados
+ * por eles depois de publicados, que a equipe ainda não conferiu (decisão K1).
+ */
 export async function listarEventosAdmin(supabase: SupabaseClient, filtro: FiltroEventosAdmin): Promise<Resultado<EventoResumoAdmin[]>> {
   let consulta = supabase.from("eventos").select(CAMPOS_RESUMO);
-  consulta = filtro === "proximos" ? consulta.gte("data_fim", hoje()).order("data_inicio") : consulta.lt("data_fim", hoje()).order("data_inicio", { ascending: false });
+  if (filtro === "conferir") consulta = consulta.eq("situacao", "publicado").is("conferido_em", null).order("atualizado_em");
+  else if (filtro === "proximos") consulta = consulta.gte("data_fim", hoje()).order("data_inicio");
+  else consulta = consulta.lt("data_fim", hoje()).order("data_inicio", { ascending: false });
   const [{ data, error }, musicos] = await Promise.all([consulta.limit(300), idCategoriaMusicos(supabase)]);
   if (error) return mensagemDoBanco(error, "listarEventosAdmin");
   return ok((data as unknown as LinhaResumo[]).map((l) => paraResumo(l, musicos)));
@@ -209,7 +220,7 @@ export async function lerEventoAdmin(supabase: SupabaseClient, id: string): Prom
       .from("eventos")
       .select(
         `${CAMPOS_RESUMO}, descricao, produtor, endereco, bairro_id, entrada, couvert_centavos, ingressos, aberto_ao_publico, classificacao, ` +
-          "cadeira_de_praia, cooler, ruas_fechadas, cartaz_chave, cortesia_motivo, " +
+          "cadeira_de_praia, cooler, ruas_fechadas, cartaz_chave, cortesia_motivo, usuario_id, publicado_em, conferido_em, " +
           "programacao_evento(id, dia, inicio, fim, titulo, artistas(id, nome, slug)), " +
           "barracas_evento(id, nome, vende, whatsapp, ordem, anunciantes(nome, slug))",
       )
@@ -271,7 +282,12 @@ function camposDoEvento(f: FormData): Record<string, unknown> {
  * ações). O endereço da página (slug) é escolhido na criação e não muda depois,
  * para não quebrar links já compartilhados.
  */
-export async function salvarEvento(supabase: SupabaseClient, id: string | null, f: FormData): Promise<Resultado<{ id: string }>> {
+export async function salvarEvento(
+  supabase: SupabaseClient,
+  id: string | null,
+  f: FormData,
+  dono: { usuarioId: string } | null = null,
+): Promise<Resultado<{ id: string }>> {
   const perfil = await anuncianteDoEndereco(supabase, String(f.get("perfil") ?? "").slice(0, 300));
   if (!perfil.ok) return perfil;
   const validado = esquemaEvento.safeParse({ ...camposDoEvento(f), anuncianteId: perfil.dados?.id ?? "" });
@@ -302,6 +318,7 @@ export async function salvarEvento(supabase: SupabaseClient, id: string | null, 
   };
   if (id) {
     const { data, error } = await supabase.from("eventos").update(registro).eq("id", id).select("id").maybeSingle();
+    if (error?.code === "42501") return falha("CONFLITO", "Este evento não pode mais ser alterado por você.");
     if (error) return mensagemDoBanco(error, "salvarEvento");
     if (!data) return falha("NAO_ENCONTRADO", "Evento não encontrado.");
     return ok({ id });
@@ -309,14 +326,20 @@ export async function salvarEvento(supabase: SupabaseClient, id: string | null, 
   const cidadeId = await idDaCidade(supabase);
   if (!cidadeId) return ERRO_INTERNO;
   const slug = await slugLivre(supabase, "eventos", d.nome, null, "evento");
-  const { data, error } = await supabase.from("eventos").insert({ ...registro, cidade_id: cidadeId, slug }).select("id").single();
-  if (error) return mensagemDoBanco(error, "salvarEvento");
+  // O cliente cria o evento avulso na própria conta (organizador); o do comércio ou do artista fica com o anúncio.
+  const usuario_id = dono && d.origem === "avulso" ? dono.usuarioId : null;
+  const { data, error } = await supabase.from("eventos").insert({ ...registro, usuario_id, cidade_id: cidadeId, slug }).select("id").single();
+  if (error) {
+    if (error.code === "42501") return falha("CONFLITO", "Você não pode cadastrar este evento. Confira de onde vem o evento ou fale com a equipe.");
+    return mensagemDoBanco(error, "salvarEvento");
+  }
   return ok({ id: data.id as string });
 }
 
 export async function mudarSituacaoEvento(supabase: SupabaseClient, id: string, situacao: string): Promise<Resultado<null>> {
   if (situacao !== "rascunho" && situacao !== "publicado" && situacao !== "cancelado") return falha("DADOS_INVALIDOS", "Situação inválida.");
   const { data, error } = await supabase.from("eventos").update({ situacao }).eq("id", id).select("id").maybeSingle();
+  if (error?.code === "42501") return falha("CONFLITO", "Quem publica o evento é o cliente ou a equipe.");
   if (error) return mensagemDoBanco(error, "mudarSituacaoEvento");
   if (!data) return falha("NAO_ENCONTRADO", "Evento não encontrado.");
   return ok(null);
@@ -375,9 +398,16 @@ export async function salvarCartaz(
     return ERRO_INTERNO;
   }
   const maior = conferidas[conferidas.length - 1]!;
-  const { error } = await supabase.from("eventos").update({ cartaz_chave: chave, cartaz_largura: maior.largura, cartaz_altura: maior.altura }).eq("id", id);
-  if (error) {
+  // Só quem pode alterar o evento grava o cartaz: sem linha alterada, os arquivos novos saem e os antigos ficam.
+  const { data: alterado, error } = await supabase
+    .from("eventos")
+    .update({ cartaz_chave: chave, cartaz_largura: maior.largura, cartaz_altura: maior.altura })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+  if (error || !alterado) {
     await apagarCartazGuardado(chave, "salvarCartaz: desfazer");
+    if (!error || error.code === "42501") return falha("NAO_ENCONTRADO", "Este evento não pode ser alterado por você.");
     return mensagemDoBanco(error, "salvarCartaz");
   }
   if (atual.cartaz_chave) await apagarCartazGuardado(atual.cartaz_chave as string, "salvarCartaz: cartaz antigo");
@@ -389,7 +419,13 @@ export async function tirarCartaz(supabase: SupabaseClient, id: string): Promise
   if (erroAtual) return mensagemDoBanco(erroAtual, "tirarCartaz");
   if (!atual) return falha("NAO_ENCONTRADO", "Evento não encontrado.");
   if (!atual.cartaz_chave) return ok(null);
-  const { error } = await supabase.from("eventos").update({ cartaz_chave: null, cartaz_largura: null, cartaz_altura: null }).eq("id", id);
+  const { data: alterado, error } = await supabase
+    .from("eventos")
+    .update({ cartaz_chave: null, cartaz_largura: null, cartaz_altura: null })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+  if (error?.code === "42501" || (!error && !alterado)) return falha("NAO_ENCONTRADO", "Este evento não pode ser alterado por você.");
   if (error) return mensagemDoBanco(error, "tirarCartaz");
   await apagarCartazGuardado(atual.cartaz_chave as string, "tirarCartaz");
   return ok(null);
@@ -423,6 +459,7 @@ export async function adicionarProgramacao(supabase: SupabaseClient, eventoId: s
   const { error } = await supabase
     .from("programacao_evento")
     .insert({ evento_id: eventoId, dia: d.dia, inicio: d.inicio, fim: d.fim, artista_id: d.artistaId, titulo: d.titulo });
+  if (error?.code === "42501") return falha("CONFLITO", "Este evento não pode mais ser alterado por você.");
   if (error) return mensagemDoBanco(error, "adicionarProgramacao");
   return ok(null);
 }
@@ -450,6 +487,7 @@ export async function adicionarBarraca(supabase: SupabaseClient, eventoId: strin
   const { error } = await supabase
     .from("barracas_evento")
     .insert({ evento_id: eventoId, nome: d.nome, vende: d.vende, whatsapp: d.whatsapp, anunciante_id: d.anuncianteId, ordem: count ?? 0 });
+  if (error?.code === "42501") return falha("CONFLITO", "Este evento não pode mais ser alterado por você.");
   if (error) return mensagemDoBanco(error, "adicionarBarraca");
   return ok(null);
 }
@@ -458,6 +496,226 @@ export async function apagarBarraca(supabase: SupabaseClient, eventoId: string, 
   const { error } = await supabase.from("barracas_evento").delete().eq("id", barracaId).eq("evento_id", eventoId);
   if (error) return mensagemDoBanco(error, "apagarBarraca");
   return ok(null);
+}
+
+/** A equipe conferiu o evento publicado por um cliente (decisão K1); o banco grava quem e quando. */
+export async function marcarEventoConferido(supabase: SupabaseClient, id: string): Promise<Resultado<null>> {
+  const { data, error } = await supabase.from("eventos").update({ conferido_em: new Date().toISOString() }).eq("id", id).select("id").maybeSingle();
+  if (error) return mensagemDoBanco(error, "marcarEventoConferido");
+  if (!data) return falha("NAO_ENCONTRADO", "Evento não encontrado.");
+  return ok(null);
+}
+
+export interface SituacaoDoEventoParaCliente {
+  liberado: boolean;
+  blocos: number;
+  blocosPagos: number;
+  /** E-mail do organizador: só para a administração e o representante que cadastrou. */
+  organizador: string | null;
+}
+
+/** Situação calculada pelo banco; NAO_ENCONTRADO para quem não cuida do evento. */
+export async function lerSituacaoDoEvento(supabase: SupabaseClient, id: string): Promise<Resultado<SituacaoDoEventoParaCliente>> {
+  if (!/^[0-9a-f-]{36}$/.test(id)) return falha("NAO_ENCONTRADO", "Evento não encontrado.");
+  const { data, error } = await supabase.rpc("situacao_do_evento", { p_evento: id });
+  if (error) return mensagemDoBanco(error, "lerSituacaoDoEvento");
+  if (!data) return falha("NAO_ENCONTRADO", "Evento não encontrado.");
+  const d = data as SituacaoDoEventoParaCliente;
+  return ok({ liberado: d.liberado, blocos: d.blocos, blocosPagos: d.blocosPagos, organizador: d.organizador ?? null });
+}
+
+/**
+ * Liga o evento avulso à conta do organizador pelo e-mail (administração ou
+ * representante no rascunho dele). Sem conta, manda o convite para criar a
+ * senha (o Supabase Auth cria a conta como anunciante) e liga a conta nova.
+ */
+export async function ligarOrganizador(supabase: SupabaseClient, id: string, email: string): Promise<Resultado<{ convidado: boolean }>> {
+  const limpo = email.trim().toLowerCase();
+  if (limpo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(limpo)) return falha("DADOS_INVALIDOS", "E-mail inválido.");
+  const ligar = () => supabase.rpc("ligar_organizador_evento", { p_evento: id, p_email: limpo });
+  const primeira = await ligar();
+  if (primeira.error) return mensagemDoBanco(primeira.error, "ligarOrganizador");
+  if (primeira.data !== "sem_conta") return ok({ convidado: false });
+
+  const { error } = await clienteServico().auth.admin.inviteUserByEmail(limpo);
+  if (error) {
+    console.error("ligarOrganizador: inviteUserByEmail falhou", { codigo: error.code, status: error.status, mensagem: error.message });
+    return ERRO_INTERNO;
+  }
+  const segunda = await ligar();
+  if (segunda.error) return mensagemDoBanco(segunda.error, "ligarOrganizador: depois do convite");
+  if (segunda.data !== "ligado") {
+    console.error("ligarOrganizador: conta convidada não encontrada", { evento: id });
+    return ERRO_INTERNO;
+  }
+  return ok({ convidado: true });
+}
+
+export interface EventoDaConta {
+  id: string;
+  slug: string;
+  nome: string;
+  origem: OrigemEvento;
+  situacao: SituacaoEvento;
+  data_inicio: string;
+  data_fim: string;
+  local: string;
+  publicado_em: string | null;
+  anunciante: { nome: string } | null;
+}
+
+const CAMPOS_DA_CONTA = "id, slug, nome, origem, situacao, data_inicio, data_fim, local, publicado_em, anunciantes(nome)";
+
+function paraEventoDaConta(linhas: unknown[]): EventoDaConta[] {
+  return (linhas as (Omit<EventoDaConta, "anunciante"> & { anunciantes: { nome: string } | null })[])
+    .map(({ anunciantes, ...e }) => ({ ...e, anunciante: anunciantes }))
+    .sort((a, b) => b.data_inicio.localeCompare(a.data_inicio));
+}
+
+/** Os eventos do cliente: os da conta dele (avulso) e os dos anúncios dele (comércio e artista). */
+export async function listarEventosDoCliente(supabase: SupabaseClient, usuarioId: string): Promise<Resultado<EventoDaConta[]>> {
+  const anuncios = await listarMeusAnuncios(supabase, usuarioId);
+  if (!anuncios.ok) return anuncios;
+  const ids = anuncios.dados.map((a) => a.id);
+  const filtro = ids.length ? `usuario_id.eq.${usuarioId},anunciante_id.in.(${ids.join(",")})` : `usuario_id.eq.${usuarioId}`;
+  const { data, error } = await supabase.from("eventos").select(CAMPOS_DA_CONTA).or(filtro).limit(300);
+  if (error) return mensagemDoBanco(error, "listarEventosDoCliente");
+  return ok(paraEventoDaConta(data));
+}
+
+/** Os eventos que o representante cadastrou. */
+export async function listarEventosDoRepresentante(supabase: SupabaseClient, usuarioId: string): Promise<Resultado<EventoDaConta[]>> {
+  const { data, error } = await supabase.from("eventos").select(CAMPOS_DA_CONTA).eq("criado_por", usuarioId).limit(300);
+  if (error) return mensagemDoBanco(error, "listarEventosDoRepresentante");
+  return ok(paraEventoDaConta(data));
+}
+
+export interface MeuAnuncio {
+  id: string;
+  slug: string;
+  nome: string;
+  tipo: "profissional" | "comercio";
+}
+
+/** Anúncios da conta do cliente (o comércio tem eventos com a Agenda; o autônomo, como artista). */
+export async function listarMeusAnuncios(supabase: SupabaseClient, usuarioId: string): Promise<Resultado<MeuAnuncio[]>> {
+  const { data, error } = await supabase.from("anunciantes").select("id, slug, nome, tipo").eq("usuario_id", usuarioId);
+  if (error) return mensagemDoBanco(error, "listarMeusAnuncios");
+  return ok(data as MeuAnuncio[]);
+}
+
+// ---------------------------------------------------------------------------
+// Ações da página de um evento (administração, cliente e representante)
+// ---------------------------------------------------------------------------
+
+export type AcaoDoEvento =
+  | "salvar"
+  | "situacao"
+  | "cortesia"
+  | "conferido"
+  | "organizador"
+  | "cartaz"
+  | "tirar-cartaz"
+  | "programacao"
+  | "apagar-programacao"
+  | "barraca"
+  | "apagar-barraca";
+
+export const AVISOS_DO_EVENTO: Record<string, string> = {
+  criado: "Evento criado. Agora acrescente a programação, as barracas e o cartaz.",
+  salvo: "Evento salvo.",
+  situacao: "Situação do evento alterada.",
+  cortesia: "Cortesia alterada.",
+  conferido: "Evento marcado como conferido.",
+  organizador: "Organizador alterado.",
+  convidado: "Organizador alterado. Ele recebeu um e-mail para criar a senha e ver o evento na área dele.",
+  cartaz: "Cartaz alterado.",
+  programacao: "Programação alterada.",
+  barraca: "Barracas alteradas.",
+};
+
+/** Três versões do cartaz (até 2 MB cada) mais os campos de texto. */
+const TAMANHO_MAXIMO_PEDIDO = 6 * 1024 * 1024 + 64 * 1024;
+
+/**
+ * Executa a ação enviada pelo formulário da página do evento, entre as que a
+ * página permite (sem id, só "salvar", que cria). Num evento publicado (ou ao
+ * mudar a situação), limpa o cache do site. Devolve o evento e a chave do aviso.
+ */
+export async function executarAcaoDoEvento(
+  supabase: SupabaseClient,
+  request: Request,
+  id: string | null,
+  permitidas: readonly AcaoDoEvento[],
+  opcoes: { origemDoSite: string; dono?: { usuarioId: string } },
+): Promise<Resultado<{ id: string; aviso: string }>> {
+  const tamanho = Number(request.headers.get("content-length") ?? "0");
+  if (!tamanho || tamanho > TAMANHO_MAXIMO_PEDIDO) return falha("DADOS_INVALIDOS", "Envio maior que o permitido (cartaz de até 2 MB).");
+  const f = await request.formData();
+  const campo = (nome: string) => String(f.get(nome) ?? "").slice(0, 300);
+  const acao = (id ? campo("acao") : "salvar") as AcaoDoEvento;
+  if (!permitidas.includes(acao)) return falha("DADOS_INVALIDOS", "Ação desconhecida.");
+
+  let resultado: Resultado<unknown>;
+  let destino = id ?? "";
+  let aviso: string = acao;
+  switch (acao) {
+    case "salvar": {
+      const r = await salvarEvento(supabase, id, f, opcoes.dono ?? null);
+      if (r.ok) destino = r.dados.id;
+      resultado = r;
+      aviso = id ? "salvo" : "criado";
+      break;
+    }
+    case "situacao":
+      resultado = await mudarSituacaoEvento(supabase, destino, campo("situacao"));
+      break;
+    case "cortesia":
+      resultado = await salvarCortesia(supabase, destino, campo("motivo"));
+      break;
+    case "conferido":
+      resultado = await marcarEventoConferido(supabase, destino);
+      break;
+    case "organizador": {
+      const r = await ligarOrganizador(supabase, destino, campo("email"));
+      if (r.ok && r.dados.convidado) aviso = "convidado";
+      resultado = r;
+      break;
+    }
+    case "cartaz": {
+      const versoes: Partial<Record<TamanhoFoto, Uint8Array>> = {};
+      for (const t of TAMANHOS_FOTO) {
+        const arquivo = f.get(`cartaz_${t}`);
+        if (arquivo instanceof File && arquivo.size > 0) versoes[t] = new Uint8Array(await arquivo.arrayBuffer());
+      }
+      resultado = await salvarCartaz(supabase, destino, versoes);
+      break;
+    }
+    case "tirar-cartaz":
+      resultado = await tirarCartaz(supabase, destino);
+      aviso = "cartaz";
+      break;
+    case "programacao":
+      resultado = await adicionarProgramacao(supabase, destino, f);
+      break;
+    case "apagar-programacao":
+      resultado = await apagarProgramacao(supabase, destino, campo("item"));
+      aviso = "programacao";
+      break;
+    case "barraca":
+      resultado = await adicionarBarraca(supabase, destino, f);
+      break;
+    case "apagar-barraca":
+      resultado = await apagarBarraca(supabase, destino, campo("barraca"));
+      aviso = "barraca";
+      break;
+  }
+  if (!resultado.ok) return resultado;
+  // O que muda num evento publicado aparece na Agenda, na página do evento e nos perfis: limpa o cache do site.
+  const { data: atual, error } = await supabase.from("eventos").select("situacao").eq("id", destino).maybeSingle();
+  if (error) console.error("executarAcaoDoEvento: situação não lida para limpar o cache", { codigo: error.code, mensagem: error.message });
+  if (atual?.situacao === "publicado" || acao === "situacao") await limparCacheDoSite(opcoes.origemDoSite);
+  return ok({ id: destino, aviso });
 }
 
 // ---------------------------------------------------------------------------

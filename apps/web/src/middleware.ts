@@ -3,6 +3,7 @@
 // cada área. As políticas de RLS do banco conferem de novo em cada consulta.
 import { defineMiddleware } from "astro:middleware";
 import { ambiente, ENDERECO_EXEMPLO, HOST_TESTE_ANTIGO } from "@/lib/ambiente";
+import { aceitePendente } from "@/lib/anunciante";
 import { termoAceito } from "@/lib/representante";
 import { comecaCom, exigeLogin } from "@/lib/rotas";
 import { clienteDaRequisicao, destinoDepoisDeEntrar, lerUsuario, type UsuarioLogado } from "@/lib/sessao";
@@ -81,6 +82,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
         });
       }
       if (!aceito.dados) return context.redirect("/representante/termo", 303);
+    }
+    // O anunciante (e o cliente sem anúncio) aceita a versão em vigor dos Termos e da Política antes de usar a área.
+    if (comecaCom(pathname, "/anunciante") && pathname !== "/anunciante/aceite") {
+      const pendente = await aceitePendente(supabase, usuario.id);
+      if (!pendente.ok) {
+        return new Response(pendente.erro.mensagem, {
+          status: 500,
+          headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "private, no-store" },
+        });
+      }
+      if (pendente.dados) return context.redirect(`/anunciante/aceite?voltar=${encodeURIComponent(pathname)}`, 303);
     }
   }
 

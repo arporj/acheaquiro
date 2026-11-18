@@ -1,0 +1,189 @@
+---
+// Cartaz, programação e barracas de um evento, os mesmos na administração, na
+// área do cliente e na do representante. Os formulários mandam a ação para a
+// própria página (executarAcaoDoEvento em src/lib/agenda.ts).
+import { diasDoEventoNoPeriodo } from "@acheaqui/domain";
+import { Icone, classesBotao } from "@acheaqui/ui";
+import { TAMANHOS_FOTO } from "@acheaqui/validation";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import type { ArtistaAdmin, EventoAdmin } from "@/lib/agenda";
+import { dataCurtaComSemana } from "@/lib/texto";
+
+interface Props {
+  evento: EventoAdmin;
+  artistas: Pick<ArtistaAdmin, "id" | "nome">[];
+  /** Na administração, o link para cadastrar o artista que falta; nas outras áreas, o recado para a equipe. */
+  linkArtistas?: string;
+}
+
+const { evento, artistas, linkArtistas } = Astro.props;
+const diasDoEvento = diasDoEventoNoPeriodo({ inicio: evento.data_inicio, fim: evento.data_fim }, evento.data_inicio, evento.data_fim);
+const programacaoPorDia = diasDoEvento.map((dia) => ({ dia, itens: evento.programacao.filter((p) => p.dia === dia) }));
+const secao = "mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:p-5";
+---
+
+<section class={secao} aria-labelledby="titulo-cartaz">
+  <h2 id="titulo-cartaz" class="font-display text-lg font-bold text-azul-900">Cartaz</h2>
+  <p class="mt-1 text-sm text-slate-600">Aparece no topo da página do evento e na prévia do link no WhatsApp.</p>
+  {evento.cartaz && <img src={evento.cartaz} alt={`Cartaz de ${evento.nome}`} class="mt-3 max-h-80 rounded-2xl ring-1 ring-black/5" />}
+  <form method="post" enctype="multipart/form-data" data-form-cartaz class="mt-3">
+    <input type="hidden" name="acao" value="cartaz" />
+    <label class={classesRotulo} for="escolher-cartaz">
+      {evento.cartaz ? "Trocar o cartaz" : "Escolher o cartaz"}
+    </label>
+    <input id="escolher-cartaz" type="file" accept="image/*" required data-escolher-cartaz class={`${classesCampo} py-2`} />
+    {TAMANHOS_FOTO.map((t) => <input type="file" name={`cartaz_${t}`} data-cartaz-versao={t} hidden />)}
+    <p data-erro-cartaz hidden class="mt-1 text-sm font-semibold text-vermelho-700"></p>
+    <button type="submit" class={classesBotao("azul", "m", "mt-3")}>Enviar cartaz</button>
+  </form>
+  {
+    evento.cartaz && (
+      <form method="post" class="mt-2">
+        <input type="hidden" name="acao" value="tirar-cartaz" />
+        <button type="submit" class={classesBotao("fantasma", "p")}>
+          Tirar o cartaz
+        </button>
+      </form>
+    )
+  }
+</section>
+
+<section class={secao} aria-labelledby="titulo-programacao">
+  <h2 id="titulo-programacao" class="font-display text-lg font-bold text-azul-900">Programação</h2>
+  <p class="mt-1 text-sm text-slate-600">
+    Artistas e atividades, com o horário.
+    {
+      linkArtistas ? (
+        <>
+          O artista que não está na lista é cadastrado em{" "}
+          <a href={linkArtistas} class="font-bold text-azul-600 hover:underline">
+            Artistas
+          </a>
+          .
+        </>
+      ) : (
+        "Se o artista não está na lista, escreva o nome dele em “Atividade” e peça à equipe para cadastrá-lo."
+      )
+    }
+  </p>
+  {evento.programacao.length === 0 && <p class="mt-3 text-sm font-semibold text-slate-500">Nenhum horário cadastrado.</p>}
+  {
+    programacaoPorDia
+      .filter((d) => d.itens.length > 0)
+      .map((d) => (
+        <div class="mt-4">
+          <h3 class="text-sm font-extrabold text-azul-900 first-letter:uppercase">{dataCurtaComSemana(d.dia)}</h3>
+          <ul class="mt-1 divide-y divide-slate-100">
+            {d.itens.map((p) => (
+              <li class="flex items-center justify-between gap-3 py-2">
+                <span>
+                  <span class="font-bold">
+                    {p.inicio}
+                    {p.fim && ` às ${p.fim}`}
+                  </span>{" "}
+                  · {p.artista ? p.artista.nome : p.titulo}
+                  {p.artista && p.titulo && <span class="text-slate-500"> ({p.titulo})</span>}
+                </span>
+                <form method="post">
+                  <input type="hidden" name="acao" value="apagar-programacao" />
+                  <input type="hidden" name="item" value={p.id} />
+                  <button type="submit" class={classesBotao("fantasma", "p")} aria-label={`Apagar ${p.inicio} ${p.artista?.nome ?? p.titulo}`}>
+                    <Icone nome="fechar" class="size-4" />
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))
+  }
+  <form method="post" class="mt-4 grid gap-x-3 border-t border-slate-100 pt-2 sm:grid-cols-4">
+    <input type="hidden" name="acao" value="programacao" />
+    <div>
+      <label class={classesRotulo} for="dia">Dia</label>
+      <select id="dia" name="dia" required class={classesCampo}>
+        {diasDoEvento.map((d) => <option value={d}>{dataCurtaComSemana(d)}</option>)}
+      </select>
+    </div>
+    <div>
+      <label class={classesRotulo} for="inicio">Começa</label>
+      <input id="inicio" name="inicio" type="time" required class={classesCampo} />
+    </div>
+    <div>
+      <label class={classesRotulo} for="fim">Termina (opcional)</label>
+      <input id="fim" name="fim" type="time" class={classesCampo} />
+    </div>
+    <div>
+      <label class={classesRotulo} for="artista">Artista</label>
+      <select id="artista" name="artista" class={classesCampo}>
+        <option value="">Nenhum (só atividade)</option>
+        {artistas.map((a) => <option value={a.id}>{a.nome}</option>)}
+      </select>
+    </div>
+    <div class="sm:col-span-3">
+      <label class={classesRotulo} for="titulo">Atividade (sem artista) ou observação</label>
+      <input id="titulo" name="titulo" maxlength="80" class={classesCampo} placeholder="Ex.: Largada do pedal" />
+    </div>
+    <div class="flex items-end">
+      <button type="submit" class={classesBotao("azul", "m", "mt-3 w-full")}>Acrescentar</button>
+    </div>
+  </form>
+</section>
+
+<section class={secao} aria-labelledby="titulo-barracas">
+  <h2 id="titulo-barracas" class="font-display text-lg font-bold text-azul-900">Barracas</h2>
+  {evento.barracas.length === 0 && <p class="mt-3 text-sm font-semibold text-slate-500">Nenhuma barraca cadastrada.</p>}
+  <ul class="mt-2 divide-y divide-slate-100">
+    {
+      evento.barracas.map((b) => (
+        <li class="flex items-center justify-between gap-3 py-2">
+          <span>
+            <span class="font-bold">{b.nome}</span> · {b.vende}
+            {b.whatsapp && <span class="text-slate-500"> · WhatsApp publicado</span>}
+            {b.anunciante && <span class="text-slate-500"> · perfil {b.anunciante.nome}</span>}
+          </span>
+          <form method="post">
+            <input type="hidden" name="acao" value="apagar-barraca" />
+            <input type="hidden" name="barraca" value={b.id} />
+            <button type="submit" class={classesBotao("fantasma", "p")} aria-label={`Apagar a barraca ${b.nome}`}>
+              <Icone nome="fechar" class="size-4" />
+            </button>
+          </form>
+        </li>
+      ))
+    }
+  </ul>
+  <form method="post" class="mt-2 grid gap-x-3 border-t border-slate-100 pt-2 sm:grid-cols-2">
+    <input type="hidden" name="acao" value="barraca" />
+    <div>
+      <label class={classesRotulo} for="barraca-nome">Nome da barraca</label>
+      <input id="barraca-nome" name="nome" required minlength="2" maxlength="60" class={classesCampo} />
+    </div>
+    <div>
+      <label class={classesRotulo} for="barraca-vende">O que vende</label>
+      <input id="barraca-vende" name="vende" required minlength="2" maxlength="80" class={classesCampo} />
+    </div>
+    <div>
+      <label class={classesRotulo} for="barraca-whatsapp">WhatsApp (opcional)</label>
+      <input id="barraca-whatsapp" name="whatsapp" inputmode="tel" maxlength="20" class={classesCampo} placeholder="(22) 99999-0000" />
+      <label class="mt-2 flex items-start gap-2 text-sm">
+        <input type="checkbox" name="whatsapp_autorizado" value="sim" class="mt-1 size-4" />
+        <span>O barraqueiro autorizou publicar o WhatsApp.</span>
+      </label>
+    </div>
+    <div>
+      <label class={classesRotulo} for="barraca-perfil">Link do perfil no Ache Aqui (opcional)</label>
+      <input id="barraca-perfil" name="perfil" maxlength="300" class={classesCampo} placeholder="Se a barraca já anuncia" />
+    </div>
+    <div class="sm:col-span-2">
+      <button type="submit" class={classesBotao("azul", "m", "mt-4")}>Acrescentar barraca</button>
+    </div>
+  </form>
+</section>
+
+<script>
+  import { ligarCartaz } from "@/lib/cartazNavegador";
+
+  const formCartaz = document.querySelector<HTMLFormElement>("[data-form-cartaz]");
+  if (formCartaz) ligarCartaz(formCartaz);
+</script>

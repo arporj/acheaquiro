@@ -1,7 +1,8 @@
 ---
-// Agenda na administração: eventos próximos (e os que já passaram), com o
-// aviso de quando um evento publicado não aparece no site, e os atalhos para
-// artistas e estilos musicais. Regras em packages/domain/agenda.ts.
+// Agenda na administração: eventos próximos (e os que já passaram), os
+// publicados por clientes que a equipe ainda não conferiu (decisão K1 de
+// 17/11/2026), o aviso de quando um evento publicado não aparece no site e os
+// atalhos para artistas e estilos musicais. Regras em packages/domain/agenda.ts.
 import { Icone, classesBotao } from "@acheaqui/ui";
 import { ROTULO_ORIGEM_EVENTO } from "@acheaqui/validation";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
@@ -10,8 +11,18 @@ import { listarEventosAdmin, type FiltroEventosAdmin } from "@/lib/agenda";
 import { formatarData } from "@/lib/texto";
 
 const supabase = Astro.locals.supabase!;
-const filtro: FiltroEventosAdmin = Astro.url.searchParams.get("ver") === "passados" ? "passados" : "proximos";
-const lista = await listarEventosAdmin(supabase, filtro);
+const ver = Astro.url.searchParams.get("ver");
+const filtro: FiltroEventosAdmin = ver === "passados" || ver === "conferir" ? ver : "proximos";
+const [lista, conferir] = await Promise.all([
+  listarEventosAdmin(supabase, filtro),
+  filtro === "conferir" ? Promise.resolve(null) : listarEventosAdmin(supabase, "conferir"),
+]);
+const paraConferir = filtro === "conferir" ? (lista.ok ? lista.dados.length : 0) : conferir?.ok ? conferir.dados.length : 0;
+const VAZIO: Record<FiltroEventosAdmin, string> = {
+  proximos: "Nenhum evento por vir.",
+  passados: "Nenhum evento terminado.",
+  conferir: "Nenhum evento para conferir.",
+};
 const eventos = lista.ok ? lista.dados : [];
 
 const ROTULO_SITUACAO = { rascunho: "Rascunho", publicado: "Publicado", cancelado: "Cancelado" } as const;
@@ -33,7 +44,7 @@ const periodo = (inicio: string, fim: string) => (inicio === fim ? formatarData(
     <a href="/admin/agenda/estilos" class={classesBotao("contorno", "m")}>Estilos musicais</a>
   </div>
 
-  <nav class="mt-6 flex gap-2" aria-label="Período">
+  <nav class="mt-6 flex flex-wrap gap-2" aria-label="Período">
     <a
       href="/admin/agenda"
       aria-current={filtro === "proximos" ? "page" : undefined}
@@ -48,12 +59,20 @@ const periodo = (inicio: string, fim: string) => (inicio === fim ? formatarData(
     >
       Já terminaram
     </a>
+    <a
+      href="/admin/agenda?ver=conferir"
+      aria-current={filtro === "conferir" ? "page" : undefined}
+      class="rounded-full px-4 py-2 text-sm font-bold ring-1 ring-azul-100 aria-[current=page]:bg-azul-600 aria-[current=page]:text-white"
+    >
+      Para conferir{paraConferir > 0 && ` (${paraConferir})`}
+    </a>
   </nav>
+  {filtro === "conferir" && <p class="mt-3 text-sm text-slate-600">Publicados ou mudados por clientes depois de publicados. Já estão no site.</p>}
 
   {
     lista.ok && eventos.length === 0 && (
       <div class="mt-5 rounded-2xl bg-white p-6 text-center shadow-sm ring-1 ring-black/5">
-        <p class="font-bold text-azul-900">{filtro === "proximos" ? "Nenhum evento por vir." : "Nenhum evento terminado."}</p>
+        <p class="font-bold text-azul-900">{VAZIO[filtro]}</p>
         {filtro === "proximos" && <p class="mt-1 text-sm text-slate-600">Use "Novo evento" para cadastrar o primeiro.</p>}
       </div>
     )
