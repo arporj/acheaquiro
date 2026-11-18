@@ -38,7 +38,7 @@ create temporary table ids (nome text primary key, id uuid);
 grant all on ids to authenticated;
 
 insert into eventos (cidade_id, slug, nome, origem, local, bairro_id, data_inicio, data_fim, situacao)
-select c.id, 'festival-teste-agenda', 'Festival Teste', 'avulso', 'Praça Teste', b.id, current_date + 5, current_date + 7, 'publicado'
+select c.id, 'festival-teste-agenda', 'Festival Teste', 'avulso', 'Praça Teste', b.id, interno.hoje() + 5, interno.hoje() + 7, 'publicado'
 from cidades c join bairros b on b.cidade_id = c.id where c.slug = 'rio-das-ostras' limit 1;
 insert into ids select 'avulso', id from eventos where slug = 'festival-teste-agenda';
 
@@ -51,32 +51,32 @@ update eventos set cortesia_por = 'bbbbbbbb-0000-0000-0000-0000000000a9', descri
 select is((select cortesia_por from eventos where id = (select id from ids where nome = 'avulso')), 'aaaaaaaa-0000-0000-0000-0000000000a9'::uuid, 'quem deu a cortesia não é trocado pela tela');
 
 select throws_ok($$ insert into eventos (cidade_id, slug, nome, origem, local, bairro_id, data_inicio, data_fim)
-  select cidade_id, 'longe-demais', 'Longe demais', 'avulso', 'Praça', bairro_id, current_date + 400, current_date + 400 from eventos where slug = 'festival-teste-agenda' $$,
+  select cidade_id, 'longe-demais', 'Longe demais', 'avulso', 'Praça', bairro_id, interno.hoje() + 400, interno.hoje() + 400 from eventos where slug = 'festival-teste-agenda' $$,
   'P0001', 'A Agenda aceita eventos que começam até 12 meses à frente.', 'recusa evento que começa depois de 12 meses');
 select throws_ok($$ insert into eventos (cidade_id, slug, nome, origem, local, bairro_id, data_inicio, data_fim)
-  select cidade_id, 'ja-passou', 'Já passou', 'avulso', 'Praça', bairro_id, current_date - 5, current_date - 3 from eventos where slug = 'festival-teste-agenda' $$,
+  select cidade_id, 'ja-passou', 'Já passou', 'avulso', 'Praça', bairro_id, interno.hoje() - 5, interno.hoje() - 3 from eventos where slug = 'festival-teste-agenda' $$,
   'P0001', 'Este evento já terminou.', 'recusa evento que já terminou');
 select throws_ok($$ insert into eventos (cidade_id, slug, nome, origem, local, bairro_id, data_inicio, data_fim, cortesia_motivo)
-  select cidade_id, 'cortesia-comercio', 'Cortesia comércio', 'comercio', 'Bar', bairro_id, current_date + 5, current_date + 5, 'Motivo qualquer de teste'
+  select cidade_id, 'cortesia-comercio', 'Cortesia comércio', 'comercio', 'Bar', bairro_id, interno.hoje() + 5, interno.hoje() + 5, 'Motivo qualquer de teste'
   from eventos where slug = 'festival-teste-agenda' $$,
   '23514', null, 'cortesia só vale para o evento avulso');
 select throws_ok($$ insert into eventos (cidade_id, slug, nome, origem, local, bairro_id, data_inicio, data_fim)
-  select cidade_id, 'sem-anunciante', 'Sem anunciante', 'comercio', 'Bar', bairro_id, current_date + 5, current_date + 5 from eventos where slug = 'festival-teste-agenda' $$,
+  select cidade_id, 'sem-anunciante', 'Sem anunciante', 'comercio', 'Bar', bairro_id, interno.hoje() + 5, interno.hoje() + 5 from eventos where slug = 'festival-teste-agenda' $$,
   '23514', null, 'o evento do comércio exige o anunciante');
 
 -- Programação
-select lives_ok($$ insert into programacao_evento (evento_id, dia, inicio, titulo) select id, current_date + 6, '08:00', 'Largada' from ids where nome = 'avulso' $$,
+select lives_ok($$ insert into programacao_evento (evento_id, dia, inicio, titulo) select id, interno.hoje() + 6, '08:00', 'Largada' from ids where nome = 'avulso' $$,
   'aceita a programação dentro das datas');
-select throws_ok($$ insert into programacao_evento (evento_id, dia, inicio, titulo) select id, current_date + 8, '08:00', 'Depois' from ids where nome = 'avulso' $$,
+select throws_ok($$ insert into programacao_evento (evento_id, dia, inicio, titulo) select id, interno.hoje() + 8, '08:00', 'Depois' from ids where nome = 'avulso' $$,
   'P0001', 'O dia da programação precisa estar entre o primeiro e o último dia do evento.', 'recusa programação fora das datas');
-select throws_ok($$ update eventos set data_fim = current_date + 5 where id = (select id from ids where nome = 'avulso') $$,
+select throws_ok($$ update eventos set data_fim = interno.hoje() + 5 where id = (select id from ids where nome = 'avulso') $$,
   'P0001', 'Há programação fora das novas datas. Ajuste ou apague esses horários antes.', 'não encurta o evento deixando programação de fora');
-select throws_ok($$ insert into programacao_evento (evento_id, dia, inicio) select id, current_date + 6, '09:00' from ids where nome = 'avulso' $$,
+select throws_ok($$ insert into programacao_evento (evento_id, dia, inicio) select id, interno.hoje() + 6, '09:00' from ids where nome = 'avulso' $$,
   '23514', null, 'a programação exige o artista ou a atividade');
 
 -- Comércio e artista
 insert into eventos (cidade_id, slug, nome, origem, anunciante_id, local, bairro_id, data_inicio, data_fim, situacao)
-select e.cidade_id, v.slug, v.nome, v.origem::origem_evento, v.anunciante::uuid, 'Lugar', e.bairro_id, current_date + 5, current_date + 5, 'publicado'
+select e.cidade_id, v.slug, v.nome, v.origem::origem_evento, v.anunciante::uuid, 'Lugar', e.bairro_id, interno.hoje() + 5, interno.hoje() + 5, 'publicado'
 from eventos e,
 (values ('noite-premium', 'Noite no Premium', 'comercio', 'eeeeeeee-0000-0000-0000-0000000000e1'),
         ('noite-gratuito', 'Noite no Gratuito', 'comercio', 'eeeeeeee-0000-0000-0000-0000000000e2'),
@@ -84,7 +84,7 @@ from eventos e,
         ('show-do-bar', 'Show do bar como artista', 'artista', 'eeeeeeee-0000-0000-0000-0000000000e1')) as v (slug, nome, origem, anunciante)
 where e.slug = 'festival-teste-agenda';
 insert into eventos (cidade_id, slug, nome, origem, local, bairro_id, data_inicio, data_fim, situacao)
-select cidade_id, 'rascunho-teste-agenda', 'Rascunho', 'orgao_publico', 'Praça', bairro_id, current_date + 5, current_date + 5, 'rascunho'
+select cidade_id, 'rascunho-teste-agenda', 'Rascunho', 'orgao_publico', 'Praça', bairro_id, interno.hoje() + 5, interno.hoje() + 5, 'rascunho'
 from eventos where slug = 'festival-teste-agenda';
 
 select ok(interno.evento_liberado((select id from eventos where slug = 'noite-premium')), 'o comércio no Premium tem a Agenda');
@@ -108,14 +108,14 @@ select set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-0000-0000-0000000
 set local role authenticated;
 select is((select count(*) from eventos where slug in ('festival-teste-agenda', 'noite-gratuito', 'rascunho-teste-agenda')), 1::bigint, 'o cliente vê só o que o visitante vê');
 select throws_ok($$ insert into eventos (cidade_id, slug, nome, origem, local, bairro_id, data_inicio, data_fim)
-  select cidade_id, 'do-cliente', 'Do cliente', 'avulso', 'Praça', bairro_id, current_date + 5, current_date + 5 from eventos where slug = 'festival-teste-agenda' $$,
+  select cidade_id, 'do-cliente', 'Do cliente', 'avulso', 'Praça', bairro_id, interno.hoje() + 5, interno.hoje() + 5 from eventos where slug = 'festival-teste-agenda' $$,
   '42501', null, 'o cliente ainda não cadastra evento');
 select is((select count(*) from artistas where slug = 'qualquer'), 0::bigint, 'o cliente lê os artistas sem erro');
 reset role;
 
 -- Órgão público só pela equipe (trava do banco, além do RLS).
 select throws_ok($$ insert into eventos (cidade_id, slug, nome, origem, local, bairro_id, data_inicio, data_fim)
-  select cidade_id, 'orgao-sem-equipe', 'Órgão', 'orgao_publico', 'Praça', bairro_id, current_date + 5, current_date + 5 from eventos where slug = 'festival-teste-agenda' $$,
+  select cidade_id, 'orgao-sem-equipe', 'Órgão', 'orgao_publico', 'Praça', bairro_id, interno.hoje() + 5, interno.hoje() + 5 from eventos where slug = 'festival-teste-agenda' $$,
   'P0001', 'Evento de órgão público só é cadastrado pela equipe.', 'órgão público só pela equipe');
 
 select * from finish();

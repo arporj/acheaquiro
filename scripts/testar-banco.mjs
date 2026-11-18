@@ -23,7 +23,7 @@ create table public.teste_saida (n serial, l text);
 grant all on public.teste_saida to anon, authenticated;
 grant all on sequence public.teste_saida_n_seq to anon, authenticated;`,
   );
-  sql = sql.replace(/^select (plan|ok|is|isnt|throws_ok|lives_ok)\(/gm, "insert into public.teste_saida (l) select $1(");
+  sql = sql.replace(/^select (plan|ok|is|isnt|throws_ok|lives_ok|is_empty)\(/gm, "insert into public.teste_saida (l) select $1(");
   sql = sql.replace(
     "select * from finish();\nrollback;",
     "insert into public.teste_saida (l) select * from finish();\n" +

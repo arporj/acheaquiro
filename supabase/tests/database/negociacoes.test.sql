@@ -39,7 +39,7 @@ $$;
 select set_config('request.jwt.claims', '{"sub":"11111111-0000-0000-0000-00000000000a","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 insert into atendimentos (cidade_id, anunciante_id, autor_id, dia, observacao)
-select a.cidade_id, a.id, auth.uid(), current_date, 'Anotação do R1' from anunciantes a where a.id = pg_temp.comercio();
+select a.cidade_id, a.id, auth.uid(), interno.hoje(), 'Anotação do R1' from anunciantes a where a.id = pg_temp.comercio();
 select is((select count(*)::int from negociacoes where anunciante_id = pg_temp.comercio() and situacao = 'aberta'), 1, 'o contato abre uma negociação');
 select is((select responsavel_id from negociacoes where id = pg_temp.negociacao()), '11111111-0000-0000-0000-00000000000a'::uuid, 'quem registrou é o responsável');
 select is((select (ficha_cliente(pg_temp.comercio())) -> 'negociacoes' -> 0 ->> 'etapa'), 'contato', 'a etapa começa em contato');
@@ -51,7 +51,7 @@ select set_config('request.jwt.claims', '{"sub":"22222222-0000-0000-0000-0000000
 set local role authenticated;
 select is((select (negociacoes_lista(p_busca => 'Comércio Teste Negociação')) ->> 'total'), '0', 'quem não participou não vê a negociação na lista dele');
 insert into atendimentos (cidade_id, anunciante_id, autor_id, dia, observacao)
-select a.cidade_id, a.id, auth.uid(), current_date, 'Anotação do R2' from anunciantes a where a.id = pg_temp.comercio();
+select a.cidade_id, a.id, auth.uid(), interno.hoje(), 'Anotação do R2' from anunciantes a where a.id = pg_temp.comercio();
 reset role;
 select is((select count(*)::int from negociacoes where anunciante_id = pg_temp.comercio()), 1, 'o 2º contato não abre outra negociação');
 select is((select responsavel_id from negociacoes where id = pg_temp.negociacao()), '11111111-0000-0000-0000-00000000000a'::uuid, 'o 2º contato não troca o responsável');
@@ -66,7 +66,7 @@ select ok(
   exists (select 1 from jsonb_array_elements(ficha_cliente(pg_temp.comercio()) -> 'linha_do_tempo') as item where item ->> 'texto' = 'Anotação do R2'),
   'o representante vê a própria anotação'
 );
-select throws_ok($$ select salvar_proxima_acao(pg_temp.negociacao(), current_date + 3, 'Ligar') $$,
+select throws_ok($$ select salvar_proxima_acao(pg_temp.negociacao(), interno.hoje() + 3, 'Ligar') $$,
   'P0001', 'Só o responsável ou a administração alteram esta negociação.', 'quem não é responsável não altera');
 
 -- R2 fecha com o comércio: a negociação passa a ser dele, em cadastro.
@@ -87,7 +87,7 @@ select is(
 select is(
   (clientes_lista(p_busca => 'Comércio Teste Negociação', p_situacao => 'aberta', p_etapa => 'em_cadastro')) ->> 'total', '1', 'filtra pela etapa'
 );
-select salvar_proxima_acao(pg_temp.negociacao(), current_date - 1, 'Cobrar o cadastro');
+select salvar_proxima_acao(pg_temp.negociacao(), interno.hoje() - 1, 'Cobrar o cadastro');
 select is((negociacoes_lista(p_atrasadas => true, p_busca => 'Comércio Teste Negociação')) ->> 'total', '1', 'próxima ação vencida aparece como atrasada');
 
 -- Perdida com motivo, e reaberta.
@@ -102,8 +102,8 @@ select is((select situacao from negociacoes where id = pg_temp.negociacao()), 'a
 reset role;
 insert into pagamentos (cidade_id, anunciante_id, plano_id, periodicidade, numero, periodo_inicio, vence_em, valor_cheio_centavos, valor_centavos,
                         forma, conta_id, pago_em, confirmado_em, representante_id, registrado_por)
-select a.cidade_id, a.id, (select id from planos where tipo = 'comercio' and valor_mensal_centavos > 0 limit 1), 'mensal', 1, current_date, current_date + 30, 5990, 5990,
-       'pix', (select id from contas_recebimento limit 1), current_date, current_date,
+select a.cidade_id, a.id, (select id from planos where tipo = 'comercio' and valor_mensal_centavos > 0 limit 1), 'mensal', 1, interno.hoje(), interno.hoje() + 30, 5990, 5990,
+       'pix', (select id from contas_recebimento limit 1), interno.hoje(), interno.hoje(),
        (select id from representantes where usuario_id = '11111111-0000-0000-0000-00000000000a'), 'aaaaaaaa-0000-0000-0000-00000000000a'
 from anunciantes a where a.id = pg_temp.comercio();
 select is((select situacao from negociacoes where id = pg_temp.negociacao()), 'ganha', 'o pagamento fecha como ganha');
@@ -114,11 +114,11 @@ select is((select situacao from negociacoes where id = pg_temp.negociacao()), 'p
 -- Administrador e papéis sem acesso.
 select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-0000-0000-0000-00000000000a","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
-select is((select r.perdidas from resumo_negociacoes(current_date - 1, current_date) r where r.usuario_id = '11111111-0000-0000-0000-00000000000a'), 1::bigint, 'o resumo conta a negociação perdida');
+select is((select r.perdidas from resumo_negociacoes(interno.hoje() - 1, interno.hoje()) r where r.usuario_id = '11111111-0000-0000-0000-00000000000a'), 1::bigint, 'o resumo conta a negociação perdida');
 reset role;
 select set_config('request.jwt.claims', '{"sub":"11111111-0000-0000-0000-00000000000a","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
-select throws_ok($$ select * from resumo_negociacoes(current_date - 1, current_date) $$, 'P0001', 'Sem permissão.', 'o resumo é só da administração');
+select throws_ok($$ select * from resumo_negociacoes(interno.hoje() - 1, interno.hoje()) $$, 'P0001', 'Sem permissão.', 'o resumo é só da administração');
 reset role;
 select set_config('request.jwt.claims', '{"sub":"11111111-0000-0000-0000-00000000000a","role":"authenticated","aal":"aal1"}', true);
 set local role authenticated;

@@ -92,7 +92,7 @@ select is(teste_linhas_alteradas($c$update anunciantes set descricao = 'Nova des
   'anunciante altera a descrição do próprio perfil');
 select throws_ok($$ update anunciantes set plano_id = (select id from planos where codigo = 'prof-nivel3') where slug = 'teste-a1' $$,
   'P0001', 'Este campo só pode ser alterado pela administração.', 'anunciante não muda o próprio plano');
-select throws_ok($$ update anunciantes set fundador = true, fundador_desde = current_date where slug = 'teste-a1' $$,
+select throws_ok($$ update anunciantes set fundador = true, fundador_desde = interno.hoje() where slug = 'teste-a1' $$,
   'P0001', 'Este campo só pode ser alterado pela administração.', 'anunciante não se marca como Fundador');
 select throws_ok($$ update anunciantes set slug = 'outro-endereco' where slug = 'teste-a1' $$,
   'P0001', 'Este campo só pode ser alterado pela administração.', 'anunciante não troca o endereço do perfil');
