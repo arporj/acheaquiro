@@ -79,8 +79,8 @@ reset role;
 select set_config('request.jwt.claims', '{"sub":"11111111-0000-0000-0000-000000000003","role":"authenticated","aal":"aal1"}', true);
 set local role authenticated;
 select lives_ok($$ insert into aceites_documentos (usuario_id, documento, versao) values
-  ('11111111-0000-0000-0000-000000000003', 'termos', '1'), ('11111111-0000-0000-0000-000000000003', 'privacidade', '1') $$,
-  'anunciante registra o aceite dos Termos e da Política, versão 1');
+  ('11111111-0000-0000-0000-000000000003', 'termos', '2'), ('11111111-0000-0000-0000-000000000003', 'privacidade', '1') $$,
+  'anunciante registra o aceite dos Termos e da Política, versões em vigor');
 select is(teste_linhas_alteradas($c$update anunciantes set status = 'em_analise' where id = 'a1000000-0000-0000-0000-000000000001'$c$), 1,
   'anunciante envia o perfil para análise');
 select throws_ok($$ update anunciantes set motivo_correcao = 'eu mesmo' where id = 'a1000000-0000-0000-0000-000000000001' $$,

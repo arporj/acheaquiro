@@ -31,7 +31,8 @@ interface Aviso {
     | "pagamento_antes_do_aceite"
     | "extra_lembrete_7_dias"
     | "extra_lembrete_vencimento"
-    | "extra_vencido";
+    | "extra_vencido"
+    | "termos_novos";
   para: string;
   tentativas: number;
   dados: {
@@ -54,6 +55,9 @@ interface Aviso {
     representante?: string;
     planoNovo?: string;
     expiraEm?: string;
+    /** Termos novos (item 15 dos Termos): a versão e o dia em que passa a valer. */
+    versao?: string;
+    vigenteDesde?: string;
     /** Denúncia de perfil, para os administradores: o perfil e o motivo (sem o texto de quem denunciou). */
     slug?: string;
     motivo?: string;
@@ -141,6 +145,18 @@ function montar(
         "Se não reconhece este pedido, é só não aceitar: nada muda no seu plano.",
       ],
       botao: { texto: "Ver a proposta", link: `${PRODUCAO}/anunciante/proposta/${d.propostaId ?? ""}` },
+    };
+  }
+  if (aviso.tipo === "termos_novos") {
+    return {
+      assunto: "Os Termos de Uso do Ache Aqui RO mudaram",
+      paragrafos: [
+        `${d.nome ? `Olá, ${d.nome}. ` : ""}A versão ${d.versao ?? ""} dos Termos de Uso do Ache Aqui RO vale a partir de ${data(d.vigenteDesde)}.`,
+        "O que mudou: o site passa a ter organizadores de eventos da Agenda, com uma conta só para anunciar e organizar eventos (itens 1, 2, 4, 13 e 15); as regras dos eventos na Agenda (novo item 6.5); e a devolução do evento avulso, que vale até 7 dias depois do pagamento e até a véspera do primeiro dia do evento (item 7.6). O resto continua igual.",
+        "No próximo acesso à sua área, o site pede o aceite da versão nova.",
+      ],
+      botao: { texto: "Ler os Termos de Uso", link: `${PRODUCAO}/termos/v${d.versao ?? ""}` },
+      rodape: "Você recebe este aviso porque tem conta no Ache Aqui RO e aceitou os Termos de Uso.",
     };
   }
   if (aviso.tipo === "denuncia") {
