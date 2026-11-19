@@ -37,8 +37,10 @@ const entradas: Entrada[] = [
 ];
 // O carrossel repete a lista para o giro contínuo; a cópia fica fora do leitor de tela e do Tab.
 const copias = [0, 1];
+// "relative": o texto oculto do selo (sr-only, posição absoluta) fica preso à
+// faixa com rolagem; sem isso, escapa dela e alarga a página no celular.
 const classeTrilho =
-  "overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(90deg,transparent,black_4%,black_96%,transparent)]";
+  "relative overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(90deg,transparent,black_4%,black_96%,transparent)]";
 const classeSeta =
   "absolute top-1/2 z-10 hidden -translate-y-1/2 place-items-center rounded-full bg-white/95 text-azul-800 shadow-md ring-1 ring-black/10 hover:bg-white md:grid";
 ---
