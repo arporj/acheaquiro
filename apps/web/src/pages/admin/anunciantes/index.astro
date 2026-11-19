@@ -41,6 +41,11 @@ const COR_SITUACAO: Record<Situacao, string> = {
 const etiqueta = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-extrabold";
 const filtrosAtivos = [filtro.tipo, filtro.origem, filtro.planoId, filtro.fundador, filtro.representanteId, filtro.categoriaId, filtro.bairroId].filter(Boolean).length;
 const selectFiltro = `${classesCampo} h-10 text-sm`;
+// Com busca ou filtro, os contadores das abas são os do resultado: a lista vazia aponta as abas que acharam alguém.
+const buscando = Boolean(filtro.busca) || filtrosAtivos > 0;
+const abasComResultado = lista.ok
+  ? (Object.keys(ABAS) as Aba[]).filter((aba) => aba !== filtro.aba && aba !== "todos" && lista.dados.porAba[aba] > 0)
+  : [];
 ---
 
 <PaginaAdmin titulo="Anunciantes" descricao="Cadastro assistido, edição dos perfis e mudança de situação (aprovar, pedir correção, recusar, suspender).">
@@ -114,9 +119,28 @@ const selectFiltro = `${classesCampo} h-10 text-sm`;
     </details>
   </form>
 
-  <p class="mt-4 text-sm text-slate-600">{total.toLocaleString("pt-BR")} anunciante(s)</p>
+  <p class="mt-4 text-sm text-slate-600">
+    {total.toLocaleString("pt-BR")} anunciante(s){buscando && ` em "${ABAS[filtro.aba].rotulo}"`}
+    {buscando && <span class="text-slate-500"> · os números das abas contam só o que bate com a busca e os filtros</span>}
+  </p>
 
-  {linhas.length === 0 && !erro && <p class="mt-2 rounded-2xl bg-white p-6 text-center text-slate-500 ring-1 ring-black/5">Nenhum anunciante aqui.</p>}
+  {
+    linhas.length === 0 && !erro && (
+      <div class="mt-2 rounded-2xl bg-white p-6 text-center text-slate-500 ring-1 ring-black/5">
+        <p>{buscando ? `Nada encontrado em "${ABAS[filtro.aba].rotulo}".` : "Nenhum anunciante aqui."}</p>
+        {buscando && abasComResultado.length > 0 && (
+          <p class="mt-2 flex flex-wrap items-center justify-center gap-2">
+            Encontrado em:
+            {abasComResultado.map((aba) => (
+              <a href={link({ aba })} class={classesBotao("contorno", "p")}>
+                {ABAS[aba].rotulo} ({lista.ok ? lista.dados.porAba[aba].toLocaleString("pt-BR") : 0})
+              </a>
+            ))}
+          </p>
+        )}
+      </div>
+    )
+  }
 
   <ul class="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
     {

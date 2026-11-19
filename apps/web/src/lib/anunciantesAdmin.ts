@@ -127,32 +127,34 @@ export async function listarAnunciantes(
   f: FiltroLista,
 ): Promise<Resultado<{ linhas: LinhaLista[]; total: number; porAba: Record<Aba, number> }>> {
   // O filtro de bairro usa o bairro do endereço (só os comércios têm endereço).
+  const juncaoBairro = f.bairroId ? ", enderecos!inner(bairro_id)" : "";
   const selecao =
-    "id, nome, slug, tipo, status, origem, fundador, criado_em, categoria:categorias(nome), plano:planos!anunciantes_plano_id_fkey(nome)" +
-    (f.bairroId ? ", enderecos!inner(bairro_id)" : "");
-  let consulta = supabase.from("anunciantes").select(selecao, { count: "exact" });
-  const situacoes: readonly Situacao[] = ABAS[f.aba].situacoes;
-  // "Para analisar" também traz os importados assumidos que foram ao ar sem aprovação prévia.
-  if (f.aba === "analisar") consulta = consulta.or("status.eq.em_analise,revisar.eq.true");
-  else if (situacoes.length > 0) consulta = consulta.in("status", situacoes);
-  if (f.busca) consulta = consulta.or(`nome.ilike.%${f.busca}%,slug.ilike.%${paraSlug(f.busca) || f.busca}%`);
-  if (f.tipo) consulta = consulta.eq("tipo", f.tipo);
-  if (f.origem) consulta = consulta.eq("origem", f.origem);
-  if (f.planoId) consulta = consulta.eq("plano_id", f.planoId);
-  if (f.fundador) consulta = consulta.eq("fundador", true);
-  if (f.representanteId) consulta = consulta.eq("representante_id", f.representanteId);
-  if (f.categoriaId) consulta = consulta.eq("categoria_principal_id", f.categoriaId);
-  if (f.bairroId) consulta = consulta.eq("enderecos.bairro_id", f.bairroId);
+    "id, nome, slug, tipo, status, origem, fundador, criado_em, categoria:categorias(nome), plano:planos!anunciantes_plano_id_fkey(nome)" + juncaoBairro;
+
+  // A busca e os filtros valem para a lista e para o contador de cada aba (decisão
+  // de 19/11/2026): com "eloisa" na busca, a aba "Publicados" mostra 1, e não o
+  // tamanho da fila inteira, para se ver em que aba está quem foi buscado.
+  type Consulta = ReturnType<ReturnType<SupabaseClient["from"]>["select"]>;
+  const filtrar = (q: Consulta, aba: Aba): Consulta => {
+    const situacoes: readonly Situacao[] = ABAS[aba].situacoes;
+    // "Para analisar" também traz os importados assumidos que foram ao ar sem aprovação prévia.
+    if (aba === "analisar") q = q.or("status.eq.em_analise,revisar.eq.true");
+    else if (situacoes.length > 0) q = q.in("status", situacoes);
+    if (f.busca) q = q.or(`nome.ilike.%${f.busca}%,slug.ilike.%${paraSlug(f.busca) || f.busca}%`);
+    if (f.tipo) q = q.eq("tipo", f.tipo);
+    if (f.origem) q = q.eq("origem", f.origem);
+    if (f.planoId) q = q.eq("plano_id", f.planoId);
+    if (f.fundador) q = q.eq("fundador", true);
+    if (f.representanteId) q = q.eq("representante_id", f.representanteId);
+    if (f.categoriaId) q = q.eq("categoria_principal_id", f.categoriaId);
+    if (f.bairroId) q = q.eq("enderecos.bairro_id", f.bairroId);
+    return q;
+  };
+  const consulta = filtrar(supabase.from("anunciantes").select(selecao, { count: "exact" }), f.aba);
   const inicio = (f.pagina - 1) * POR_PAGINA;
 
-  // Contador de cada aba, sem os outros filtros: mostra o tamanho de cada fila.
   const abas = Object.keys(ABAS) as Aba[];
-  const contagens = abas.map((aba) => {
-    const q = supabase.from("anunciantes").select("id", { count: "exact", head: true });
-    const s: readonly Situacao[] = ABAS[aba].situacoes;
-    if (aba === "analisar") return q.or("status.eq.em_analise,revisar.eq.true");
-    return s.length > 0 ? q.in("status", s) : q;
-  });
+  const contagens = abas.map((aba) => filtrar(supabase.from("anunciantes").select(`id${juncaoBairro}`, { count: "exact", head: true }), aba));
   const [lista, ...porAba] = await Promise.all([consulta.order("nome").order("id").range(inicio, inicio + POR_PAGINA - 1), ...contagens]);
   if (lista.error) return mensagemDoBanco(lista.error, "listarAnunciantes");
   const erroContagem = porAba.find((c) => c.error)?.error;
