@@ -6,6 +6,7 @@ export * from "./arquivos";
 export * from "./patrocinio";
 export * from "./pedidoPerfil";
 export * from "./anunciante";
+export * from "./horario";
 export * from "./representante";
 export * from "./pagamento";
 export * from "./configuracoes";

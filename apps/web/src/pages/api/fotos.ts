@@ -4,10 +4,10 @@
 import type { APIRoute } from "astro";
 import type { Resultado } from "@acheaqui/types";
 import { TAMANHO_MAXIMO_FOTO, TAMANHOS_FOTO, type TamanhoFoto } from "@acheaqui/validation";
-import { apagarFoto, enviarFoto, type FinalidadeFoto } from "@/lib/fotos";
+import { apagarFoto, enviarFoto, limparCacheDoPerfil, type FinalidadeFoto } from "@/lib/fotos";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const FINALIDADES: readonly FinalidadeFoto[] = ["perfil", "galeria", "produto"];
+const FINALIDADES: readonly FinalidadeFoto[] = ["perfil", "capa", "galeria", "produto"];
 /** Três versões de até 2 MB e os campos de texto. */
 const TAMANHO_MAXIMO_PEDIDO = 3 * TAMANHO_MAXIMO_FOTO + 64 * 1024;
 
@@ -27,7 +27,7 @@ function responder<T>(resultado: Resultado<T>, statusDeSucesso = 200): Response 
 
 const invalido = (mensagem: string) => responder({ ok: false, erro: { codigo: "DADOS_INVALIDOS", mensagem } });
 
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = async ({ request, locals, url }) => {
   const tamanho = Number(request.headers.get("content-length") ?? "0");
   if (!tamanho || tamanho > TAMANHO_MAXIMO_PEDIDO) return invalido("Envio vazio ou maior que o permitido (3 versões de até 2 MB).");
 
@@ -55,11 +55,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
     par: parId ? { id: parId, papel: papel as "antes" | "depois" } : undefined,
     versoes,
   });
+  if (resultado.ok) await limparCacheDoPerfil(locals.supabase!, resultado.dados.anuncianteId, url.origin);
   return responder(resultado, 201);
 };
 
 export const DELETE: APIRoute = async ({ url, locals }) => {
   const id = url.searchParams.get("id") ?? "";
   if (!UUID.test(id)) return invalido("Foto inválida.");
-  return responder(await apagarFoto(locals.supabase!, id));
+  const resultado = await apagarFoto(locals.supabase!, id);
+  if (resultado.ok) await limparCacheDoPerfil(locals.supabase!, resultado.dados.anuncianteId, url.origin);
+  return responder(resultado);
 };

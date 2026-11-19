@@ -6,6 +6,7 @@
 import { Icone, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import FormularioAnunciante from "@/components/admin/FormularioAnunciante.astro";
+import FotosDoPerfil from "@/components/admin/FotosDoPerfil.astro";
 import HistoricoAtendimento from "@/components/representante/HistoricoAtendimento.astro";
 import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
 import { obterRegrasCobranca } from "@/dados/consultas";
@@ -21,6 +22,7 @@ import {
   type ValoresFormulario,
 } from "@/lib/anunciantesAdmin";
 import { formatarTelefone } from "@/lib/contato";
+import { listarFotosDoCadastro } from "@/lib/fotos";
 import { formatarData } from "@/lib/texto";
 import { lerMeuCadastro, limiteDeConvites, listarAtendimentos, registrarDoFormulario } from "@/lib/representante";
 
@@ -35,6 +37,8 @@ const AVISOS: Record<string, string> = {
   convite: "Convite enviado. O anunciante recebe o link por e-mail para conferir o perfil e criar a senha.",
   "convite-reenviado": "Convite reenviado.",
   atendimento: "Contato registrado.",
+  foto: "Foto salva.",
+  "foto-apagada": "Foto apagada.",
 };
 const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
 let erro = "";
@@ -73,9 +77,11 @@ if (Astro.request.method === "POST" && lido.ok && cadastro.ok) {
   Astro.response.status = r.interno ? 500 : 400;
 }
 
-const [opcoes, atendimentos] = await Promise.all([
+const [opcoes, atendimentos, fotos] = await Promise.all([
   editavel ? lerOpcoes(supabase, await obterRegrasCobranca()) : Promise.resolve(null),
   listarAtendimentos(supabase, id),
+  // O banco só deixa o representante mexer nas fotos antes de o anunciante assumir (pode_editar_anunciante).
+  editavel && lido.ok ? listarFotosDoCadastro(supabase, lido.dados) : Promise.resolve(null),
 ]);
 if (!lido.ok) erro ||= lido.erro.mensagem;
 if (!cadastro.ok) erro ||= cadastro.erro.mensagem;
@@ -155,6 +161,8 @@ const diaFimReserva = fimReserva ? new Intl.DateTimeFormat("en-CA", { timeZone: 
           />
         )}
         {editavel && opcoes && !opcoes.ok && <Aviso tipo="erro" class="mt-4">{opcoes.erro.mensagem}</Aviso>}
+        {fotos?.ok && <FotosDoPerfil anuncianteId={a.id} tipo={a.tipo} fotos={fotos.dados} />}
+        {fotos && !fotos.ok && <Aviso tipo="erro" class="mt-4">{fotos.erro.mensagem}</Aviso>}
         {!editavel && (
           <p class="mt-4 text-sm text-slate-600">
             O anunciante já assumiu o perfil: as alterações agora são feitas por ele, na área dele, ou pela equipe.

@@ -5,12 +5,16 @@
 // Auth exige. "Recusar" volta o cadastro para rascunho com o motivo (a
 // exclusão do cadastro é outra ação, pela LGPD).
 import { calcularCobrancaPlano, limiteEfetivo, percentualFundadorNoAno } from "@acheaqui/domain";
-import type { DegrauDescontoFundador, RegrasCobranca, Resultado } from "@acheaqui/types";
+import type { DegrauDescontoFundador, HorarioDia, RegrasCobranca, Resultado } from "@acheaqui/types";
 import {
+  NOMES_DIAS,
   esquemaCadastroAssistido,
   esquemaMotivo,
   esquemaPerfilAnunciante,
+  horarioParaFormulario,
+  horariosIguais,
   type CadastroAssistido,
+  type DiaHorarioFormulario,
   type PerfilAnunciante,
 } from "@acheaqui/validation";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -296,6 +300,8 @@ export interface AnuncianteAdmin {
   categorias: { categoria_id: string }[];
   bairros: { bairro_id: string; finalidade: "atendimento" | "entrega" }[];
   enderecos: { id: string; logradouro: string; numero: string; complemento: string | null; bairro_id: string; principal: boolean }[];
+  /** Horário do anunciante todo (sem loja); "08:00:00" do banco. */
+  horarios: { dia_semana: number; abre: string; fecha: string; endereco_id: string | null }[];
   dados_receita: { cnpj: string; razao_social: string; telefones: string[]; email: string | null } | null;
 }
 
@@ -308,7 +314,8 @@ export async function lerAnunciante(supabase: SupabaseClient, id: string): Promi
         "periodicidade_escolhida, motivo_correcao, categoria_principal_id, descricao, whatsapp, telefone, instagram, formas_pagamento, registro_conselho, " +
         "site_proprio, atende_toda_cidade, faz_entrega, entrega_toda_cidade, aprovado_em, criado_em, importado_id, revisar, " +
         "categorias:anunciante_categorias(categoria_id), bairros:anunciante_bairros(bairro_id, finalidade), " +
-        "enderecos(id, logradouro, numero, complemento, bairro_id, principal), dados_receita(cnpj, razao_social, telefones, email)",
+        "enderecos(id, logradouro, numero, complemento, bairro_id, principal), horarios(dia_semana, abre, fecha, endereco_id), " +
+        "dados_receita(cnpj, razao_social, telefones, email)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -349,6 +356,45 @@ export interface DadosFormulario {
   cadastro: CadastroAssistido;
 }
 
+/** Os 7 dias do horário como chegam do formulário (campos horario.<dia>.<campo>). */
+function horarioDoEnvio(form: FormData): DiaHorarioFormulario[] {
+  const texto = (nome: string) => String(form.get(nome) ?? "").slice(0, 10);
+  return NOMES_DIAS.map((_, dia) => ({
+    aberto: form.get(`horario.${dia}.aberto`) === "on",
+    abre1: texto(`horario.${dia}.abre1`),
+    fecha1: texto(`horario.${dia}.fecha1`),
+    abre2: texto(`horario.${dia}.abre2`),
+    fecha2: texto(`horario.${dia}.fecha2`),
+  }));
+}
+
+/** Horário gravado (só o do anunciante todo, sem loja) no formato da página. */
+function horarioGravado(a: Pick<AnuncianteAdmin, "horarios">): HorarioDia[] {
+  const porDia = new Map<number, { abre: string; fecha: string }[]>();
+  for (const h of a.horarios.filter((x) => x.endereco_id === null)) {
+    porDia.set(h.dia_semana, [...(porDia.get(h.dia_semana) ?? []), { abre: h.abre.slice(0, 5), fecha: h.fecha.slice(0, 5) }]);
+  }
+  return [...porDia]
+    .sort(([x], [y]) => x - y)
+    .map(([dia, intervalos]) => ({ dia: dia as HorarioDia["dia"], intervalos: intervalos.sort((x, y) => x.abre.localeCompare(y.abre)) }));
+}
+
+/** Troca o horário inteiro, só quando mudou (a auditoria registra cada linha). */
+async function salvarHorario(
+  supabase: SupabaseClient,
+  anuncianteId: string,
+  horario: HorarioDia[],
+  atual: Pick<AnuncianteAdmin, "horarios"> | null,
+): Promise<Falha | null> {
+  if (horariosIguais(horario, atual ? horarioGravado(atual) : [])) return null;
+  const { error: erroApagar } = await supabase.from("horarios").delete().eq("anunciante_id", anuncianteId).is("endereco_id", null);
+  if (erroApagar) return mensagemDoBanco(erroApagar, "salvarHorario: saída");
+  const linhas = horario.flatMap((d) => d.intervalos.map((i) => ({ anunciante_id: anuncianteId, dia_semana: d.dia, abre: i.abre, fecha: i.fecha })));
+  if (linhas.length === 0) return null;
+  const { error } = await supabase.from("horarios").insert(linhas);
+  return error ? mensagemDoBanco(error, "salvarHorario: entrada") : null;
+}
+
 /** Lê o formulário (FormularioAnunciante.astro) e valida no servidor. */
 export function lerFormulario(form: FormData, tipoFixo?: "profissional" | "comercio"): Resultado<DadosFormulario> {
   const texto = (nome: string) => String(form.get(nome) ?? "").slice(0, 3000);
@@ -364,6 +410,7 @@ export function lerFormulario(form: FormData, tipoFixo?: "profissional" | "comer
     telefone: texto("telefone"),
     instagram: texto("instagram"),
     formasPagamento: lista("formasPagamento"),
+    horario: horarioDoEnvio(form),
     registroConselho: texto("registroConselho"),
     atendeTodaCidade: marcado("atendeTodaCidade"),
     bairrosAtendidos: lista("bairrosAtendidos"),
@@ -615,6 +662,8 @@ export async function salvarAnunciante(
     etapas.push(() => sincronizar(supabase, "anunciante_bairros", anuncianteId, cidade.id, "bairro_id", bairrosAtuais("entrega"), novos, { finalidade: "entrega" }));
     etapas.push(() => salvarEndereco(supabase, anuncianteId, cidade.id, perfil.endereco, endereco));
   }
+  const horario = perfil.horario;
+  if (horario) etapas.push(() => salvarHorario(supabase, anuncianteId, horario, atual));
   for (const etapa of etapas) {
     const problema = await etapa();
     if (problema) return problema;
@@ -785,6 +834,8 @@ export interface ValoresFormulario {
   telefone: string;
   instagram: string;
   formasPagamento: string[];
+  /** Os 7 dias, de domingo a sábado, como nos campos do formulário. */
+  horario: Required<DiaHorarioFormulario>[];
   registroConselho: string;
   atendeTodaCidade: boolean;
   bairrosAtendidos: string[];
@@ -812,6 +863,7 @@ export const VALORES_VAZIOS: ValoresFormulario = {
   telefone: "",
   instagram: "",
   formasPagamento: [],
+  horario: horarioParaFormulario([]),
   registroConselho: "",
   atendeTodaCidade: false,
   bairrosAtendidos: [],
@@ -850,6 +902,7 @@ export function valoresDoAnunciante(a: AnuncianteAdmin): ValoresFormulario {
     telefone: telefoneLegivel(a.telefone),
     instagram: a.instagram ?? "",
     formasPagamento: a.formas_pagamento,
+    horario: horarioParaFormulario(horarioGravado(a)),
     registroConselho: a.registro_conselho ?? "",
     atendeTodaCidade: a.atende_toda_cidade,
     bairrosAtendidos: bairros("atendimento"),
@@ -883,6 +936,7 @@ export function valoresDoEnvio(form: FormData, tipoFixo?: "profissional" | "come
     telefone: texto("telefone"),
     instagram: texto("instagram"),
     formasPagamento: lista("formasPagamento"),
+    horario: horarioDoEnvio(form).map((d) => ({ aberto: d.aberto, abre1: d.abre1 ?? "", fecha1: d.fecha1 ?? "", abre2: d.abre2 ?? "", fecha2: d.fecha2 ?? "" })),
     registroConselho: texto("registroConselho"),
     atendeTodaCidade: form.get("atendeTodaCidade") === "on",
     bairrosAtendidos: lista("bairrosAtendidos"),

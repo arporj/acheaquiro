@@ -8,7 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 const FALHA = { ok: false, erro: { codigo: "ERRO_INTERNO", mensagem: "Não foi possível carregar os anunciantes agora." } } as const;
 
 type FotoDoBanco = Omit<Foto, "url"> & { caminho?: string };
-type AnuncianteDoBanco = Omit<Anunciante, "fotoPerfil" | "galeria"> & { fotoPerfil: FotoDoBanco; galeria: FotoDoBanco[] };
+type AnuncianteDoBanco = Omit<Anunciante, "fotoPerfil" | "fotoCapa" | "galeria"> & { fotoPerfil: FotoDoBanco; fotoCapa?: FotoDoBanco; galeria: FotoDoBanco[] };
 
 function comEndereco({ caminho, ...foto }: FotoDoBanco, enderecoArquivos: string): Foto {
   return caminho ? { ...foto, url: `${enderecoArquivos}/${caminho}` } : foto;
@@ -18,6 +18,7 @@ function paraAnunciante(linha: AnuncianteDoBanco, enderecoArquivos: string): Anu
   return {
     ...linha,
     fotoPerfil: comEndereco(linha.fotoPerfil, enderecoArquivos),
+    fotoCapa: linha.fotoCapa ? comEndereco(linha.fotoCapa, enderecoArquivos) : undefined,
     galeria: linha.galeria.map((f) => comEndereco(f, enderecoArquivos)),
   } as Anunciante;
 }

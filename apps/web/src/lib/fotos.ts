@@ -6,13 +6,17 @@ import { podeAdicionar } from "@acheaqui/domain";
 import type { Resultado } from "@acheaqui/types";
 import { ArquivoInvalido, conferirVersaoFoto, FORMATO_FOTO_PERFIL, TAMANHOS_FOTO, type FormatoFoto, type TamanhoFoto } from "@acheaqui/validation";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { apagarArquivosPublicos, caminhoFoto, caminhosFoto, gravarArquivoPublico } from "./arquivos";
+import { limparPerfilDoCache } from "./anunciantesAdmin";
+import { apagarArquivosPublicos, caminhoFoto, caminhosFoto, enderecoPublico, gravarArquivoPublico } from "./arquivos";
 import { clienteServico } from "./sessao";
 
 /** Envios por pessoa a cada hora (Especificação Técnica, seção 10.3). */
 const ENVIOS_POR_HORA = 60;
 
-export type FinalidadeFoto = "perfil" | "galeria" | "produto";
+export type FinalidadeFoto = "perfil" | "capa" | "galeria" | "produto";
+
+/** Perfil e capa: uma foto só por anunciante; a nova substitui a anterior. */
+const FOTO_UNICA: readonly FinalidadeFoto[] = ["perfil", "capa"];
 
 export interface EnvioFoto {
   anuncianteId: string;
@@ -42,7 +46,11 @@ async function limiteDeFotos(supabase: SupabaseClient, anunciante: { tipo: strin
   return data.limite_fotos as number;
 }
 
-export async function enviarFoto(supabase: SupabaseClient, usuarioId: string, envio: EnvioFoto): Promise<Resultado<{ id: string; chave: string }>> {
+export async function enviarFoto(
+  supabase: SupabaseClient,
+  usuarioId: string,
+  envio: EnvioFoto,
+): Promise<Resultado<{ id: string; chave: string; anuncianteId: string }>> {
   const limite = await clienteServico().rpc("consumir_limite", {
     p_chave: `envio-arquivo:${usuarioId}`,
     p_limite: ENVIOS_POR_HORA,
@@ -66,12 +74,16 @@ export async function enviarFoto(supabase: SupabaseClient, usuarioId: string, en
   }
   if (!anunciante) return erro("NAO_ENCONTRADO", "Perfil não encontrado.");
 
+  let ordem = 0;
   if (envio.finalidade === "galeria") {
-    const [limiteFotos, uso] = await Promise.all([
+    const [limiteFotos, uso, ultima] = await Promise.all([
       limiteDeFotos(supabase, anunciante),
       supabase.from("fotos").select("id", { count: "exact", head: true }).eq("anunciante_id", anunciante.id).eq("finalidade", "galeria").eq("situacao", "publicado"),
+      supabase.from("fotos").select("ordem").eq("anunciante_id", anunciante.id).eq("finalidade", "galeria").order("ordem", { ascending: false }).limit(1).maybeSingle(),
     ]);
-    if (limiteFotos === null || uso.error) return erro("ERRO_INTERNO", "Não foi possível conferir o limite do plano. Tente de novo.");
+    if (limiteFotos === null || uso.error || ultima.error) return erro("ERRO_INTERNO", "Não foi possível conferir o limite do plano. Tente de novo.");
+    // A foto nova entra no fim da galeria.
+    ordem = ((ultima.data?.ordem as number | undefined) ?? -1) + 1;
     const cabe = podeAdicionar("fotos", uso.count ?? 0, 1, limiteFotos);
     if (!cabe.ok) return cabe;
   }
@@ -99,18 +111,29 @@ export async function enviarFoto(supabase: SupabaseClient, usuarioId: string, en
   const chave = `fotos/${anunciante.id}/${crypto.randomUUID()}`;
   await Promise.all(conferidas.map((v) => gravarArquivoPublico(caminhoFoto(chave, v.tamanho, formato), v.arquivo, formato)));
 
-  // A foto de perfil é uma só: a anterior sai antes de a nova entrar.
+  // Foto de perfil e capa são uma só: a anterior sai antes de a nova entrar.
   type FotoAnterior = { id: string; chave: string; formato: FormatoFoto };
   let anterior: FotoAnterior | null = null;
-  if (envio.finalidade === "perfil") {
-    const { data } = await supabase.from("fotos").select("id, chave, formato").eq("anunciante_id", anunciante.id).eq("finalidade", "perfil").eq("situacao", "publicado").maybeSingle();
+  if (FOTO_UNICA.includes(envio.finalidade)) {
+    const { data, error: erroAnterior } = await supabase
+      .from("fotos")
+      .select("id, chave, formato")
+      .eq("anunciante_id", anunciante.id)
+      .eq("finalidade", envio.finalidade)
+      .eq("situacao", "publicado")
+      .maybeSingle();
+    if (erroAnterior) {
+      console.error("enviarFoto: leitura da foto anterior falhou", { codigo: erroAnterior.code, mensagem: erroAnterior.message });
+      await apagarArquivosPublicos(caminhosFoto(chave, formato));
+      return erro("ERRO_INTERNO", "Não foi possível trocar a foto. Tente de novo.");
+    }
     anterior = data as FotoAnterior | null;
     if (anterior) {
       const { error: erroApagar } = await supabase.from("fotos").delete().eq("id", anterior.id);
       if (erroApagar) {
-        console.error("enviarFoto: troca da foto de perfil falhou", { codigo: erroApagar.code, mensagem: erroApagar.message });
+        console.error("enviarFoto: troca da foto falhou", { finalidade: envio.finalidade, codigo: erroApagar.code, mensagem: erroApagar.message });
         await apagarArquivosPublicos(caminhosFoto(chave, formato));
-        return erro("ERRO_INTERNO", "Não foi possível trocar a foto de perfil. Tente de novo.");
+        return erro("ERRO_INTERNO", "Não foi possível trocar a foto. Tente de novo.");
       }
     }
   }
@@ -121,6 +144,7 @@ export async function enviarFoto(supabase: SupabaseClient, usuarioId: string, en
       anunciante_id: anunciante.id,
       cidade_id: anunciante.cidade_id,
       finalidade: envio.finalidade,
+      ordem,
       chave,
       formato,
       largura: maior.largura,
@@ -140,12 +164,12 @@ export async function enviarFoto(supabase: SupabaseClient, usuarioId: string, en
     return erro("ERRO_INTERNO", "Não foi possível gravar a foto. Tente de novo.");
   }
   if (anterior) await apagarArquivosPublicos(caminhosFoto(anterior.chave, anterior.formato));
-  return { ok: true, dados: { id: foto.id as string, chave } };
+  return { ok: true, dados: { id: foto.id as string, chave, anuncianteId: anunciante.id } };
 }
 
 /** Exclusão pelo dono, pelo representante (no cadastro assistido) ou pelo administrador. */
-export async function apagarFoto(supabase: SupabaseClient, fotoId: string): Promise<Resultado<null>> {
-  const { data, error } = await supabase.from("fotos").delete().eq("id", fotoId).select("chave, formato");
+export async function apagarFoto(supabase: SupabaseClient, fotoId: string): Promise<Resultado<{ anuncianteId: string }>> {
+  const { data, error } = await supabase.from("fotos").delete().eq("id", fotoId).select("chave, formato, anunciante_id");
   if (error) {
     console.error("apagarFoto falhou", { codigo: error.code, mensagem: error.message });
     return erro("ERRO_INTERNO", "Não foi possível apagar a foto. Tente de novo.");
@@ -153,5 +177,70 @@ export async function apagarFoto(supabase: SupabaseClient, fotoId: string): Prom
   const [apagada] = data ?? [];
   if (!apagada) return erro("NAO_ENCONTRADO", "Foto não encontrada.");
   await apagarArquivosPublicos(caminhosFoto(apagada.chave as string, apagada.formato as FormatoFoto));
-  return { ok: true, dados: null };
+  return { ok: true, dados: { anuncianteId: apagada.anunciante_id as string } };
+}
+
+/** Perfil no ar: a página sai do cache para mostrar a foto nova (ou sem a apagada) na hora. */
+export async function limparCacheDoPerfil(supabase: SupabaseClient, anuncianteId: string, origemDoSite: string): Promise<void> {
+  const { data, error } = await supabase.from("anunciantes").select("slug, status").eq("id", anuncianteId).maybeSingle();
+  if (error) {
+    // A página sai do cache sozinha em até 5 minutos; a foto já está gravada.
+    console.error("limparCacheDoPerfil: leitura do perfil falhou", { codigo: error.code, mensagem: error.message });
+    return;
+  }
+  if (data?.status === "publicado") await limparPerfilDoCache(origemDoSite, data.slug as string);
+}
+
+// ---------------------------------------------------------------------------
+// Fotos do perfil, para a tela de cadastro (administração e representante)
+// ---------------------------------------------------------------------------
+
+export interface FotoDoCadastro {
+  id: string;
+  /** Versão de 400 px, para a miniatura. */
+  url: string;
+  legenda: string | null;
+}
+
+export interface FotosDoCadastro {
+  perfil: FotoDoCadastro | null;
+  capa: FotoDoCadastro | null;
+  galeria: FotoDoCadastro[];
+  /** Fotos da galeria no plano em vigor (ou no escolhido, antes de publicar); as que passam ficam guardadas, sem aparecer. */
+  limiteGaleria: number;
+}
+
+export async function listarFotosDoCadastro(
+  supabase: SupabaseClient,
+  anunciante: { id: string; tipo: string; plano_id: string | null; plano_escolhido_id: string | null; status: string },
+): Promise<Resultado<FotosDoCadastro>> {
+  const noAr = anunciante.status === "publicado" || anunciante.status === "pausado";
+  const planoId = noAr ? anunciante.plano_id : (anunciante.plano_escolhido_id ?? anunciante.plano_id);
+  const [fotos, limite] = await Promise.all([
+    supabase
+      .from("fotos")
+      .select("id, finalidade, chave, formato, legenda")
+      .eq("anunciante_id", anunciante.id)
+      .in("finalidade", ["perfil", "capa", "galeria"])
+      .eq("situacao", "publicado")
+      .order("ordem")
+      .order("criado_em"),
+    limiteDeFotos(supabase, { tipo: anunciante.tipo, plano_id: planoId }),
+  ]);
+  if (fotos.error) {
+    console.error("listarFotosDoCadastro falhou", { codigo: fotos.error.code, mensagem: fotos.error.message });
+    return erro("ERRO_INTERNO", "Não foi possível carregar as fotos. Tente de novo.");
+  }
+  if (limite === null) return erro("ERRO_INTERNO", "Não foi possível carregar as fotos. Tente de novo.");
+  type Linha = { id: string; finalidade: FinalidadeFoto; chave: string; formato: FormatoFoto; legenda: string | null };
+  const paraTela = (f: Linha): FotoDoCadastro => ({ id: f.id, url: enderecoPublico(caminhoFoto(f.chave, 400, f.formato)), legenda: f.legenda });
+  const linhas = fotos.data as Linha[];
+  const uma = (finalidade: FinalidadeFoto) => {
+    const f = linhas.find((l) => l.finalidade === finalidade);
+    return f ? paraTela(f) : null;
+  };
+  return {
+    ok: true,
+    dados: { perfil: uma("perfil"), capa: uma("capa"), galeria: linhas.filter((l) => l.finalidade === "galeria").map(paraTela), limiteGaleria: limite },
+  };
 }

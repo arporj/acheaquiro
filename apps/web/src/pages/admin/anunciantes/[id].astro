@@ -7,6 +7,7 @@ import { Icone, Modal, classesBotao } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
 import FormularioAnunciante from "@/components/admin/FormularioAnunciante.astro";
+import FotosDoPerfil from "@/components/admin/FotosDoPerfil.astro";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
 import HistoricoAtendimento from "@/components/representante/HistoricoAtendimento.astro";
 import {
@@ -30,6 +31,7 @@ import {
 } from "@/lib/anunciantesAdmin";
 import { formatarTelefone } from "@/lib/contato";
 import { listarEquipe } from "@/lib/equipe";
+import { listarFotosDoCadastro } from "@/lib/fotos";
 import { ROTULO_ENCERRAMENTO, listarExtrasDoAnunciante } from "@/lib/extras";
 import { ROTULO_FORMA, SITUACOES_ANTES_DA_APROVACAO, SITUACOES_QUE_PAGAM, agendarReducao, hojeNaCidade, listarDoAnunciante } from "@/lib/pagamentos";
 import { ROTULO_PROPOSTA, lerContextoProposta, listarPropostas, situacaoVisivel } from "@/lib/propostas";
@@ -52,6 +54,8 @@ const AVISOS: Record<string, string> = {
   procurar: "O comércio voltou para a prospecção dos representantes.",
   reducao: "Redução agendada: vale a partir da próxima renovação.",
   "reducao-desfeita": "Redução desfeita: a renovação continua no plano atual.",
+  foto: "Foto salva.",
+  "foto-apagada": "Foto apagada.",
 };
 const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
 let erro = "";
@@ -109,7 +113,7 @@ if (Astro.request.method === "POST" && lido.ok) {
   }
 }
 
-const [opcoes, historico, equipe, atendimentos, pagamentos, naoProcurar, planoAtual, propostas, extras] = await Promise.all([
+const [opcoes, historico, equipe, atendimentos, pagamentos, naoProcurar, planoAtual, propostas, extras, fotos] = await Promise.all([
   lerOpcoes(supabase),
   lerHistorico(supabase, id),
   listarEquipe(supabase),
@@ -119,6 +123,7 @@ const [opcoes, historico, equipe, atendimentos, pagamentos, naoProcurar, planoAt
   lerContextoProposta(supabase, id),
   listarPropostas(supabase, { anuncianteId: id }),
   listarExtrasDoAnunciante(supabase, id),
+  lido.ok ? listarFotosDoCadastro(supabase, lido.dados) : Promise.resolve(null),
 ]);
 // Pago antes do aceite (decisão de 17/11/2026): o anúncio espera o aceite e a aprovação.
 const pagoAntesDoAceite =
@@ -427,6 +432,9 @@ const caixa = "rounded-xl bg-fundo p-3";
         ) : (
           <Aviso tipo="erro" class="mt-4">{opcoes.erro.mensagem}</Aviso>
         )}
+
+        {fotos?.ok && <FotosDoPerfil anuncianteId={a.id} tipo={a.tipo} fotos={fotos.dados} />}
+        {fotos && !fotos.ok && <Aviso tipo="erro" class="mt-4">{fotos.erro.mensagem}</Aviso>}
 
         {atendimentos.ok ? (
           <HistoricoAtendimento anuncianteId={a.id} registros={atendimentos.dados} />

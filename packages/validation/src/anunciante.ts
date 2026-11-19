@@ -4,6 +4,7 @@
 import { z } from "zod";
 import { esquemaEmail } from "./acesso";
 import { textoOpcional, uuidOuVazio } from "./comum";
+import { esquemaHorario } from "./horario";
 import { esquemaSite, esquemaWhatsapp } from "./patrocinio";
 
 export const FORMAS_PAGAMENTO = ["pix", "cartao", "dinheiro"] as const;
@@ -32,6 +33,8 @@ const base = {
   telefone: esquemaWhatsapp,
   instagram: esquemaInstagram,
   formasPagamento: z.array(z.enum(FORMAS_PAGAMENTO, { error: "Forma de pagamento inválida." })).transform((f) => [...new Set(f)]),
+  // Sem o horário no envio, o gravado não muda.
+  horario: esquemaHorario.optional(),
 };
 
 const profissional = z.object({

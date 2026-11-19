@@ -5,6 +5,7 @@
 // comércio ficam desligados quando não servem, para não serem enviados.
 import { agruparCategorias } from "@acheaqui/domain";
 import { classesBotao } from "@acheaqui/ui";
+import { NOMES_DIAS } from "@acheaqui/validation";
 import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
 import { textoValorPlano } from "@/lib/precos";
 import type { Opcoes, ValoresFormulario } from "@/lib/anunciantesAdmin";
@@ -43,6 +44,10 @@ const secao = "mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
 const tituloSecao = "font-display text-lg font-bold text-azul-900";
 const textarea = "mt-1 w-full rounded-2xl border-2 border-azul-100 p-3 focus:border-azul-500 focus:outline-none";
 const erro = (campo: string) => erros[campo];
+
+// Horário: a semana começa na segunda, como no perfil (Horario.astro).
+const ORDEM_DIAS = [1, 2, 3, 4, 5, 6, 0];
+const campoHora = "h-11 w-full min-w-0 rounded-xl border-2 border-azul-100 bg-white px-2 text-base text-tinta focus:border-azul-500 focus:outline-none disabled:opacity-40";
 
 // O script ao fim refaz o texto quando o plano ou a periodicidade mudam.
 const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEscolhidoId)?.valores, v.periodicidade);
@@ -192,6 +197,57 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
         }
       </div>
     </fieldset>
+  </section>
+
+  <section class={secao} data-horario>
+    <h2 class={tituloSecao}>
+      <span data-so-texto="profissional" hidden={tipo === "comercio"}>Horário de atendimento</span><span data-so-texto="comercio" hidden={tipo !== "comercio"}>Horário de funcionamento</span>
+    </h2>
+    <p class="mt-1 text-sm text-slate-600">
+      Marque os dias em que atende e as horas. A segunda faixa é opcional (ex.: das 08:00 às 12:00 e das 14:00 às 18:00). Fechar depois da
+      meia-noite vale (ex.: das 18:00 às 02:00); 24 horas é das 00:00 às 23:59. Sem nenhum dia marcado, o perfil mostra "Horário a combinar pelo
+      WhatsApp".
+    </p>
+    <div class="mt-3 space-y-3">
+      {
+        ORDEM_DIAS.map((dia) => {
+          const d = v.horario[dia]!;
+          const rotulo = NOMES_DIAS[dia];
+          return (
+            <fieldset class="rounded-2xl bg-fundo p-3" data-dia-horario={dia}>
+              <legend class="sr-only">{rotulo}</legend>
+              <div class="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 sm:grid-cols-[7rem_repeat(2,minmax(0,1fr))]">
+                <label class="flex min-h-11 items-center gap-2 font-bold text-azul-900">
+                  <input type="checkbox" name={`horario.${dia}.aberto`} checked={d.aberto} data-dia-aberto />
+                  {rotulo}
+                </label>
+                {[1, 2].map((faixa) => (
+                  <div class:list={["flex items-center gap-1.5", faixa === 2 && "col-start-2 sm:col-start-auto"]} data-faixa>
+                    <input
+                      type="time"
+                      name={`horario.${dia}.abre${faixa}`}
+                      value={faixa === 1 ? d.abre1 : d.abre2}
+                      aria-label={`${rotulo}, ${faixa}ª faixa: abre às`}
+                      class={campoHora}
+                    />
+                    <span class="text-sm text-slate-500">às</span>
+                    <input
+                      type="time"
+                      name={`horario.${dia}.fecha${faixa}`}
+                      value={faixa === 1 ? d.fecha1 : d.fecha2}
+                      aria-label={`${rotulo}, ${faixa}ª faixa: fecha às`}
+                      class={campoHora}
+                    />
+                  </div>
+                ))}
+              </div>
+              {erro(`horario.${dia}`) && <p class={classesErroCampo}>{erro(`horario.${dia}`)}</p>}
+            </fieldset>
+          );
+        })
+      }
+    </div>
+    <button type="button" class={classesBotao("contorno", "m", "mt-3")} data-copiar-segunda>Copiar o horário de segunda para os outros dias marcados</button>
   </section>
 
   <section class={secao} data-so="profissional">
@@ -398,9 +454,31 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
       }
     };
 
+    // Horário: as horas de um dia fechado ficam desligadas (não vão no envio).
+    const atualizarHorario = () => {
+      for (const dia of form.querySelectorAll<HTMLElement>("[data-dia-horario]")) {
+        const aberto = dia.querySelector<HTMLInputElement>("[data-dia-aberto]")?.checked ?? false;
+        for (const hora of dia.querySelectorAll<HTMLInputElement>('input[type="time"]')) hora.disabled = !aberto;
+      }
+    };
+    form.querySelector("[data-copiar-segunda]")?.addEventListener("click", () => {
+      const horas = (dia: Element) => [...dia.querySelectorAll<HTMLInputElement>('input[type="time"]')];
+      const segunda = form.querySelector('[data-dia-horario="1"]');
+      if (!segunda) return;
+      const modelo = horas(segunda).map((h) => h.value);
+      for (const dia of form.querySelectorAll<HTMLElement>("[data-dia-horario]")) {
+        if (dia === segunda || !dia.querySelector<HTMLInputElement>("[data-dia-aberto]")?.checked) continue;
+        horas(dia).forEach((h, i) => (h.value = modelo[i] ?? ""));
+      }
+    });
+
     const atualizar = () => {
       const tipo = escolhido();
       for (const bloco of form.querySelectorAll<HTMLElement>("[data-so]")) ligar(bloco, bloco.dataset.so === tipo);
+      for (const texto of form.querySelectorAll<HTMLElement>("[data-so-texto]")) texto.hidden = !!tipo && texto.dataset.soTexto !== tipo;
+      // Antes de escolher o tipo, só o primeiro título aparece.
+      if (!tipo) form.querySelectorAll<HTMLElement>("[data-so-texto]").forEach((t, i) => (t.hidden = i > 0));
+      atualizarHorario();
       // Categorias e planos só do tipo escolhido.
       for (const el of form.querySelectorAll<HTMLElement>("[data-tipo-categoria]")) {
         ligar(el, !tipo || el.dataset.tipoCategoria === "ambos" || el.dataset.tipoCategoria === tipo);

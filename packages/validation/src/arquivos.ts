@@ -23,6 +23,43 @@ export const FORMATO_FOTO_PERFIL: FormatoFoto = "jpeg";
 export const TAMANHOS_FOTO = [400, 800, 1600] as const;
 export type TamanhoFoto = (typeof TAMANHOS_FOTO)[number];
 export const TAMANHO_MAXIMO_FOTO = 2 * 1024 * 1024;
+
+/** Fotos do perfil do anunciante (a capa tem uma só, como a foto de perfil, e não conta no limite da galeria). */
+export type FinalidadeFotoPerfil = "perfil" | "capa" | "galeria";
+
+/**
+ * Tamanho recomendado de cada foto do perfil, pelo recorte da página
+ * /perfil/[slug] (a foto preenche o espaço e o que sobra é cortado, a partir do
+ * centro). Perfil: círculo (autônomo) ou quadrado de cantos arredondados
+ * (comércio), de 96 a 112 px. Capa: faixa do topo, de 128 px de altura no
+ * celular a 192 px no computador, cerca de 4 por 1 no computador e 2,7 por 1
+ * no celular. Galeria: quadrados. A foto abaixo do mínimo é aceita, com aviso.
+ */
+export const MEDIDAS_FOTO: Record<FinalidadeFotoPerfil, { ideal: [number, number]; minimo: [number, number]; orientacao: string }> = {
+  perfil: {
+    ideal: [800, 800],
+    minimo: [400, 400],
+    orientacao: "Quadrada, de 800 × 800 px (mínimo de 400 × 400 px). Aparece redonda no autônomo; deixe o rosto ou o logo no centro, com folga nas bordas.",
+  },
+  capa: {
+    ideal: [1600, 400],
+    minimo: [1200, 300],
+    orientacao:
+      "Horizontal, de 1.600 × 400 px (proporção de 4 por 1; mínimo de 1.200 × 300 px). No celular, as laterais são cortadas: deixe o que importa nos 2/3 do meio e sem texto pequeno.",
+  },
+  galeria: {
+    ideal: [1200, 1200],
+    minimo: [800, 800],
+    orientacao: "Quadrada, de 1.200 × 1.200 px (mínimo de 800 × 800 px). Na lista aparece quadrada, cortada a partir do centro.",
+  },
+};
+
+/** Aviso (sem recusar) quando a foto escolhida é menor que o mínimo recomendado. */
+export function avisoDeMedida(finalidade: FinalidadeFotoPerfil, largura: number, altura: number): string | null {
+  const [minLargura, minAltura] = MEDIDAS_FOTO[finalidade].minimo;
+  if (largura >= minLargura && altura >= minAltura) return null;
+  return `A foto tem ${largura} × ${altura} px, menor que o mínimo recomendado de ${minLargura} × ${minAltura} px: pode aparecer sem nitidez.`;
+}
 export const TAMANHO_MAXIMO_PDF = 5 * 1024 * 1024;
 
 export class ArquivoInvalido extends Error {

@@ -86,7 +86,7 @@ const resumo = resumirTexto(anunciante.descricao) || categoriaNaCidade;
       <div class="space-y-4">
         <section class="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5">
           <FotoMarcador
-            foto={anunciante.galeria[0]}
+            foto={anunciante.fotoCapa ?? anunciante.galeria[0]}
             prioritaria
             icone={categoria.icone}
             cor={categoria.cor}

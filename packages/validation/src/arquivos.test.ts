@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   ArquivoInvalido,
+  MEDIDAS_FOTO,
+  avisoDeMedida,
   conferirVersaoFoto,
   identificarArquivo,
   lerDimensoes,
@@ -148,5 +150,28 @@ describe("conferirVersaoFoto", () => {
     expect(() => conferirVersaoFoto(new Uint8Array(), 400)).toThrow("Arquivo vazio.");
     expect(() => conferirVersaoFoto(new Uint8Array(TAMANHO_MAXIMO_FOTO + 1), 1600)).toThrow("Foto maior que 2 MB.");
     expect(() => conferirVersaoFoto(juntar(Uint8Array.of(0x89), ascii("PNG\r\n\x1a\n")), 400)).toThrow("A foto precisa ser WebP ou JPEG.");
+  });
+});
+
+describe("medidas recomendadas das fotos do perfil", () => {
+  it("sem aviso a partir do mínimo", () => {
+    expect(avisoDeMedida("perfil", 400, 400)).toBeNull();
+    expect(avisoDeMedida("capa", 1600, 400)).toBeNull();
+    expect(avisoDeMedida("galeria", 3000, 2000)).toBeNull();
+  });
+
+  it("avisa quando um dos lados fica abaixo do mínimo", () => {
+    expect(avisoDeMedida("capa", 1600, 299)).toBe(
+      "A foto tem 1600 × 299 px, menor que o mínimo recomendado de 1200 × 300 px: pode aparecer sem nitidez.",
+    );
+    expect(avisoDeMedida("perfil", 300, 800)).toContain("400 × 400 px");
+  });
+
+  it("o ideal nunca fica abaixo do mínimo nem acima da maior versão gravada", () => {
+    for (const { ideal, minimo } of Object.values(MEDIDAS_FOTO)) {
+      expect(ideal[0]).toBeGreaterThanOrEqual(minimo[0]);
+      expect(ideal[1]).toBeGreaterThanOrEqual(minimo[1]);
+      expect(Math.max(...ideal)).toBeLessThanOrEqual(1600);
+    }
   });
 });

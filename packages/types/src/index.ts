@@ -176,6 +176,8 @@ interface AnuncianteBase {
   whatsapp?: string;
   telefone?: string;
   fotoPerfil: Foto;
+  /** Faixa do topo do perfil; sem ela, a página usa a 1ª foto da galeria (decisão de 19/11/2026). */
+  fotoCapa?: Foto;
   galeria: Foto[];
   horario: HorarioDia[];
   instagram?: string;
