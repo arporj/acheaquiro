@@ -3,8 +3,8 @@
 // bairros, categorias, planos, extras e regras) e, até as tabelas de
 // anunciantes existirem (etapa 2), mostra a lista de anunciantes vazia. A
 // página "em breve" não acessa o banco: usa as regras de src/mocks/planos.ts.
-import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, Extra, Foto, Patrocinador, CotaPatrocinio, CotaPatrocinioVenda, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
-import { agruparCategorias, categoriaCombinaComBusca, dadosPublicosDoArtista, diasDoEventoNoPeriodo, novaVagaAPartirDe, somarDias, somarMeses as somarMesesData } from "@acheaqui/domain";
+import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, DestaqueInicio, Extra, Foto, Patrocinador, CotaPatrocinio, CotaPatrocinioVenda, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
+import { agruparCategorias, categoriaCombinaComBusca, dadosPublicosDoArtista, destaquesNoAr, diasDoEventoNoPeriodo, momentoLocal, novaVagaAPartirDe, somarDias, somarMeses as somarMesesData } from "@acheaqui/domain";
 import {
   codigoRepresentanteValido,
   criarClientePublico,
@@ -12,11 +12,13 @@ import {
   lerAnunciantesPublicos,
   lerArtistasPublicos,
   lerCatalogoPublico,
+  lerDestaquesPublicos,
   lerEventoPublico,
   lerEventosDoArtista,
   lerEventosPublicos,
   lerPatrocinioPublico,
   registrarCliquePatrocinio,
+  registrarCliqueDestaque,
   type ArtistaDoBanco,
   type EventoDoBanco,
   type FiltroAnunciantes,
@@ -30,6 +32,7 @@ import { categorias, ordemAtalhos } from "@/mocks/categorias";
 import { bannerExclusivoId, linksDestacados, simulacaoComercios, carrosselIds } from "@/mocks/extras";
 import { bairros, cidadeAtual } from "@/mocks/localidades";
 import { apresentacoes as apresentacoesRelativas, artistas as artistasFicticios, eventos as eventosFicticios } from "@/mocks/agenda";
+import { destaques as destaquesFicticios } from "@/mocks/destaques";
 import { cotasPatrocinio, patrocinadores as patrocinadoresFicticios } from "@/mocks/patrocinadores";
 import { extrasDisponiveis, planos, regrasCobranca } from "@/mocks/planos";
 
@@ -417,6 +420,34 @@ export async function contarCliquePatrocinador(slug: string, visitante: string):
     chavePublica: import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? "",
   });
   await registrarCliquePatrocinio(cliente, CIDADE, slug, visitante);
+}
+
+/**
+ * Destaques no ar do bloco "Acontece em Rio das Ostras" (decisões J1 a J5 de
+ * 24/11/2026), na ordem da administração: na produção, do banco; no site de
+ * apresentação, os fictícios. Com falha, a página inicial abre sem o bloco
+ * (a falha fica no registro), porque a busca vale mais que o destaque.
+ */
+export async function destaquesDaInicial(): Promise<DestaqueInicio[]> {
+  const hoje = momentoLocal(new Date()).data;
+  if (ficticio) return destaquesNoAr(destaquesFicticios, hoje);
+  if (!catalogoDoBanco) return [];
+  const r = await lerDestaquesPublicos(clientePublico(), CIDADE, ENDERECO_ARQUIVOS);
+  if (!r.ok) {
+    console.error("destaquesDaInicial: página inicial sem o bloco de destaques", { codigo: r.erro.codigo });
+    return [];
+  }
+  return destaquesNoAr(r.dados, hoje);
+}
+
+/**
+ * Conta o clique no destaque e devolve o destino (só na produção; repetidos
+ * contam uma vez). Destaque fora do ar, ou falha, devolve undefined.
+ */
+export async function cliqueNoDestaque(id: string, visitante: string): Promise<string | undefined> {
+  if (!catalogoDoBanco) return undefined;
+  const r = await registrarCliqueDestaque(clientePublico(), id, visitante);
+  return r.ok ? (r.dados ?? undefined) : undefined;
 }
 
 /**

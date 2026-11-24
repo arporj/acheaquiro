@@ -1,0 +1,229 @@
+---
+// Cadastro e edição de um destaque do bloco "Acontece em Rio das Ostras"
+// (decisões J1 a J5 de 24/11/2026). /admin/destaques/novo cria. A imagem é
+// convertida no navegador (três versões em JPEG, sem a localização), como o
+// cartaz do evento. Servidor em src/lib/destaques.ts.
+import { destaqueEhDivulgacao, momentoLocal } from "@acheaqui/domain";
+import { FotoMarcador, Modal, classesBotao } from "@acheaqui/ui";
+import { LINK_DESTAQUE_MAXIMO, ROTULO_TIPO_DESTAQUE, TAMANHOS_FOTO, TEXTO_DESTAQUE_MAXIMO, TIPOS_DESTAQUE, TITULO_DESTAQUE_MAXIMO } from "@acheaqui/validation";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import { apagarDestaque, eventosParaDestaque, lerDestaqueAdmin, salvarDestaque, type DestaqueAdmin } from "@/lib/destaques";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const idParametro = Astro.params.id ?? "";
+const novo = idParametro === "novo";
+let erro = "";
+// Depois de um erro, o formulário volta com o que foi digitado.
+let enviado: FormData | null = null;
+
+if (Astro.request.method === "POST") {
+  enviado = await Astro.request.clone().formData();
+  const acao = novo ? "salvar" : String(enviado.get("acao") ?? "salvar");
+  const r =
+    acao === "apagar"
+      ? await apagarDestaque(supabase, idParametro, Astro.url.origin)
+      : await salvarDestaque(supabase, Astro.request, novo ? null : idParametro, Astro.url.origin);
+  if (r.ok) return Astro.redirect(`/admin/destaques?aviso=${acao === "apagar" ? "apagado" : "salvo"}`, 303);
+  erro = r.erro.mensagem;
+  Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+}
+
+const [destaqueR, eventosR] = await Promise.all([novo ? Promise.resolve(null) : lerDestaqueAdmin(supabase, idParametro), eventosParaDestaque(supabase)]);
+if (destaqueR && !destaqueR.ok && destaqueR.erro.codigo === "NAO_ENCONTRADO") return Astro.rewrite("/404");
+if (destaqueR && !destaqueR.ok) erro ||= destaqueR.erro.mensagem;
+if (!eventosR.ok) erro ||= eventosR.erro.mensagem;
+const destaque: DestaqueAdmin | null = destaqueR?.ok ? destaqueR.dados : null;
+const eventos = eventosR.ok ? eventosR.dados : [];
+// O evento escolhido continua na lista mesmo que já tenha terminado ou saído da Agenda.
+if (destaque?.eventoId && !eventos.some((e) => e.id === destaque.eventoId)) {
+  eventos.unshift({ id: destaque.eventoId, nome: `${destaque.eventoNome ?? "Evento"} (fora da Agenda)`, dataInicio: "", dataFim: destaque.eventoFim ?? "" });
+}
+
+const hoje = momentoLocal(new Date()).data;
+const doEnvio = (nome: string) => (enviado && enviado.get("acao") !== "apagar" ? String(enviado.get(nome) ?? "") : null);
+const valor = {
+  tipo: doEnvio("tipo") ?? destaque?.tipo ?? "evento",
+  eventoId: doEnvio("eventoId") ?? destaque?.eventoId ?? "",
+  titulo: doEnvio("titulo") ?? destaque?.titulo ?? "",
+  texto: doEnvio("texto") ?? destaque?.texto ?? "",
+  link: doEnvio("link") ?? destaque?.link ?? "",
+  comercio: doEnvio("comercio") ?? destaque?.comercio ?? "",
+  autorizadoPor: doEnvio("autorizadoPor") ?? destaque?.autorizadoPor ?? "",
+  autorizadoEm: doEnvio("autorizadoEm") ?? destaque?.autorizadoEm ?? "",
+  inicio: doEnvio("inicio") ?? destaque?.inicio ?? hoje,
+  fim: doEnvio("fim") ?? destaque?.fim ?? "",
+  ordem: doEnvio("ordem") ?? String(destaque?.ordem ?? 0),
+  ligado: (doEnvio("ligado") ?? (destaque?.ligado === false ? "nao" : "sim")) === "sim",
+};
+const titulo = novo ? "Novo destaque" : (destaque?.titulo ?? "Destaque");
+const caixa = "mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:p-6";
+const dica = "mt-1 text-sm text-slate-600";
+---
+
+<PaginaAdmin titulo={titulo} descricao="Destaque do bloco “Acontece em Rio das Ostras”, na página inicial.">
+  <p class="mt-2"><a href="/admin/destaques" class="text-sm font-bold text-azul-700 hover:underline">‹ Todos os destaques</a></p>
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  {
+    destaque && (
+      <div class={`${caixa} flex flex-col gap-4 sm:flex-row`}>
+        {destaque.imagem && (
+          <FotoMarcador foto={{ id: destaque.id, url: destaque.imagem }} icone="megafone" cor="#1f5bea" inteira tamanhos="16rem" class="aspect-[4/3] w-full rounded-xl sm:w-64" />
+        )}
+        <div class="text-sm text-slate-700">
+          <p class="font-bold text-azul-900">Como aparece hoje</p>
+          <p class="mt-1">
+            {destaque.situacao === "no_ar"
+              ? "No ar na página inicial."
+              : destaque.situacao === "programado"
+                ? `Programado: entra no ar em ${formatarData(destaque.inicio)}.`
+                : destaque.situacao === "encerrado"
+                  ? "Encerrado: o período (ou o evento) já terminou."
+                  : "Desligado: não aparece no site."}
+          </p>
+          <p class="mt-1">
+            {destaqueEhDivulgacao({ tipo: destaque.tipo, comercio: destaque.comercio, origemEvento: destaque.eventoOrigem })
+              ? "Leva a etiqueta “Divulgação”, porque divulga um negócio."
+              : "Sem etiqueta “Divulgação”."}
+          </p>
+          <p class="mt-1">
+            {destaque.cliquesTotal} {destaque.cliquesTotal === 1 ? "clique" : "cliques"} no total, {destaque.cliquesRecentes} nos últimos 30 dias.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  <form method="post" enctype="multipart/form-data" data-form-destaque data-form-cartaz class={caixa}>
+    <input type="hidden" name="acao" value="salvar" />
+
+    <label class={classesRotulo} for="tipo">Tipo</label>
+    <select id="tipo" name="tipo" required data-tipo-destaque class={classesCampo}>
+      {TIPOS_DESTAQUE.map((t) => <option value={t} selected={valor.tipo === t}>{ROTULO_TIPO_DESTAQUE[t]}</option>)}
+    </select>
+
+    <div data-so-tipo="evento">
+      <label class={classesRotulo} for="eventoId">Evento da Agenda</label>
+      <select id="eventoId" name="eventoId" class={classesCampo}>
+        <option value="">Escolha o evento</option>
+        {
+          eventos.map((e) => (
+            <option value={e.id} selected={valor.eventoId === e.id}>
+              {e.nome}
+              {e.dataInicio && ` (${e.dataInicio === e.dataFim ? formatarData(e.dataInicio) : `${formatarData(e.dataInicio)} a ${formatarData(e.dataFim)}`})`}
+            </option>
+          ))
+        }
+      </select>
+      <p class={dica}>
+        Só entra evento publicado e liberado na Agenda (pago ou como cortesia). O clique leva à página do evento, e a imagem é o cartaz dele, a não ser que você
+        escolha outra abaixo. O destaque sai do ar sozinho quando o evento termina.
+      </p>
+    </div>
+
+    <label class={classesRotulo} for="titulo">Título</label>
+    <input id="titulo" name="titulo" required minlength="3" maxlength={TITULO_DESTAQUE_MAXIMO} value={valor.titulo} class={classesCampo} />
+
+    <label class={classesRotulo} for="texto">Texto curto (opcional)</label>
+    <textarea id="texto" name="texto" maxlength={TEXTO_DESTAQUE_MAXIMO} rows="3" class={`${classesCampo} h-auto py-3`}>{valor.texto}</textarea>
+    <p class={dica}>Até {TEXTO_DESTAQUE_MAXIMO} letras. No celular, só o título aparece.</p>
+
+    <div data-so-tipo="campanha ache_aqui">
+      <label class={classesRotulo} for="link">Link</label>
+      <input id="link" name="link" maxlength={LINK_DESTAQUE_MAXIMO} value={valor.link} inputmode="url" class={classesCampo} placeholder="/agenda ou https://site.com.br" />
+      <p class={dica}>Uma página do site (começando com /) ou o endereço completo de outro site (com https://), que abre em outra aba.</p>
+    </div>
+
+    <div data-so-tipo="campanha">
+      <label class={classesRotulo} for="comercio">Comércio citado (opcional)</label>
+      <input id="comercio" name="comercio" maxlength="80" value={valor.comercio} class={classesCampo} />
+      <p class={dica}>
+        Quando a campanha é de um comércio, o destaque leva a etiqueta “Divulgação”. Se ele não for anunciante, peça a autorização por escrito (pode ser no WhatsApp) e
+        guarde o print.
+      </p>
+      <div class="grid gap-x-4 sm:grid-cols-2">
+        <div>
+          <label class={classesRotulo} for="autorizadoPor">Autorizado por</label>
+          <input id="autorizadoPor" name="autorizadoPor" maxlength="80" value={valor.autorizadoPor} class={classesCampo} />
+        </div>
+        <div>
+          <label class={classesRotulo} for="autorizadoEm">Autorizado em</label>
+          <input id="autorizadoEm" name="autorizadoEm" type="date" value={valor.autorizadoEm} class={classesCampo} />
+        </div>
+      </div>
+    </div>
+
+    <label class={classesRotulo} for="escolher-imagem">
+      {destaque?.imagemPropria ? "Trocar a imagem" : "Imagem"}
+      <span data-so-tipo="evento" class="font-normal text-slate-600"> (opcional no evento)</span>
+    </label>
+    <input id="escolher-imagem" type="file" accept="image/*" data-escolher-cartaz class={`${classesCampo} py-2`} />
+    {TAMANHOS_FOTO.map((t) => <input type="file" name={`cartaz_${t}`} data-cartaz-versao={t} hidden />)}
+    <p data-erro-cartaz hidden class="mt-1 text-sm font-semibold text-vermelho-700"></p>
+    <p class={dica}>De preferência deitada, com 1.200 × 900 px. Ela aparece inteira, sem corte; as sobras ficam com a própria imagem desfocada.</p>
+
+    <div class="grid gap-x-4 sm:grid-cols-3">
+      <div>
+        <label class={classesRotulo} for="inicio">Primeiro dia</label>
+        <input id="inicio" name="inicio" type="date" required value={valor.inicio} class={classesCampo} />
+      </div>
+      <div>
+        <label class={classesRotulo} for="fim">Último dia</label>
+        <input id="fim" name="fim" type="date" required value={valor.fim} class={classesCampo} />
+      </div>
+      <div>
+        <label class={classesRotulo} for="ordem">Ordem</label>
+        <input id="ordem" name="ordem" type="number" inputmode="numeric" min="0" max="999" required value={valor.ordem} class={classesCampo} />
+      </div>
+    </div>
+    <p class={dica}>O de menor ordem aparece primeiro.</p>
+
+    <label class={classesRotulo} for="ligado">Situação</label>
+    <select id="ligado" name="ligado" class={classesCampo}>
+      <option value="sim" selected={valor.ligado}>Ligado: aparece nas datas acima</option>
+      <option value="nao" selected={!valor.ligado}>Desligado: não aparece</option>
+    </select>
+
+    <button type="submit" class={classesBotao("azul", "m", "mt-6")}>{novo ? "Criar destaque" : "Salvar"}</button>
+  </form>
+
+  {
+    destaque && (
+      <form method="post" class="mt-5" data-confirmar="Apagar este destaque? Ele sai da página inicial, e os cliques dele são apagados junto.">
+        <input type="hidden" name="acao" value="apagar" />
+        <button type="submit" class={classesBotao("perigo", "m")}>Apagar destaque</button>
+      </form>
+    )
+  }
+
+  <Modal id="modal-confirmar" titulo="Confirmar">
+    <p data-confirmar-texto class="text-slate-700"></p>
+    <div class="mt-5 flex gap-2">
+      <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>Cancelar</button>
+      <button type="button" data-confirmar-sim class={classesBotao("perigo", "m", "flex-1")}>Apagar</button>
+    </div>
+  </Modal>
+</PaginaAdmin>
+
+<script>
+  import { ligarCartaz } from "@/lib/cartazNavegador";
+  import { ligarConfirmacoes } from "@/lib/formularioPatrocinio";
+
+  const form = document.querySelector<HTMLFormElement>("[data-form-destaque]");
+  if (form) {
+    ligarCartaz(form);
+    // Mostra só os campos do tipo escolhido.
+    const tipo = form.querySelector<HTMLSelectElement>("[data-tipo-destaque]");
+    const atualizar = () => {
+      for (const bloco of form.querySelectorAll<HTMLElement>("[data-so-tipo]")) {
+        bloco.hidden = !(bloco.dataset.soTipo ?? "").split(" ").includes(tipo?.value ?? "");
+      }
+    };
+    tipo?.addEventListener("change", atualizar);
+    atualizar();
+  }
+  ligarConfirmacoes();
+</script>

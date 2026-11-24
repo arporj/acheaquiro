@@ -2,13 +2,14 @@
 import { Icone, IconeCategoria, classesBotao, type NomeIcone } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
 import FormBusca from "@/components/FormBusca.astro";
+import AconteceNaCidade from "@/components/inicio/AconteceNaCidade.astro";
 import Passos from "@/components/institucional/Passos.astro";
-import { categoriasAtalho, categoriasPorGrupo } from "@/dados/consultas";
+import { categoriasAtalho, categoriasPorGrupo, destaquesDaInicial } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
 
 guardarNoCache(Astro);
-const [atalhos, grupos] = await Promise.all([categoriasAtalho(), categoriasPorGrupo()]);
+const [atalhos, grupos, destaques] = await Promise.all([categoriasAtalho(), categoriasPorGrupo(), destaquesDaInicial()]);
 const buscasPopulares = ["Diarista", "Pizza", "Bombeiro hidráulico", "Farmácia", "Pet shop", "Marmita"];
 
 // Estrela de 16 pontas do selo "R$ 1,99" do flyer.
@@ -30,29 +31,43 @@ const passos: { icone: NomeIcone; titulo: string; texto: string }[] = [
 
   <main>
     <section class="fundo-raios mt-4 text-white">
-      <div class="mx-auto max-w-6xl px-4 py-10 md:py-14">
-        <h1 class="max-w-3xl font-display text-[2rem] leading-[1.05] font-extrabold sm:text-5xl">
-          Aqui você encontra os melhores <span class="text-amarelo-400">profissionais e serviços</span> de Rio das Ostras!
-        </h1>
-        <p class="mt-3 max-w-xl text-lg text-white/85">
-          Busque, escolha e fale direto pelo WhatsApp. Sem cadastro, sem complicação.
-        </p>
-        <div class="mt-6 max-w-4xl">
-          <FormBusca variante="destaque" />
+      <!--
+        Com destaques (decisões J1 de 24/11/2026): no celular e no tablet, a
+        faixa "Acontece em Rio das Ostras" vem antes do título, logo abaixo do
+        Carrossel, e o subtítulo some para a busca subir; a partir de 1280 px,
+        o card fica na coluna da direita.
+      -->
+      <div
+        class:list={[
+          "mx-auto max-w-6xl px-4",
+          destaques.length > 0 ? "flex flex-col py-6 sm:py-10 md:py-14 xl:grid xl:grid-cols-[minmax(0,1fr)_21rem] xl:items-center xl:gap-10" : "py-10 md:py-14",
+        ]}
+      >
+        <div class="min-w-0">
+          <h1 class="max-w-3xl font-display text-[2rem] leading-[1.05] font-extrabold sm:text-5xl">
+            Aqui você encontra os melhores <span class="text-amarelo-400">profissionais e serviços</span> de Rio das Ostras!
+          </h1>
+          <p class:list={["mt-3 max-w-xl text-lg text-white/85", destaques.length > 0 && "hidden sm:block"]}>
+            Busque, escolha e fale direto pelo WhatsApp. Sem cadastro, sem complicação.
+          </p>
+          <div class="mt-6 max-w-4xl">
+            <FormBusca variante="destaque" />
+          </div>
+          <div class="mt-4 flex flex-wrap items-center gap-2">
+            <span class="text-sm font-bold text-white/70">Mais buscados:</span>
+            {
+              buscasPopulares.map((termo) => (
+                <a
+                  href={`/busca?q=${encodeURIComponent(termo)}`}
+                  class="rounded-full bg-white/15 px-3 py-1 text-sm font-bold text-white hover:bg-white/25"
+                >
+                  {termo}
+                </a>
+              ))
+            }
+          </div>
         </div>
-        <div class="mt-4 flex flex-wrap items-center gap-2">
-          <span class="text-sm font-bold text-white/70">Mais buscados:</span>
-          {
-            buscasPopulares.map((termo) => (
-              <a
-                href={`/busca?q=${encodeURIComponent(termo)}`}
-                class="rounded-full bg-white/15 px-3 py-1 text-sm font-bold text-white hover:bg-white/25"
-              >
-                {termo}
-              </a>
-            ))
-          }
-        </div>
+        <AconteceNaCidade destaques={destaques} class="order-first mb-6 xl:order-none xl:mb-0" />
       </div>
     </section>
 

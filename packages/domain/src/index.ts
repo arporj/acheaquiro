@@ -23,3 +23,4 @@ export * from "./extras";
 export * from "./enquadramento";
 export * from "./avisos";
 export * from "./cadastroAnunciante";
+export * from "./destaques";

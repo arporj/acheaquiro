@@ -1,0 +1,101 @@
+---
+// Bloco "Acontece em Rio das Ostras" da página inicial (decisões J1 a J5 de
+// 24/11/2026): divulgação feita pelo próprio site, um destaque por vez,
+// trocando sozinho (src/lib/destaquesNavegador.ts). No celular e no tablet,
+// faixa compacta no topo do bloco azul, logo abaixo do Carrossel; a partir de
+// 1280 px, card na coluna da direita, ao lado da busca. Na produção, o clique
+// passa por /d/[id], que conta o clique (J5); no site de apresentação, vai direto.
+import { destaqueEhDivulgacao } from "@acheaqui/domain";
+import type { DestaqueInicio } from "@acheaqui/types";
+import { FotoMarcador, Icone } from "@acheaqui/ui";
+import { ambiente } from "@/lib/ambiente";
+
+interface Props {
+  destaques: DestaqueInicio[];
+  class?: string;
+}
+
+const { destaques, class: classe = "" } = Astro.props;
+const varios = destaques.length > 1;
+const externo = (d: DestaqueInicio) => d.destino.startsWith("https://");
+const href = (d: DestaqueInicio) => (ambiente === "producao" ? `/d/${d.id}` : d.destino);
+---
+
+{
+  destaques.length > 0 && (
+    <section aria-labelledby="titulo-acontece" data-destaques class={`min-w-0 ${classe}`}>
+      <div class="flex items-center justify-between gap-3">
+        <h2 id="titulo-acontece" class="text-xs font-extrabold tracking-wider text-white/85 uppercase">
+          Acontece em Rio das Ostras
+        </h2>
+        {varios && (
+          <div class="flex" data-destaques-pontos>
+            {destaques.map((d, i) => (
+              <button
+                type="button"
+                data-destaques-ponto={i}
+                aria-label={`Mostrar o destaque ${i + 1} de ${destaques.length}: ${d.titulo}`}
+                aria-current={i === 0 ? "true" : undefined}
+                class="group -my-3.5 grid h-11 w-6 place-items-center"
+              >
+                <span class="size-2 rounded-full bg-white/45 transition group-aria-[current=true]:w-5 group-aria-[current=true]:bg-amarelo-400" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <ul
+        data-destaques-lista
+        class="mt-2 flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {destaques.map((d, i) => (
+          <li class="w-full shrink-0 snap-start" aria-roledescription={varios ? "destaque" : undefined} aria-label={varios ? `${i + 1} de ${destaques.length}` : undefined}>
+            <a
+              href={href(d)}
+              rel={externo(d) ? "noopener nofollow" : "nofollow"}
+              target={externo(d) ? "_blank" : undefined}
+              data-sem-carregamento={externo(d) ? "" : undefined}
+              class="flex h-full gap-3 rounded-2xl bg-white p-2 text-tinta shadow-[0_10px_30px_-12px_rgb(10_34_102/0.55)] transition hover:bg-azul-50 xl:flex-col xl:gap-0 xl:overflow-hidden xl:p-0"
+            >
+              <div class="relative aspect-[4/3] w-28 shrink-0 overflow-hidden rounded-xl sm:w-36 xl:w-full xl:rounded-none">
+                <FotoMarcador
+                  foto={d.imagem ? { id: d.id, url: d.imagem } : undefined}
+                  icone="megafone"
+                  cor="#1f5bea"
+                  inteira
+                  prioritaria={i === 0}
+                  tamanhos="(min-width: 1280px) 21rem, 9rem"
+                  class="size-full"
+                />
+                {destaqueEhDivulgacao(d) && (
+                  <span class="absolute top-1.5 left-1.5 rounded-full bg-white/95 px-2 py-0.5 text-[0.6rem] font-extrabold tracking-wide text-azul-900 uppercase shadow-sm xl:top-2.5 xl:left-2.5 xl:text-[0.65rem]">
+                    Divulgação
+                  </span>
+                )}
+              </div>
+              <div class="flex min-w-0 flex-col justify-center pr-1 xl:flex-1 xl:justify-start xl:p-4">
+                <p class="line-clamp-2 font-display text-base leading-tight font-extrabold text-azul-900 sm:text-lg">{d.titulo}</p>
+                {d.texto && (
+                  <p class="mt-1 hidden text-sm text-slate-600 sm:block">
+                    <span class="line-clamp-2 xl:line-clamp-3">{d.texto}</span>
+                  </p>
+                )}
+                <p class="mt-1 flex items-center gap-0.5 text-sm font-bold text-azul-600 xl:mt-auto xl:pt-2">
+                  {externo(d) ? "Abrir o site" : "Saiba mais"}
+                  <Icone nome="direita" class="size-3.5" />
+                  {externo(d) && <span class="sr-only">(abre em outra aba)</span>}
+                </p>
+              </div>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+<script>
+  import { ligarDestaques } from "@/lib/destaquesNavegador";
+
+  for (const bloco of document.querySelectorAll<HTMLElement>("[data-destaques]")) ligarDestaques(bloco);
+</script>

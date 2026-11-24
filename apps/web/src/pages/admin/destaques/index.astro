@@ -1,0 +1,110 @@
+---
+// Destaques do bloco "Acontece em Rio das Ostras" da página inicial (decisões
+// J1 a J5 de 24/11/2026): quantos estão no ar, programados, encerrados e
+// desligados, o tempo para cada um voltar à tela e os cliques de cada um.
+// Regras em packages/domain/destaques.ts.
+import { segundosAteVoltar, type SituacaoDestaque } from "@acheaqui/domain";
+import { Icone, classesBotao } from "@acheaqui/ui";
+import { ROTULO_TIPO_DESTAQUE } from "@acheaqui/validation";
+import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import Aviso from "@/components/conta/Aviso.astro";
+import { DIAS_CLIQUES_RECENTES, listarDestaquesAdmin } from "@/lib/destaques";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const lista = await listarDestaquesAdmin(supabase);
+const destaques = lista.ok ? lista.dados.destaques : [];
+const contagem = lista.ok ? lista.dados.contagem : { no_ar: 0, programado: 0, encerrado: 0, desligado: 0 };
+const volta = segundosAteVoltar(contagem.no_ar);
+const AVISOS: Record<string, string> = { salvo: "Destaque salvo.", apagado: "Destaque apagado." };
+const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
+
+const SITUACAO: Record<SituacaoDestaque, { rotulo: string; classe: string }> = {
+  no_ar: { rotulo: "No ar", classe: "bg-zap-50 text-zap-700" },
+  programado: { rotulo: "Programado", classe: "bg-azul-50 text-azul-800" },
+  encerrado: { rotulo: "Encerrado", classe: "bg-slate-100 text-slate-700" },
+  desligado: { rotulo: "Desligado", classe: "bg-amarelo-200 text-tinta" },
+};
+const resumo: { chave: SituacaoDestaque; rotulo: string }[] = [
+  { chave: "no_ar", rotulo: "No ar" },
+  { chave: "programado", rotulo: "Programados" },
+  { chave: "encerrado", rotulo: "Encerrados" },
+  { chave: "desligado", rotulo: "Desligados" },
+];
+const periodo = (inicio: string, fim: string) => (inicio === fim ? formatarData(inicio) : `${formatarData(inicio)} a ${formatarData(fim)}`);
+---
+
+<PaginaAdmin titulo="Destaques da página inicial" descricao="O bloco “Acontece em Rio das Ostras”: eventos da Agenda, campanhas e divulgação do Ache Aqui.">
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {!lista.ok && <Aviso tipo="erro">{lista.erro.mensagem}</Aviso>}
+
+  <div class="mt-5">
+    <a href="/admin/destaques/novo" class={classesBotao("azul", "m")}>
+      <Icone nome="megafone" class="size-4" />
+      Novo destaque
+    </a>
+  </div>
+
+  <dl class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+    {
+      resumo.map((r) => (
+        <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+          <dt class="text-sm font-bold text-slate-600">{r.rotulo}</dt>
+          <dd class="mt-1 font-display text-2xl font-extrabold text-azul-900">{contagem[r.chave]}</dd>
+        </div>
+      ))
+    }
+  </dl>
+  <p class="mt-3 text-sm text-slate-600">
+    {
+      contagem.no_ar === 0
+        ? "Nenhum destaque no ar: a página inicial aparece sem o bloco."
+        : contagem.no_ar === 1
+          ? "Com 1 destaque no ar, ele fica parado no bloco."
+          : `Com ${contagem.no_ar} destaques no ar, cada um troca a cada ${volta / contagem.no_ar} segundos e volta à tela a cada ${volta} segundos.`
+    }
+  </p>
+
+  {
+    lista.ok && destaques.length === 0 && (
+      <p class="mt-6 rounded-2xl bg-white p-5 text-slate-700 shadow-sm ring-1 ring-black/5">
+        Nenhum destaque cadastrado. Use “Novo destaque” para divulgar um evento da Agenda, uma campanha ou o próprio Ache Aqui.
+      </p>
+    )
+  }
+
+  <ul class="mt-5 space-y-3">
+    {
+      destaques.map((d) => (
+        <li class="flex gap-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+          <div class="size-20 shrink-0 overflow-hidden rounded-xl bg-azul-50">
+            {d.imagem ? (
+              <img src={d.imagem} alt="" loading="lazy" decoding="async" class="size-full object-cover" />
+            ) : (
+              <span class="grid size-full place-items-center text-xs text-slate-500">Sem imagem</span>
+            )}
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class={`rounded-full px-2.5 py-0.5 text-xs font-bold ${SITUACAO[d.situacao].classe}`}>{SITUACAO[d.situacao].rotulo}</span>
+              <span class="text-xs font-semibold text-slate-500">{ROTULO_TIPO_DESTAQUE[d.tipo]}</span>
+            </div>
+            <a href={`/admin/destaques/${d.id}`} class="mt-1 block font-bold text-azul-900 hover:underline">
+              {d.titulo}
+            </a>
+            <p class="text-sm text-slate-600">
+              {periodo(d.inicio, d.fim)} · Ordem {d.ordem}
+              {d.comercio && ` · ${d.comercio}`}
+            </p>
+            <p class="text-sm text-slate-600">
+              {d.cliquesTotal} {d.cliquesTotal === 1 ? "clique" : "cliques"} no total · {d.cliquesRecentes} nos últimos {DIAS_CLIQUES_RECENTES} dias
+            </p>
+          </div>
+          <a href={`/admin/destaques/${d.id}`} class={classesBotao("contorno", "p", "self-start")}>
+            Editar
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</PaginaAdmin>

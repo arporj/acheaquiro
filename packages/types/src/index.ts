@@ -286,6 +286,33 @@ export interface Patrocinador {
  */
 export type OrigemEvento = "comercio" | "artista" | "avulso" | "orgao_publico";
 
+/**
+ * Bloco "Acontece em Rio das Ostras" da página inicial (decisões J1 a J5 de
+ * 24/11/2026): evento da Agenda, campanha solidária ou de utilidade pública,
+ * ou divulgação do próprio Ache Aqui.
+ */
+export type TipoDestaque = "evento" | "campanha" | "ache_aqui";
+
+export interface DestaqueInicio {
+  id: string;
+  tipo: TipoDestaque;
+  titulo: string;
+  texto: string;
+  /** Imagem (versão de 800 px): a do destaque ou, no de evento sem imagem própria, o cartaz do evento. */
+  imagem: string | null;
+  /** Para onde o clique leva: uma página do site ou um endereço externo. */
+  destino: string;
+  /** Comércio citado (decisão J4). */
+  comercio: string | null;
+  origemEvento: OrigemEvento | null;
+  /** Último dia do evento, no destaque de evento. */
+  eventoFim: string | null;
+  inicio: string;
+  fim: string;
+  ordem: number;
+  ligado: boolean;
+}
+
 export interface Artista {
   id: string;
   slug: string;

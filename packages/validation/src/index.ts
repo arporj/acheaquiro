@@ -15,3 +15,4 @@ export * from "./comum";
 export * from "./negociacao";
 export * from "./denuncia";
 export * from "./agenda";
+export * from "./destaque";
