@@ -194,6 +194,17 @@ const ROTULO_PROPOSTA: Record<string, string> = {
       )
     }
     {
+      acoes.cadastrarEvento && (
+        <a
+          href={`${representante ? "/representante/eventos" : "/admin/agenda"}/novo?perfil=${cliente.slug}&origem=${cliente.tipo === "comercio" ? "comercio" : "artista"}`}
+          class={classesBotao("contorno", "m")}
+        >
+          <Icone nome="calendario" class="size-4" />
+          Cadastrar evento
+        </a>
+      )
+    }
+    {
       !representante && (
         <a href={linkCadastro} class={classesBotao("contorno", "m")}>
           Ver o cadastro

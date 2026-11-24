@@ -32,7 +32,8 @@ interface Aviso {
     | "extra_lembrete_7_dias"
     | "extra_lembrete_vencimento"
     | "extra_vencido"
-    | "termos_novos";
+    | "termos_novos"
+    | "privacidade_nova";
   para: string;
   tentativas: number;
   dados: {
@@ -157,6 +158,18 @@ function montar(
       ],
       botao: { texto: "Ler os Termos de Uso", link: `${PRODUCAO}/termos/v${d.versao ?? ""}` },
       rodape: "Você recebe este aviso porque tem conta no Ache Aqui RO e aceitou os Termos de Uso.",
+    };
+  }
+  if (aviso.tipo === "privacidade_nova") {
+    return {
+      assunto: "A Política de Privacidade do Ache Aqui RO mudou",
+      paragrafos: [
+        `${d.nome ? `Olá, ${d.nome}. ` : ""}A versão ${d.versao ?? ""} da Política de Privacidade do Ache Aqui RO vale a partir de ${data(d.vigenteDesde)}.`,
+        "O que mudou: a Política passa a explicar os dados dos comércios importados da Receita Federal e dos pedidos sobre esses perfis, o histórico de atendimento, os pagamentos no cartão e o que os representantes veem, e os dados dos eventos da Agenda: organizadores, artistas e barracas. O tratamento dos seus dados de anunciante continua o mesmo.",
+        "No próximo acesso à sua área, o site pede o aceite da versão nova.",
+      ],
+      botao: { texto: "Ler a Política de Privacidade", link: `${PRODUCAO}/privacidade/v${d.versao ?? ""}` },
+      rodape: "Você recebe este aviso porque tem conta no Ache Aqui RO e aceitou a Política de Privacidade.",
     };
   }
   if (aviso.tipo === "denuncia") {

@@ -20,17 +20,20 @@ interface Props {
   ultimoDia: string;
   /** Depois de criado, só a administração muda a origem e o anúncio (o banco recusa para os outros). */
   origemLivre?: boolean;
+  /** Evento novo vindo da ficha do cliente (decisão V3): a origem e o endereço do perfil já preenchidos. */
+  inicial?: { origem: OrigemEvento; perfil: string } | null;
 }
 
-const { evento, bairros, origens, anuncios, hoje, ultimoDia, origemLivre = false } = Astro.props;
+const { evento, bairros, origens, anuncios, hoje, ultimoDia, origemLivre = false, inicial = null } = Astro.props;
 const novo = !evento;
-const origemAtual = evento?.origem ?? origens[0]?.valor ?? "avulso";
+const origemAtual = evento?.origem ?? (inicial && origens.some((o) => o.valor === inicial.origem) ? inicial.origem : (origens[0]?.valor ?? "avulso"));
 const travarOrigem = !novo && !origemLivre;
 const reais = (centavos: number | null | undefined) => (centavos == null ? "" : (centavos / 100).toFixed(2).replace(".", ","));
 const simNao = (v: boolean | null | undefined) => (v === true ? "sim" : v === false ? "nao" : "");
 const ingressos = [...(evento?.ingressos ?? []), ...Array.from({ length: Math.max(0, 3 - (evento?.ingressos.length ?? 0)) }, () => null)];
 const comAnuncio = origemAtual === "comercio" || origemAtual === "artista";
-const enderecoPerfil = evento?.anunciante ? `${Astro.url.origin}/perfil/${evento.anunciante.slug}` : "";
+const slugPerfil = evento?.anunciante?.slug ?? inicial?.perfil ?? "";
+const enderecoPerfil = slugPerfil ? `${Astro.url.origin}/perfil/${slugPerfil}` : "";
 ---
 
 <form method="post" data-form-evento>

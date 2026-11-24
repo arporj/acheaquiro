@@ -13,7 +13,7 @@ const textos = import.meta.glob<Texto>("../conteudo/*-v*.md", { eager: true });
 
 export const DOCUMENTOS: Record<Documento, { titulo: string; vigente: string }> = {
   termos: { titulo: "Termos de Uso", vigente: "2" },
-  privacidade: { titulo: "Política de Privacidade", vigente: "1" },
+  privacidade: { titulo: "Política de Privacidade", vigente: "2" },
   confidencialidade: { titulo: "Termo de Confidencialidade do Representante", vigente: "1" },
 };
 

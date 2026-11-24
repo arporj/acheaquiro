@@ -40,6 +40,7 @@ describe("acoesDaFicha", () => {
       fazerProposta: false,
       simular: true,
       abrir: "assinatura",
+      cadastrarEvento: false,
     });
   });
 
@@ -82,5 +83,11 @@ describe("acoesDaFicha", () => {
   it("administrador não fecha nem propõe em nome do representante, mas abre negociação", () => {
     const acoes = acoesDaFicha({ ...importadoLivre, representante: false, temConta: true, cadastro: "meu" });
     expect(acoes).toMatchObject({ fechar: false, continuarCadastro: false, fazerProposta: false, simular: false, abrir: "assinatura" });
+  });
+
+  it("cadastrar evento só para quem tem conta, na equipe e no representante (decisão V3)", () => {
+    expect(acoesDaFicha({ ...importadoLivre, importado: false, temConta: true }).cadastrarEvento).toBe(true);
+    expect(acoesDaFicha({ ...importadoLivre, representante: false, importado: false, temConta: true }).cadastrarEvento).toBe(true);
+    expect(acoesDaFicha(importadoLivre).cadastrarEvento).toBe(false);
   });
 });

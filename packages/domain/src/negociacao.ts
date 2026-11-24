@@ -36,6 +36,11 @@ export interface AcoesDaFicha {
   simular: boolean;
   /** Tipo que pode ser aberto à mão; vazio quando já há negociação aberta ou o cliente não pode ser procurado. */
   abrir: TipoNegociacao | null;
+  /**
+   * Cadastrar um evento na Agenda para o anúncio (decisão V3 de 24/11/2026): só com
+   * conta, porque o evento do comércio ou do artista fica na área do dono, que publica (K3).
+   */
+  cadastrarEvento: boolean;
 }
 
 /**
@@ -52,5 +57,6 @@ export function acoesDaFicha(s: SituacaoDaFicha): AcoesDaFicha {
     fazerProposta: s.representante && podeProcurar && s.temConta,
     simular: s.representante && !s.planoEmDia,
     abrir: podeProcurar && !s.abertas.includes(tipoNovo) ? tipoNovo : null,
+    cadastrarEvento: s.temConta,
   };
 }

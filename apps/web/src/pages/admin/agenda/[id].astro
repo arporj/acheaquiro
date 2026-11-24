@@ -17,6 +17,7 @@ import {
   AVISOS_DO_EVENTO,
   executarAcaoDoEvento,
   lerEventoAdmin,
+  lerInicioDoEvento,
   lerSituacaoDoEvento,
   listarArtistasAdmin,
   listarBairros,
@@ -217,7 +218,7 @@ const divisoria = "mt-5 border-t border-slate-100 pt-4";
 
   <section class="mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:p-5" aria-labelledby="titulo-dados">
     <h2 id="titulo-dados" class="font-display text-lg font-bold text-azul-900">Dados do evento</h2>
-    <FormularioEvento evento={evento} bairros={bairros} origens={origens} hoje={hoje} ultimoDia={ultimoDiaParaComecar(hoje)} origemLivre />
+    <FormularioEvento inicial={novo ? lerInicioDoEvento(Astro.url.searchParams) : null} evento={evento} bairros={bairros} origens={origens} hoje={hoje} ultimoDia={ultimoDiaParaComecar(hoje)} origemLivre />
   </section>
 
   {evento && <PartesDoEvento evento={evento} artistas={artistas} linkArtistas="/admin/agenda/artistas" />}

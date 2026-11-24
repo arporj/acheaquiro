@@ -498,6 +498,18 @@ export async function apagarBarraca(supabase: SupabaseClient, eventoId: string, 
   return ok(null);
 }
 
+/**
+ * Evento novo aberto pela ficha do cliente (decisão V3): a origem (comércio ou
+ * artista) e o perfil vêm no endereço. Só preenche o formulário; o anúncio é
+ * conferido de novo ao salvar (anuncianteDoEndereco) e pelo banco.
+ */
+export function lerInicioDoEvento(parametros: URLSearchParams): { origem: "comercio" | "artista"; perfil: string } | null {
+  const origem = parametros.get("origem");
+  const perfil = parametros.get("perfil") ?? "";
+  if ((origem !== "comercio" && origem !== "artista") || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(perfil) || perfil.length > 120) return null;
+  return { origem, perfil };
+}
+
 /** A equipe conferiu o evento publicado por um cliente (decisão K1); o banco grava quem e quando. */
 export async function marcarEventoConferido(supabase: SupabaseClient, id: string): Promise<Resultado<null>> {
   const { data, error } = await supabase.from("eventos").update({ conferido_em: new Date().toISOString() }).eq("id", id).select("id").maybeSingle();

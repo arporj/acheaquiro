@@ -16,6 +16,7 @@ import {
   AVISOS_DO_EVENTO,
   executarAcaoDoEvento,
   lerEventoAdmin,
+  lerInicioDoEvento,
   lerSituacaoDoEvento,
   listarArtistasAdmin,
   listarBairros,
@@ -141,7 +142,7 @@ const secao = "mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 sm:p-
         <h2 id="titulo-dados" class="font-display text-lg font-bold text-azul-900">
           Dados do evento
         </h2>
-        <FormularioEvento evento={evento} bairros={bairrosR.ok ? bairrosR.dados : []} origens={origens} hoje={hoje} ultimoDia={ultimoDiaParaComecar(hoje)} />
+        <FormularioEvento inicial={novo ? lerInicioDoEvento(Astro.url.searchParams) : null} evento={evento} bairros={bairrosR.ok ? bairrosR.dados : []} origens={origens} hoje={hoje} ultimoDia={ultimoDiaParaComecar(hoje)} />
       </section>
     )
   }
