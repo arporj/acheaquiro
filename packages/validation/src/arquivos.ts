@@ -29,11 +29,12 @@ export type FinalidadeFotoPerfil = "perfil" | "capa" | "galeria";
 
 /**
  * Tamanho recomendado de cada foto do perfil, pelo recorte da página
- * /perfil/[slug] (a foto preenche o espaço e o que sobra é cortado, a partir do
- * centro). Perfil: círculo (autônomo) ou quadrado de cantos arredondados
- * (comércio), de 96 a 112 px. Capa: faixa do topo, de 128 px de altura no
- * celular a 192 px no computador, cerca de 4 por 1 no computador e 2,7 por 1
- * no celular. Galeria: quadrados. A foto abaixo do mínimo é aceita, com aviso.
+ * /perfil/[slug]. Perfil: círculo (autônomo) ou quadrado de cantos arredondados
+ * (comércio), de 96 a 112 px, cortado a partir do centro. Capa: faixa do topo,
+ * de 128 px de altura no celular a 192 px no computador (cerca de 4 por 1 no
+ * computador e 2,7 por 1 no celular), mostrada inteira, sem corte, com as sobras
+ * preenchidas pela própria foto desfocada (decisão de 24/11/2026). Galeria:
+ * quadrados, cortados a partir do centro. A foto abaixo do mínimo é aceita, com aviso.
  */
 export const MEDIDAS_FOTO: Record<FinalidadeFotoPerfil, { ideal: [number, number]; minimo: [number, number]; orientacao: string }> = {
   perfil: {
@@ -45,7 +46,7 @@ export const MEDIDAS_FOTO: Record<FinalidadeFotoPerfil, { ideal: [number, number
     ideal: [1600, 400],
     minimo: [1200, 300],
     orientacao:
-      "Horizontal, de 1.600 × 400 px (proporção de 4 por 1; mínimo de 1.200 × 300 px). No celular, as laterais são cortadas: deixe o que importa nos 2/3 do meio e sem texto pequeno.",
+      "Horizontal, de 1.600 × 400 px (proporção de 4 por 1; mínimo de 1.200 × 300 px). A capa aparece inteira, sem corte; no celular ela fica mais baixa, então evite texto pequeno. Fora dessa proporção, as sobras aparecem com a própria foto desfocada.",
   },
   galeria: {
     ideal: [1200, 1200],

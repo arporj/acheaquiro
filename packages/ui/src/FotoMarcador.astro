@@ -12,6 +12,21 @@ interface Props {
   tamanhoIcone?: string;
   /** Foto no topo da página: carrega na hora e com prioridade. As demais carregam perto de aparecer na tela. */
   prioritaria?: boolean;
+  /**
+   * Mostra a foto inteira, sem cortar, e preenche as sobras com a própria foto
+   * desfocada (capa do perfil: a arte do anunciante costuma ter texto nas bordas).
+   */
+  inteira?: boolean;
+  /** Atributo sizes da imagem; com ele, a foto do bucket (<chave>-800) ganha as versões de 400 e 1.600 px. */
+  tamanhos?: string;
+}
+
+/** Versões que o envio grava no bucket público: <chave>-400, -800 e -1600 (src/lib/fotoNavegador.ts). */
+function versoes(url: string): string | undefined {
+  const partes = url.match(/^(.*)-800\.(jpg|webp)$/);
+  if (!partes) return undefined;
+  const [, chave, extensao] = partes;
+  return [400, 800, 1600].map((largura) => `${chave}-${largura}.${extensao} ${largura}w`).join(", ");
 }
 
 function variacao(semente: string): number {
@@ -20,20 +35,46 @@ function variacao(semente: string): number {
   return soma;
 }
 
-const { foto, icone, cor, class: classe = "", tamanhoIcone = "text-4xl", prioritaria = false } = Astro.props;
+const { foto, icone, cor, class: classe = "", tamanhoIcone = "text-4xl", prioritaria = false, inteira = false, tamanhos } = Astro.props;
+const srcset = foto?.url && tamanhos ? versoes(foto.url) : undefined;
+const carregamento = {
+  loading: prioritaria ? "eager" : "lazy",
+  fetchpriority: prioritaria ? "high" : undefined,
+  decoding: "async",
+} as const;
 const semente = variacao(foto?.id ?? icone);
 const angulo = 120 + (semente % 90);
 const claridade = 18 + (semente % 3) * 8;
 ---
 
 {
-  foto?.url ? (
+  foto?.url && inteira ? (
+    <div class={`relative overflow-hidden bg-tinta ${classe}`}>
+      <img
+        src={foto.url}
+        srcset={srcset}
+        sizes={srcset ? tamanhos : undefined}
+        alt=""
+        aria-hidden="true"
+        {...carregamento}
+        class="absolute inset-0 size-full scale-110 object-cover blur-xl brightness-75"
+      />
+      <img
+        src={foto.url}
+        srcset={srcset}
+        sizes={srcset ? tamanhos : undefined}
+        alt={foto.legenda ?? ""}
+        {...carregamento}
+        class="relative size-full object-contain"
+      />
+    </div>
+  ) : foto?.url ? (
     <img
       src={foto.url}
+      srcset={srcset}
+      sizes={srcset ? tamanhos : undefined}
       alt={foto.legenda ?? ""}
-      loading={prioritaria ? "eager" : "lazy"}
-      fetchpriority={prioritaria ? "high" : undefined}
-      decoding="async"
+      {...carregamento}
       class={`object-cover ${classe}`}
     />
   ) : (
