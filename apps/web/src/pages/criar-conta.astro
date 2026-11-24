@@ -13,7 +13,7 @@ import { classesCampo, classesErroCampo, classesRotulo } from "@/components/cont
 import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
 import RequisitosSenha from "@/components/conta/RequisitosSenha.astro";
 import Turnstile from "@/components/conta/Turnstile.astro";
-import { clienteServico, destinoDepoisDeEntrar, ipDaRequisicao } from "@/lib/sessao";
+import { destinoDepoisDeEntrar } from "@/lib/sessao";
 
 const supabase = Astro.locals.supabase!;
 const usuario = Astro.locals.usuario;
@@ -42,12 +42,11 @@ if (Astro.request.method === "POST") {
     campos = mensagensPorCampo(dados.error);
     Astro.response.status = 400;
   } else {
-    const resultado = await criarConta(supabase, clienteServico(), {
+    const resultado = await criarConta(supabase, {
       nome: dados.data.nome,
       email: dados.data.email,
       senha: dados.data.senha,
       tokenRobo: dados.data.tokenRobo,
-      ip: ipDaRequisicao(Astro.clientAddress),
     });
     if (resultado.ok) {
       enviado = true;
