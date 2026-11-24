@@ -7,6 +7,8 @@ import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
 import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
 import Turnstile from "@/components/conta/Turnstile.astro";
+import { obterAberturaAoPublico } from "@/dados/consultas";
+import { hojeNaCidade } from "@/lib/pagamentos";
 import { clienteServico, destinoDepoisDeEntrar, ipDaRequisicao } from "@/lib/sessao";
 
 const supabase = Astro.locals.supabase!;
@@ -27,6 +29,8 @@ const avisos: Record<string, string> = {
   saiu: "Você saiu da sua conta.",
 };
 const aviso = [...Astro.url.searchParams.keys()].map((chave) => avisos[chave]).find(Boolean);
+// Cadastro próprio aberto ao público a partir da abertura (decisão G6 de 24/11/2026).
+const cadastroAberto = hojeNaCidade() >= (await obterAberturaAoPublico());
 let erro = Astro.url.searchParams.get("erro") === "interno" ? "Não foi possível entrar agora. Tente de novo em instantes." : "";
 let campos: Record<string, string> = {};
 let email = "";
@@ -106,4 +110,11 @@ if (Astro.request.method === "POST") {
   <p class="mt-5 text-center">
     <a href="/recuperar-senha" class="font-bold text-azul-600 hover:underline">Esqueci minha senha</a>
   </p>
+  {
+    cadastroAberto && (
+      <p class="mt-3 text-center text-slate-600">
+        Quer anunciar? <a href="/criar-conta" class="font-bold text-azul-600 hover:underline">Criar conta</a>
+      </p>
+    )
+  }
 </PaginaAcesso>

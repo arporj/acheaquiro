@@ -25,7 +25,7 @@ import { clienteServico } from "./sessao";
 import { paraSlug } from "./texto";
 
 type CodigoFalha = "DADOS_INVALIDOS" | "CONFLITO" | "SEM_PERMISSAO" | "NAO_ENCONTRADO" | "LIMITE_DO_PLANO" | "ERRO_INTERNO";
-type Falha = { ok: false; erro: { codigo: CodigoFalha; mensagem: string; campos?: Record<string, string> } };
+export type Falha = { ok: false; erro: { codigo: CodigoFalha; mensagem: string; campos?: Record<string, string> } };
 const falha = (codigo: CodigoFalha, mensagem: string, campos?: Record<string, string>): Falha => ({ ok: false, erro: { codigo, mensagem, campos } });
 const ERRO_INTERNO = falha("ERRO_INTERNO", "Não foi possível concluir agora. Tente de novo em instantes.");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -297,8 +297,12 @@ export interface AnuncianteAdmin {
   criado_em: string;
   /** Rascunho que vai substituir este comércio importado quando o comerciante aceitar. */
   importado_id: string | null;
-  /** Foi ao ar sem a aprovação prévia da equipe (importado assumido): aparece em "Para analisar". */
+  /** Foi ao ar sem a aprovação prévia da equipe (importado assumido) ou o dono mudou o perfil no ar (G4): aparece em "Para analisar". */
   revisar: boolean;
+  /** Quem criou o cadastro: a própria conta, no cadastro próprio. */
+  cadastrado_por: string | null;
+  /** Representante do código informado no cadastro próprio, até a aprovação. */
+  representante_indicado_id: string | null;
   categorias: { categoria_id: string }[];
   bairros: { bairro_id: string; finalidade: "atendimento" | "entrega" }[];
   enderecos: { id: string; logradouro: string; numero: string; complemento: string | null; bairro_id: string; principal: boolean }[];
@@ -314,7 +318,7 @@ export async function lerAnunciante(supabase: SupabaseClient, id: string): Promi
     .select(
       "id, nome, slug, tipo, status, origem, fundador, fundador_desde, usuario_id, representante_id, email_convite, plano_id, plano_escolhido_id, " +
         "periodicidade_escolhida, motivo_correcao, categoria_principal_id, descricao, whatsapp, telefone, instagram, formas_pagamento, registro_conselho, " +
-        "site_proprio, atende_toda_cidade, faz_entrega, entrega_toda_cidade, aprovado_em, criado_em, importado_id, revisar, " +
+        "site_proprio, atende_toda_cidade, faz_entrega, entrega_toda_cidade, aprovado_em, criado_em, importado_id, revisar, cadastrado_por, representante_indicado_id, " +
         "categorias:anunciante_categorias(categoria_id), bairros:anunciante_bairros(bairro_id, finalidade), " +
         "enderecos(id, logradouro, numero, complemento, bairro_id, principal), horarios(dia_semana, abre, fecha, endereco_id), " +
         "dados_receita(cnpj, razao_social, telefones, email)",
@@ -359,7 +363,7 @@ export interface DadosFormulario {
 }
 
 /** Os 7 dias do horário como chegam do formulário (campos horario.<dia>.<campo>). */
-function horarioDoEnvio(form: FormData): DiaHorarioFormulario[] {
+export function horarioDoEnvio(form: FormData): DiaHorarioFormulario[] {
   const texto = (nome: string) => String(form.get(nome) ?? "").slice(0, 10);
   return NOMES_DIAS.map((_, dia) => ({
     aberto: form.get(`horario.${dia}.aberto`) === "on",
@@ -382,7 +386,7 @@ function horarioGravado(a: Pick<AnuncianteAdmin, "horarios">): HorarioDia[] {
 }
 
 /** Troca o horário inteiro, só quando mudou (a auditoria registra cada linha). */
-async function salvarHorario(
+export async function salvarHorario(
   supabase: SupabaseClient,
   anuncianteId: string,
   horario: HorarioDia[],
@@ -449,7 +453,11 @@ export function lerFormulario(form: FormData, tipoFixo?: "profissional" | "comer
 const hoje = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 
 /** Confere categorias (tipo e limite do plano) antes de gravar. */
-async function conferirCategorias(supabase: SupabaseClient, perfil: PerfilAnunciante, planoId: string | null): Promise<Falha | null> {
+export async function conferirCategorias(
+  supabase: SupabaseClient,
+  perfil: Pick<PerfilAnunciante, "tipo" | "categoriaPrincipalId" | "categoriasAdicionais">,
+  planoId: string | null,
+): Promise<Falha | null> {
   const categorias = await listarCategoriasAdmin(supabase);
   if (!categorias.ok) return categorias as Falha;
   const porId = new Map(categorias.dados.map((c) => [c.id, c]));
@@ -508,7 +516,7 @@ function colunasDoPerfil(perfil: PerfilAnunciante) {
 }
 
 /** Slug livre na cidade: o nome, e com -2, -3... quando já existe. */
-async function slugLivre(supabase: SupabaseClient, cidadeId: string, nome: string): Promise<Resultado<string>> {
+export async function slugLivre(supabase: SupabaseClient, cidadeId: string, nome: string): Promise<Resultado<string>> {
   const base = (paraSlug(nome) || "anunciante").slice(0, 75).replace(/-$/, "");
   const { data, error } = await supabase.from("anunciantes").select("slug").eq("cidade_id", cidadeId).like("slug", `${base}%`).limit(1000);
   if (error) return mensagemDoBanco(error, "slugLivre");
@@ -519,7 +527,7 @@ async function slugLivre(supabase: SupabaseClient, cidadeId: string, nome: strin
 }
 
 /** Troca a lista de uma tabela de ligação só no que mudou (a auditoria registra só a diferença). */
-async function sincronizar(
+export async function sincronizar(
   supabase: SupabaseClient,
   tabela: "anunciante_categorias" | "anunciante_bairros",
   anuncianteId: string,
@@ -544,7 +552,7 @@ async function sincronizar(
   return null;
 }
 
-async function salvarEndereco(
+export async function salvarEndereco(
   supabase: SupabaseClient,
   anuncianteId: string,
   cidadeId: string,
@@ -825,6 +833,9 @@ export async function enviarConvite(supabase: SupabaseClient, id: string): Promi
 // ---------------------------------------------------------------------------
 // Valores do formulário (do banco ou do envio com erro)
 // ---------------------------------------------------------------------------
+
+/** Partes do FormularioAnunciante.astro, para mostrar uma por vez (cadastro próprio e área do anunciante). */
+export type SecaoFormulario = "perfil" | "contato" | "horario" | "onde" | "cadastro";
 
 export interface ValoresFormulario {
   tipo: "profissional" | "comercio" | "";

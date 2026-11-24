@@ -2,13 +2,15 @@
 // Campos do perfil do anunciante, no cadastro assistido (/admin/anunciantes/novo
 // e /representante/anunciantes/novo) e na edição (as telas [id] das duas áreas). O servidor valida tudo de novo
 // (lerFormulario, em src/lib/anunciantesAdmin.ts). Os blocos de autônomo e de
-// comércio ficam desligados quando não servem, para não serem enviados.
+// comércio ficam desligados quando não servem, para não serem enviados. O
+// cadastro próprio e a área do anunciante mostram uma parte por vez (secoes),
+// gravada por salvarParte (src/lib/cadastroProprio.ts).
 import { agruparCategorias } from "@acheaqui/domain";
 import { classesBotao } from "@acheaqui/ui";
 import { NOMES_DIAS } from "@acheaqui/validation";
 import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
 import { textoValorPlano } from "@/lib/precos";
-import type { Opcoes, ValoresFormulario } from "@/lib/anunciantesAdmin";
+import type { Opcoes, SecaoFormulario, ValoresFormulario } from "@/lib/anunciantesAdmin";
 
 interface Props {
   opcoes: Opcoes;
@@ -21,9 +23,14 @@ interface Props {
   textoBotao: string;
   /** O representante não escolhe: o cadastro fica sempre ligado a ele. */
   escolherRepresentante?: boolean;
+  /** Partes mostradas; sem a lista, todas (cadastro assistido e edição pela equipe). */
+  secoes?: SecaoFormulario[];
+  /** Link "Voltar" ao lado do botão (etapas do cadastro próprio e edição pela área). */
+  voltar?: { href: string; texto: string };
 }
 
-const { opcoes, valores: v, erros, tipoFixo, emailTravado = false, textoBotao, escolherRepresentante = true } = Astro.props;
+const { opcoes, valores: v, erros, tipoFixo, emailTravado = false, textoBotao, escolherRepresentante = true, secoes, voltar } = Astro.props;
+const mostra = (s: SecaoFormulario) => !secoes || secoes.includes(s);
 const tipo = tipoFixo ?? v.tipo;
 
 const grupos = agruparCategorias(opcoes.categorias, (c) => c.nome, { gruposEmOrdemAlfabetica: true });
@@ -56,6 +63,7 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
 <form method="post" data-formulario-anunciante data-tipo-fixo={tipoFixo} novalidate>
   <input type="hidden" name="acao" value="salvar" />
 
+  {mostra("perfil") && (
   <section class={secao}>
     <h2 class={tituloSecao}>Perfil</h2>
 
@@ -144,7 +152,9 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
     </label>
     {erro("descricao") && <p class={classesErroCampo}>{erro("descricao")}</p>}
   </section>
+  )}
 
+  {mostra("contato") && (
   <section class={secao}>
     <h2 class={tituloSecao}>Contato</h2>
     <div class="grid gap-x-4 sm:grid-cols-2">
@@ -198,7 +208,9 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
       </div>
     </fieldset>
   </section>
+  )}
 
+  {mostra("horario") && (
   <section class={secao} data-horario>
     <h2 class={tituloSecao}>
       <span data-so-texto="profissional" hidden={tipo === "comercio"}>Horário de atendimento</span><span data-so-texto="comercio" hidden={tipo !== "comercio"}>Horário de funcionamento</span>
@@ -249,7 +261,9 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
     </div>
     <button type="button" class={classesBotao("contorno", "m", "mt-3")} data-copiar-segunda>Copiar o horário de segunda para os outros dias marcados</button>
   </section>
+  )}
 
+  {mostra("onde") && (
   <section class={secao} data-so="profissional">
     <h2 class={tituloSecao}>Onde atende</h2>
     <label class="mt-3 flex items-center gap-2 font-bold">
@@ -267,7 +281,9 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
       }
     </div>
   </section>
+  )}
 
+  {mostra("onde") && (
   <section class={secao} data-so="comercio">
     <h2 class={tituloSecao}>Endereço</h2>
     <p class="mt-1 text-sm text-slate-600">Mudar a rua, o número ou o bairro tira o ponto do mapa; o "Como chegar" passa a usar o endereço escrito.</p>
@@ -323,7 +339,9 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
       </div>
     </div>
   </section>
+  )}
 
+  {mostra("cadastro") && (
   <section class={secao}>
     <h2 class={tituloSecao}>Cadastro assistido</h2>
     <p class="mt-1 text-sm text-slate-600">
@@ -390,8 +408,10 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
     </label>
     )}
   </section>
+  )}
 
-  <div class="mt-6 flex justify-end">
+  <div class="mt-6 flex flex-wrap items-center justify-end gap-3">
+    {voltar && <a href={voltar.href} class={classesBotao("contorno", "g")}>{voltar.texto}</a>}
     <button type="submit" class={classesBotao("azul", "g")}>{textoBotao}</button>
   </div>
 </form>

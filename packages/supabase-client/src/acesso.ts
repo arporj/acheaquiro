@@ -109,6 +109,59 @@ export async function entrar(
   return { ok: true, dados: { usuarioId: data.user.id } };
 }
 
+const CADASTROS_POR_IP = 5;
+const JANELA_CADASTRO_SEGUNDOS = 60 * 60;
+
+/**
+ * Cria a conta de anunciante pelo site (cadastro próprio, decisões G1 e G2 de
+ * 24/11/2026): limite de 5 cadastros por conexão por hora, Turnstile conferido
+ * pelo Supabase Auth e o e-mail de confirmação (supabase/templates/confirmacao.html,
+ * com o link para /auth/confirmar no endereço do site). O papel de anunciante vem do banco. Por segurança, um e-mail
+ * que já tem conta recebe a mesma resposta (o Auth não manda e-mail nem diz que
+ * a conta existe): a tela orienta a entrar ou a recuperar a senha.
+ */
+export async function criarConta(
+  sessao: SupabaseClient,
+  servico: SupabaseClient,
+  { nome, email, senha, tokenRobo, ip }: { nome: string; email: string; senha: string; tokenRobo: string; ip: string },
+): Promise<Resultado<null>> {
+  const falhaInterna = { ok: false, erro: { codigo: "ERRO_INTERNO", mensagem: "Não foi possível criar a conta agora. Tente de novo em instantes." } } as const;
+  const limite = await servico.rpc("consumir_limite", {
+    p_chave: `cadastro-ip:${ip}`,
+    p_limite: CADASTROS_POR_IP,
+    p_janela_segundos: JANELA_CADASTRO_SEGUNDOS,
+  });
+  if (limite.error) {
+    console.error("criarConta: consumir_limite falhou", { codigo: limite.error.code, mensagem: limite.error.message });
+    return falhaInterna;
+  }
+  if (limite.data === false) {
+    return { ok: false, erro: { codigo: "LIMITE_DE_REQUISICOES", mensagem: "Muitos cadastros a partir desta conexão. Espere 1 hora e tente de novo." } };
+  }
+
+  const { error } = await sessao.auth.signUp({
+    email,
+    password: senha,
+    options: { captchaToken: tokenRobo, data: { nome } },
+  });
+  if (!error) return { ok: true, dados: null };
+  switch (error.code) {
+    case "captcha_failed":
+      return { ok: false, erro: { codigo: "VERIFICACAO_ROBO_FALHOU", mensagem: "Não conseguimos confirmar que você não é um robô. Tente de novo." } };
+    case "weak_password":
+      return { ok: false, erro: { codigo: "DADOS_INVALIDOS", mensagem: "Escolha uma senha mais forte, com os itens da lista." } };
+    case "signup_disabled":
+    case "email_provider_disabled":
+      return { ok: false, erro: { codigo: "SEM_PERMISSAO", mensagem: "O cadastro pelo site ainda não abriu. Fale com a equipe pelo WhatsApp." } };
+    case "over_request_rate_limit":
+    case "over_email_send_rate_limit":
+      return { ok: false, erro: { codigo: "LIMITE_DE_REQUISICOES", mensagem: "Muitos cadastros agora. Espere alguns minutos e tente de novo." } };
+    default:
+      console.error("criarConta: signUp falhou", { codigo: error.code, status: error.status, mensagem: error.message });
+      return falhaInterna;
+  }
+}
+
 /** 3 pedidos de nova senha por e-mail por hora (Especificação Técnica, seção 10.3). */
 export async function limitarRecuperacaoSenha(servico: SupabaseClient, email: string): Promise<Resultado<null>> {
   const { data, error } = await servico.rpc("consumir_limite", {

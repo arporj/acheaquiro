@@ -5,7 +5,7 @@ export { criarClienteServidor, type CookieParaGravar, type CookiesDaRequisicao }
 export { criarClienteServico } from "./servico";
 export { lerCatalogoPublico } from "./catalogo";
 export { lerAnunciantePublico, lerAnunciantesPublicos, type FiltroAnunciantes } from "./anunciantes";
-export { entrar, limitarRecuperacaoSenha, registrarAcesso, type ResultadoEntrada } from "./acesso";
+export { criarConta, entrar, limitarRecuperacaoSenha, registrarAcesso, type ResultadoEntrada } from "./acesso";
 export { lerPatrocinioPublico, registrarCliquePatrocinio } from "./patrocinio";
 export { registrarPedidoPerfil, type PedidoPerfilValidado } from "./pedidos";
 export { registrarDenuncia, type DenunciaValidada } from "./denuncias";

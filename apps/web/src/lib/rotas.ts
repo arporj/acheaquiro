@@ -2,7 +2,7 @@
 // layout (o que só aparece nas páginas públicas).
 
 /** Páginas que dependem de login. O site de apresentação não as tem, porque não acessa o banco real. */
-const PAGINAS_COM_LOGIN = ["/entrar", "/recuperar-senha", "/nova-senha", "/auth", "/sair", "/conta", "/anunciante", "/admin", "/api/fotos"];
+const PAGINAS_COM_LOGIN = ["/entrar", "/criar-conta", "/recuperar-senha", "/nova-senha", "/auth", "/sair", "/conta", "/anunciante", "/admin", "/api/fotos"];
 
 export function comecaCom(caminho: string, pagina: string): boolean {
   return caminho === pagina || caminho.startsWith(`${pagina}/`);

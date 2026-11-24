@@ -78,3 +78,24 @@ export function mensagensPorCampo(erro: z.ZodError): Record<string, string> {
   }
   return campos;
 }
+
+/**
+ * Criar conta de anunciante pelo site (cadastro próprio, decisões G1 e G2 de
+ * 24/11/2026): nome, e-mail, senha forte repetida e o Turnstile, que o Supabase
+ * Auth confere. O papel de anunciante vem do banco, nunca do envio.
+ */
+export const esquemaCriarConta = z
+  .object({
+    nome: z
+      .string({ error: "Informe o seu nome." })
+      .transform((v) => v.trim().replace(/\s+/g, " "))
+      .pipe(z.string().min(2, "Informe o seu nome.").max(100, "Nome: no máximo 100 letras.")),
+    email: esquemaEmail,
+    senha: esquemaSenhaForte,
+    confirmacao: z.string({ error: "Repita a senha." }),
+    tokenRobo: esquemaTokenRobo,
+  })
+  .refine((dados) => dados.senha === dados.confirmacao, {
+    message: "As duas senhas não são iguais.",
+    path: ["confirmacao"],
+  });

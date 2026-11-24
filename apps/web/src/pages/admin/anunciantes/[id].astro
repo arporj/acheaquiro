@@ -144,6 +144,9 @@ const a = lido.ok ? lido.dados : null;
 const planos = opcoes.ok ? opcoes.dados.planos : [];
 const nomePlano = (pid: string | null) => (pid ? (planos.find((p) => p.id === pid)?.nome ?? "plano inativo") : null);
 const representante = opcoes.ok && a?.representante_id ? opcoes.dados.representantes.find((r) => r.id === a.representante_id) : undefined;
+// Cadastro próprio (decisão G2 de 24/11/2026): o representante do código informado vira quem trouxe o anunciante na aprovação.
+const indicado =
+  opcoes.ok && a?.representante_indicado_id && !a.representante_id ? opcoes.dados.representantes.find((r) => r.id === a.representante_indicado_id) : undefined;
 const nomes = new Map((equipe.ok ? equipe.dados : []).map((m) => [m.usuario_id, m.nome || m.email]));
 
 const ACOES: Record<AcaoSituacao, { botao: string; titulo: string; texto: string; variante: "azul" | "perigo" | "contorno"; rotuloMotivo?: string }> = {
@@ -260,6 +263,7 @@ const caixa = "rounded-xl bg-fundo p-3";
               <p>{a.usuario_id ? `Conta ligada (${a.email_convite ?? "e-mail próprio"})` : "Sem conta ligada"}</p>
               <p>{a.origem === "receita" ? "Importado da Receita" : "Cadastro"} em {dataHora(a.criado_em)}</p>
               {representante && <p>Representante: {representante.nome}</p>}
+              {indicado && <p>Indicado pelo código de {indicado.nome} ({indicado.codigo}): na aprovação, vira o representante que trouxe.</p>}
               <p class="text-slate-500">Endereço do perfil: /perfil/{a.slug}</p>
             </div>
           </div>

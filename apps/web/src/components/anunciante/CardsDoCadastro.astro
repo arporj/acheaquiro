@@ -1,0 +1,63 @@
+---
+// Cards de resumo do cadastro (decisão C1 de 24/11/2026): cada parte mostra
+// se está completa, o que falta (obrigatório) e o que ajudaria (recomendado),
+// com o botão para preencher ou editar. Usado na área do anunciante e em
+// "Conferir e enviar", do cadastro próprio. Regra em situacaoDoCadastro
+// (packages/domain/cadastroAnunciante.ts).
+import { textoDoQueFalta, type ParteDoCadastro, type SituacaoDaParte } from "@acheaqui/domain";
+import { Icone, classesBotao } from "@acheaqui/ui";
+import { tituloDaParte } from "@/lib/cadastroProprio";
+
+interface Props {
+  situacoes: SituacaoDaParte[];
+  tipo: "profissional" | "comercio";
+  /** Resumo de uma linha de cada parte (o que está preenchido). */
+  resumos: Partial<Record<ParteDoCadastro, string>>;
+  /** Endereço do botão de cada parte; sem endereço, a parte não tem botão (o plano, na área). */
+  enderecos: Partial<Record<ParteDoCadastro, string>>;
+  /** Texto de uma parte sem botão. */
+  semBotao?: Partial<Record<ParteDoCadastro, string>>;
+}
+
+const { situacoes, tipo, resumos, enderecos, semBotao = {} } = Astro.props;
+---
+
+<ul class="mt-4 grid gap-3 sm:grid-cols-2">
+  {
+    situacoes.map((s) => {
+      const falta = s.obrigatorio.length > 0;
+      const dica = !falta && s.recomendado.length > 0;
+      const endereco = enderecos[s.parte];
+      return (
+        <li class="flex flex-col rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+          <div class="flex items-start justify-between gap-3">
+            <h3 class="font-display text-lg font-bold text-azul-900">{tituloDaParte(s.parte, tipo)}</h3>
+            {falta ? (
+              <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-vermelho-500/10 px-2.5 py-1 text-xs font-bold text-vermelho-700">
+                <Icone nome="info" class="size-3.5" />
+                Falta preencher
+              </span>
+            ) : (
+              <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-zap-50 px-2.5 py-1 text-xs font-bold text-zap-700">
+                <Icone nome="certo" class="size-3.5" />
+                Completo
+              </span>
+            )}
+          </div>
+          {resumos[s.parte] && <p class="mt-1 line-clamp-2 text-sm text-slate-600">{resumos[s.parte]}</p>}
+          {falta && <p class="mt-2 text-sm font-semibold text-vermelho-700">{textoDoQueFalta(s.obrigatorio)}</p>}
+          {dica && <p class="mt-2 text-sm text-slate-600">Dica: inclua {s.recomendado.join(" e ")}.</p>}
+          <div class="mt-auto pt-3">
+            {endereco ? (
+              <a href={endereco} class={classesBotao(falta ? "azul" : "contorno", "m")}>
+                {falta ? "Preencher" : "Editar"}
+              </a>
+            ) : (
+              semBotao[s.parte] && <p class="text-sm text-slate-600">{semBotao[s.parte]}</p>
+            )}
+          </div>
+        </li>
+      );
+    })
+  }
+</ul>

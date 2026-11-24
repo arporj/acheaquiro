@@ -24,31 +24,29 @@ const esquemaInstagram = z
 
 const listaDeIds = z.array(z.uuid("Escolha inválida.")).max(200).transform((ids) => [...new Set(ids)]);
 
-const base = {
+// Partes do perfil, uma por etapa do cadastro próprio (decisão G2 de 24/11/2026)
+// e por card da área do anunciante. O perfil completo é a soma delas.
+const sobre = {
   nome: textoLimpo(2, 100, "o nome"),
   categoriaPrincipalId: z.uuid("Escolha a categoria principal."),
   categoriasAdicionais: listaDeIds,
   descricao: textoOpcional(2000, "Descrição"),
+};
+
+const contato = {
   whatsapp: esquemaWhatsapp,
   telefone: esquemaWhatsapp,
   instagram: esquemaInstagram,
   formasPagamento: z.array(z.enum(FORMAS_PAGAMENTO, { error: "Forma de pagamento inválida." })).transform((f) => [...new Set(f)]),
-  // Sem o horário no envio, o gravado não muda.
-  horario: esquemaHorario.optional(),
 };
+const contatoProfissional = { ...contato, registroConselho: textoOpcional(60, "Registro no conselho") };
+const contatoComercio = { ...contato, siteProprio: esquemaSite };
 
-const profissional = z.object({
-  tipo: z.literal("profissional"),
-  ...base,
-  registroConselho: textoOpcional(60, "Registro no conselho"),
+const ondeProfissional = {
   atendeTodaCidade: z.boolean(),
   bairrosAtendidos: listaDeIds,
-});
-
-const comercio = z.object({
-  tipo: z.literal("comercio"),
-  ...base,
-  siteProprio: esquemaSite,
+};
+const ondeComercio = {
   endereco: z.object({
     logradouro: textoLimpo(2, 120, "a rua"),
     numero: textoLimpo(1, 10, "o número (ou S/N)"),
@@ -58,9 +56,42 @@ const comercio = z.object({
   fazEntrega: z.boolean(),
   entregaTodaCidade: z.boolean(),
   bairrosEntrega: listaDeIds,
+};
+
+const TIPO_INVALIDO = "Escolha se é autônomo ou comércio.";
+const tipoAnunciante = z.enum(["profissional", "comercio"], { error: TIPO_INVALIDO });
+
+/** Etapa "Seu anúncio": tipo, nome, categorias e descrição. */
+export const esquemaEtapaSobre = z.object({ tipo: tipoAnunciante, ...sobre });
+/** Etapa "Contato", que muda com o tipo (registro no conselho do autônomo; site do comércio). */
+export const esquemaEtapaContato = {
+  profissional: z.object(contatoProfissional),
+  comercio: z.object(contatoComercio),
+} as const;
+/** Etapa "Onde atende" (autônomo) ou "Endereço" (comércio). */
+export const esquemaEtapaOnde = {
+  profissional: z.object(ondeProfissional),
+  comercio: z.object(ondeComercio),
+} as const;
+
+const profissional = z.object({
+  tipo: z.literal("profissional"),
+  ...sobre,
+  ...contatoProfissional,
+  ...ondeProfissional,
+  // Sem o horário no envio, o gravado não muda.
+  horario: esquemaHorario.optional(),
 });
 
-export const esquemaPerfilAnunciante = z.discriminatedUnion("tipo", [profissional, comercio], { error: "Escolha se é autônomo ou comércio." });
+const comercio = z.object({
+  tipo: z.literal("comercio"),
+  ...sobre,
+  ...contatoComercio,
+  ...ondeComercio,
+  horario: esquemaHorario.optional(),
+});
+
+export const esquemaPerfilAnunciante = z.discriminatedUnion("tipo", [profissional, comercio], { error: TIPO_INVALIDO });
 export type PerfilAnunciante = z.output<typeof esquemaPerfilAnunciante>;
 
 /** Dados só do cadastro assistido: e-mail do convite, plano escolhido e representante. */

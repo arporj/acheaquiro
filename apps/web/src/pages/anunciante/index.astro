@@ -3,15 +3,21 @@
 // aceite do cadastro assistido (27/10/2026): o anunciante convidado confere o
 // que foi cadastrado, aceita os Termos e a Política e envia para análise. O
 // comércio importado da Receita vai para o ar na hora, no lugar do importado
-// (interno.trocar_importado), e a equipe confere depois.
-import { prazoParaDesistir } from "@acheaqui/domain";
+// (interno.trocar_importado), e a equipe confere depois. Cadastro próprio e
+// cards de resumo (decisões C1, G2 a G4 de 24/11/2026): sem anúncio, o convite
+// para montar o anúncio passo a passo (/anunciante/cadastro); com o cadastro
+// enviado, um card por parte, com o que falta e o botão de editar.
+import { PARTES_DO_CADASTRO, prazoParaDesistir } from "@acheaqui/domain";
 import { Icone, classesBotao } from "@acheaqui/ui";
+import CardsDoCadastro from "@/components/anunciante/CardsDoCadastro.astro";
 import Aviso from "@/components/conta/Aviso.astro";
 import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
 import LinkContatoEquipe from "@/components/institucional/LinkContatoEquipe.astro";
 import { obterRegrasCobranca } from "@/dados/consultas";
 import { enviarParaAnalise, lerMeuCadastro, pagamentoDoCadastro, representanteDoCadastro } from "@/lib/anunciante";
 import { ROTULO_SITUACAO, lerOpcoes } from "@/lib/anunciantesAdmin";
+import { PARTES_EDITAVEIS, ehRascunhoProprio, lerChavePix, resumosDasPartes, situacaoDoMeuCadastro } from "@/lib/cadastroProprio";
+import { listarFotosDoCadastro } from "@/lib/fotos";
 import { formatarTelefone, mensagemEquipe } from "@/lib/contato";
 import { DOCUMENTOS, enderecoDocumento } from "@/lib/documentosLegais";
 import { hojeNaCidade } from "@/lib/pagamentos";
@@ -25,6 +31,7 @@ const usuario = Astro.locals.usuario!;
 const AVISOS: Record<string, string> = {
   enviado: "Cadastro enviado. A equipe confere os dados e fala com você.",
   "no-ar": "Pronto: seu perfil está no ar. A equipe confere os dados nos próximos dias.",
+  salvo: "Alteração salva.",
 };
 const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
 let erro = "";
@@ -49,11 +56,18 @@ if (Astro.request.method === "POST" && cadastro) {
 const conferir = cadastro?.status === "aguardando_anunciante";
 const aguardandoPagamento = cadastro?.status === "aguardando_pagamento";
 const antesDaAprovacao = conferir || cadastro?.status === "em_analise";
-const [opcoes, representante, pagamento] = await Promise.all([
-  conferir || aguardandoPagamento ? lerOpcoes(supabase, await obterRegrasCobranca()) : Promise.resolve(null),
+const rascunhoProprio = ehRascunhoProprio(cadastro, usuario.id);
+// Cards de resumo: cadastro já enviado (a conferência do cadastro assistido tem a própria tela, acima).
+const comCards = !!cadastro && ["em_analise", "aguardando_pagamento", "publicado", "pausado", "escondido_por_vencimento"].includes(cadastro.status);
+const [opcoes, representante, pagamento, fotos, chavePix] = await Promise.all([
+  conferir || aguardandoPagamento || comCards ? lerOpcoes(supabase, await obterRegrasCobranca()) : Promise.resolve(null),
   conferir && cadastro ? representanteDoCadastro(supabase, cadastro.id) : Promise.resolve(null),
   antesDaAprovacao && cadastro ? pagamentoDoCadastro(supabase, cadastro.id) : Promise.resolve(null),
+  comCards && cadastro ? listarFotosDoCadastro(supabase, cadastro) : Promise.resolve(null),
+  aguardandoPagamento ? lerChavePix() : Promise.resolve(null),
 ]);
+if (fotos && !fotos.ok) erro ||= fotos.erro.mensagem;
+if (chavePix && !chavePix.ok) erro ||= chavePix.erro.mensagem;
 if (opcoes && !opcoes.ok) erro ||= opcoes.erro.mensagem;
 if (pagamento && !pagamento.ok) erro ||= pagamento.erro.mensagem;
 // Pagou antes do aceite (decisão de 17/11/2026): o anúncio espera o aceite e a aprovação; o prazo para desistir conta do pagamento.
@@ -204,7 +218,7 @@ const privacidade = DOCUMENTOS.privacidade;
   }
 
   {
-    cadastro && !conferir && (
+    cadastro && !conferir && !rascunhoProprio && (
       <div class="mt-6 rounded-2xl bg-fundo p-5">
         <p class="font-display text-xl font-bold text-azul-900">{cadastro.nome}</p>
         <p class="mt-1">Situação: <strong>{ROTULO_SITUACAO[cadastro.status]}</strong></p>
@@ -224,7 +238,15 @@ const privacidade = DOCUMENTOS.privacidade;
                 Pagar por Pix ou cartão
               </LinkContatoEquipe>
             </p>
-            <p class="mt-1 text-xs text-slate-500">A equipe passa a chave Pix pelo WhatsApp ou leva a maquininha. No cartão, a maquininha soma a taxa dela.</p>
+            {chavePix?.ok && chavePix.dados ? (
+              <p class="mt-2 text-sm text-slate-700">
+                Chave Pix ({chavePix.dados.tipo === "aleatoria" ? "aleatória" : chavePix.dados.tipo}):{" "}
+                <strong class="break-all text-tinta select-all">{chavePix.dados.chave}</strong>. Depois de pagar, mande o comprovante pelo WhatsApp da equipe. No
+                cartão, a equipe leva a maquininha, que soma a taxa dela.
+              </p>
+            ) : (
+              <p class="mt-1 text-xs text-slate-500">A equipe passa a chave Pix pelo WhatsApp ou leva a maquininha. No cartão, a maquininha soma a taxa dela.</p>
+            )}
           </>
         )}
         {cadastro.motivo_correcao && cadastro.status !== "publicado" && <p class="mt-1 text-slate-600">Recado da equipe: {cadastro.motivo_correcao}</p>}
@@ -264,14 +286,33 @@ const privacidade = DOCUMENTOS.privacidade;
   }
 
   {
-    lido.ok && !cadastro && (
-      <p class="mt-6 text-slate-600">
-        A sua conta ainda não tem um anúncio. Para anunciar o seu trabalho ou o seu comércio,{" "}
-        <LinkContatoEquipe mensagem={mensagemEquipe("Quero anunciar")} class="font-bold text-azul-600 hover:underline">
-          fale com a equipe
-        </LinkContatoEquipe>
-        .
-      </p>
+    comCards && cadastro && (
+      <section class="mt-6">
+        <h2 class="font-display text-xl font-bold text-azul-900">Seu anúncio</h2>
+        <CardsDoCadastro
+          situacoes={situacaoDoMeuCadastro(cadastro, fotos?.ok ? fotos.dados : null)}
+          tipo={cadastro.tipo}
+          resumos={resumosDasPartes(cadastro, o, fotos?.ok ? fotos.dados : null)}
+          enderecos={Object.fromEntries(PARTES_EDITAVEIS.map((p) => [p, `/anunciante/cadastro?parte=${p}`]))}
+          semBotao={{ plano: "Para mudar de plano, aceite uma proposta de um representante ou fale com a equipe." }}
+        />
+      </section>
+    )
+  }
+
+  {
+    lido.ok && (!cadastro || rascunhoProprio) && (
+      <a href="/anunciante/cadastro" class="mt-6 flex items-center gap-4 rounded-2xl bg-azul-600 p-5 text-white shadow-sm hover:bg-azul-700">
+        <Icone nome="megafone" class="size-8 shrink-0" />
+        <span>
+          <span class="block font-display text-xl font-bold">{cadastro ? "Continue o seu anúncio" : "Monte o seu anúncio"}</span>
+          <span class="block text-sm text-white/90">
+            {cadastro
+              ? `${situacaoDoMeuCadastro(cadastro, null).filter((x) => x.obrigatorio.length === 0).length} de ${PARTES_DO_CADASTRO.length} partes prontas. O que você já salvou fica guardado.`
+              : "Passo a passo, pelo celular: o seu trabalho ou o seu comércio no Ache Aqui RO."}
+          </span>
+        </span>
+      </a>
     )
   }
 
@@ -292,7 +333,7 @@ const privacidade = DOCUMENTOS.privacidade;
       <div class="mt-6 rounded-2xl bg-fundo p-5">
         <h2 class="font-display text-xl font-bold text-azul-900">Em construção</h2>
         <ul class="mt-3 space-y-2">
-          {["Editar o perfil, fotos, encartes e produtos", "Plano atual e pagamento por Pix", "Números do mês"].map((item) => (
+          {["Encartes e produtos", "Envio do comprovante do Pix pelo site", "Números do mês"].map((item) => (
             <li class="flex gap-2 text-slate-700">
               <Icone nome="relogio" class="mt-0.5 size-5 shrink-0 text-azul-600" />
               {item}

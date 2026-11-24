@@ -1,0 +1,294 @@
+---
+// Cadastro próprio em etapas e edição por partes (decisões C1, G2, G3 e G4 de
+// 24/11/2026). Sem cadastro, ou com o rascunho criado pela própria conta, a
+// página é o passo a passo: Seu anúncio → Contato → Onde atende (ou Endereço)
+// → Horário → Plano → Fotos → Conferir e enviar, com tudo salvo a cada etapa.
+// Com o cadastro já enviado (em análise, aguardando pagamento, no ar ou
+// pausado), é a edição de uma parte, aberta pelos cards da área: o que muda no
+// perfil no ar vai para o ar na hora e entra em "Para conferir" (G4).
+import { PARTES_DO_CADASTRO, parteAnterior, podeEnviarCadastro, proximaParte, type ParteDoCadastro } from "@acheaqui/domain";
+import { classesBotao } from "@acheaqui/ui";
+import FormularioAnunciante from "@/components/admin/FormularioAnunciante.astro";
+import FotosDoPerfil from "@/components/admin/FotosDoPerfil.astro";
+import CardsDoCadastro from "@/components/anunciante/CardsDoCadastro.astro";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import { obterRegrasCobranca } from "@/dados/consultas";
+import { lerMeuCadastro } from "@/lib/anunciante";
+import { lerAnunciante, lerOpcoes, valoresDoAnunciante, valoresDoEnvio, type AnuncianteAdmin, type SecaoFormulario } from "@/lib/anunciantesAdmin";
+import {
+  PARTES_EDITAVEIS,
+  ehRascunhoProprio,
+  enviarCadastroProprio,
+  resumosDasPartes,
+  salvarParte,
+  situacaoDoMeuCadastro,
+  tituloDaParte,
+} from "@/lib/cadastroProprio";
+import { listarFotosDoCadastro } from "@/lib/fotos";
+import { lerIndicacao } from "@/lib/indicacao";
+import { textoValorPlano } from "@/lib/precos";
+
+type Etapa = ParteDoCadastro | "enviar";
+const SECOES: Partial<Record<ParteDoCadastro, SecaoFormulario>> = { sobre: "perfil", contato: "contato", onde: "onde", horario: "horario" };
+// Partes editáveis depois de enviado; antes da aprovação, aguardando o anunciante, fica a conferência da área.
+const SITUACOES_EDITAVEIS = ["em_analise", "aguardando_pagamento", "publicado", "pausado", "escondido_por_vencimento"];
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+
+const lido = await lerMeuCadastro(supabase, usuario.id);
+if (!lido.ok) return Astro.redirect("/anunciante", 303);
+let cadastro: AnuncianteAdmin | null = lido.dados;
+const passoAPasso = !cadastro || ehRascunhoProprio(cadastro, usuario.id);
+if (cadastro && !passoAPasso && !SITUACOES_EDITAVEIS.includes(cadastro.status)) return Astro.redirect("/anunciante", 303);
+
+const pedida = Astro.url.searchParams.get("parte") ?? "";
+const etapas: Etapa[] = [...PARTES_DO_CADASTRO, "enviar"];
+const etapaValida = (etapas as string[]).includes(pedida) ? (pedida as Etapa) : null;
+let etapa: Etapa = etapaValida ?? "sobre";
+if (!cadastro && etapa !== "sobre") return Astro.redirect("/anunciante/cadastro?parte=sobre", 303);
+if (!passoAPasso && (etapa === "enviar" || !PARTES_EDITAVEIS.includes(etapa as ParteDoCadastro))) return Astro.redirect("/anunciante", 303);
+
+const tipo = cadastro?.tipo;
+let erro = "";
+let erros: Record<string, string> = {};
+let enviado: FormData | null = null;
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  if (etapa === "enviar" && cadastro) {
+    const fotosAtuais = await listarFotosDoCadastro(supabase, cadastro);
+    const r = await enviarCadastroProprio(supabase, usuario.id, cadastro, fotosAtuais.ok ? fotosAtuais.dados : null, String(form.get("codigoRepresentante") ?? ""));
+    if (r.ok) return Astro.redirect("/anunciante?aviso=enviado", 303);
+    erro = r.erro.mensagem;
+    erros = r.erro.campos ?? {};
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  } else if (etapa !== "enviar") {
+    const r = await salvarParte(supabase, usuario.id, cadastro, etapa, form, Astro.url.origin);
+    if (r.ok) {
+      if (!passoAPasso) return Astro.redirect("/anunciante?aviso=salvo", 303);
+      return Astro.redirect(`/anunciante/cadastro?parte=${proximaParte(etapa) ?? "enviar"}`, 303);
+    }
+    erro = r.erro.mensagem;
+    erros = r.erro.campos ?? {};
+    enviado = form;
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  }
+  // Depois de um erro, relê o cadastro (a etapa pode ter criado o rascunho).
+  if (cadastro) {
+    const relido = await lerAnunciante(supabase, cadastro.id);
+    if (relido.ok) cadastro = relido.dados;
+  }
+}
+
+const [opcoes, fotos] = await Promise.all([
+  lerOpcoes(supabase, await obterRegrasCobranca()),
+  cadastro && (etapa === "fotos" || etapa === "enviar") ? listarFotosDoCadastro(supabase, cadastro) : Promise.resolve(null),
+]);
+if (!opcoes.ok) erro ||= opcoes.erro.mensagem;
+if (fotos && !fotos.ok) erro ||= fotos.erro.mensagem;
+const o = opcoes.ok ? opcoes.dados : null;
+const fotosDados = fotos?.ok ? fotos.dados : null;
+
+const valores = enviado ? valoresDoEnvio(enviado, tipo) : cadastro ? valoresDoAnunciante(cadastro) : valoresDoEnvio(new FormData());
+const situacoes = cadastro ? situacaoDoMeuCadastro(cadastro, fotosDados) : [];
+const podeEnviar = cadastro ? podeEnviarCadastro(situacoes) : false;
+const numero = etapas.indexOf(etapa) + 1;
+const tituloEtapa = etapa === "enviar" ? "Conferir e enviar" : tituloDaParte(etapa, tipo ?? null);
+const anterior = etapa === "enviar" ? "fotos" : parteAnterior(etapa);
+const voltar = passoAPasso
+  ? anterior
+    ? { href: `/anunciante/cadastro?parte=${anterior}`, texto: "Voltar" }
+    : undefined
+  : { href: "/anunciante", texto: "Cancelar" };
+const textoBotao = passoAPasso ? "Salvar e continuar" : "Salvar";
+
+// Plano: os do tipo do anunciante, com o valor de cada periodicidade.
+const planos = o && tipo ? o.planos.filter((p) => p.tipo === tipo) : [];
+const planoEscolhido = String(enviado?.get("planoEscolhidoId") ?? cadastro?.plano_escolhido_id ?? (tipo === "comercio" ? (planos.find((p) => p.valor_mensal_centavos === 0)?.id ?? "") : ""));
+const periodicidade = String(enviado?.get("periodicidade") ?? cadastro?.periodicidade_escolhida ?? "anual");
+const codigoIndicacao = String(enviado?.get("codigoRepresentante") ?? lerIndicacao(Astro.request.headers.get("cookie") ?? ""));
+const caixa = "mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
+---
+
+<PaginaAcesso titulo={passoAPasso ? "Monte o seu anúncio" : `Editar: ${tituloEtapa}`} logado largura="larga">
+  {
+    passoAPasso && (
+      <nav aria-label="Etapas do cadastro" class="mt-3">
+        <p class="text-sm font-bold text-slate-600">
+          Etapa {numero} de {etapas.length}: <span class="text-azul-900">{tituloEtapa}</span>
+        </p>
+        <ol class="mt-2 flex gap-1" aria-hidden="true">
+          {etapas.map((e, i) => (
+            <li class:list={["h-2 flex-1 rounded-full", i < numero ? "bg-azul-600" : "bg-azul-100"]} />
+          ))}
+        </ol>
+        {cadastro && (
+          <ol class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm">
+            {etapas.map((e, i) => (
+              <li>
+                {e === etapa ? (
+                  <span class="font-bold text-azul-900" aria-current="step">
+                    {i + 1}. {e === "enviar" ? "Enviar" : tituloDaParte(e, tipo ?? null)}
+                  </span>
+                ) : (
+                  <a href={`/anunciante/cadastro?parte=${e}`} class="inline-flex min-h-11 items-center text-azul-600 hover:underline">
+                    {i + 1}. {e === "enviar" ? "Enviar" : tituloDaParte(e, tipo ?? null)}
+                  </a>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+      </nav>
+    )
+  }
+
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+  {
+    passoAPasso && etapa === "sobre" && !cadastro && (
+      <p class="mt-4 text-slate-700">
+        Comece pelo básico: se você é autônomo (trabalha por conta própria) ou tem um comércio, o nome que vai aparecer no site e a categoria. Você pode
+        parar quando quiser: o que já foi salvo fica guardado.
+      </p>
+    )
+  }
+  {
+    !passoAPasso && (cadastro?.status === "publicado" || cadastro?.status === "pausado") && (
+      <p class="mt-4 text-sm text-slate-600">As mudanças aparecem no seu perfil assim que você salva.</p>
+    )
+  }
+
+  {
+    o && SECOES[etapa as ParteDoCadastro] && (
+      <FormularioAnunciante
+        opcoes={o}
+        valores={valores}
+        erros={erros}
+        tipoFixo={tipo}
+        textoBotao={textoBotao}
+        secoes={[SECOES[etapa as ParteDoCadastro]!]}
+        voltar={voltar}
+      />
+    )
+  }
+
+  {
+    etapa === "plano" && cadastro && (
+      <form method="post" class={caixa}>
+        <h2 class="font-display text-lg font-bold text-azul-900">Escolha o plano</h2>
+        <p class="mt-1 text-sm text-slate-600">
+          {tipo === "comercio"
+            ? "O comércio pode ficar no plano Gratuito ou escolher um plano pago, com mais fotos, categorias e destaque."
+            : "Para anunciar, o autônomo escolhe um dos planos. O pagamento é combinado depois que a equipe aprovar o cadastro."}
+        </p>
+        <fieldset class="mt-4 grid gap-3 sm:grid-cols-2">
+          <legend class="sr-only">Plano</legend>
+          {planos.map((p) => (
+            <label class="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border-2 border-azul-100 p-4 has-[:checked]:border-azul-600 has-[:checked]:bg-azul-50">
+              <input type="radio" name="planoEscolhidoId" value={p.id} checked={p.id === planoEscolhido} class="mt-1 size-5 accent-azul-600" />
+              <span>
+                <span class="block font-bold text-azul-900">{p.nome}</span>
+                <span class="block text-sm text-slate-700">
+                  {p.valor_mensal_centavos === 0
+                    ? "Grátis"
+                    : `${textoValorPlano(p.valores, "mensal").valor} ou ${textoValorPlano(p.valores, "anual").valor}`}
+                </span>
+                <span class="block text-sm text-slate-600">
+                  {p.limite_categorias_adicionais === 0 ? "Só a categoria principal" : `Até ${p.limite_categorias_adicionais} categoria(s) além da principal`}
+                </span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        {erros.planoEscolhidoId && <p class={classesErroCampo}>{erros.planoEscolhidoId}</p>}
+        <fieldset class="mt-4">
+          <legend class="text-sm font-bold text-azul-900">Nos planos pagos, como prefere pagar?</legend>
+          <div class="mt-1 flex flex-wrap gap-4">
+            <label class="flex min-h-11 items-center gap-2">
+              <input type="radio" name="periodicidade" value="anual" checked={periodicidade !== "mensal"} /> Anual
+            </label>
+            <label class="flex min-h-11 items-center gap-2">
+              <input type="radio" name="periodicidade" value="mensal" checked={periodicidade === "mensal"} /> Mensal
+            </label>
+          </div>
+        </fieldset>
+        <a href="/anuncie" target="_blank" class="mt-3 inline-block text-sm font-bold text-azul-600 hover:underline">
+          Ver o que cada plano inclui
+        </a>
+        <div class="mt-6 flex flex-wrap items-center justify-end gap-3">
+          {voltar && (
+            <a href={voltar.href} class={classesBotao("contorno", "g")}>
+              {voltar.texto}
+            </a>
+          )}
+          <button type="submit" class={classesBotao("azul", "g")}>{textoBotao}</button>
+        </div>
+      </form>
+    )
+  }
+
+  {
+    etapa === "fotos" && cadastro && fotosDados && (
+      <>
+        <FotosDoPerfil anuncianteId={cadastro.id} nome={cadastro.nome} tipo={cadastro.tipo} fotos={fotosDados} />
+        <div class="mt-6 flex flex-wrap items-center justify-end gap-3">
+          {voltar && (
+            <a href={voltar.href} class={classesBotao("contorno", "g")}>
+              {voltar.texto}
+            </a>
+          )}
+          <a href={passoAPasso ? "/anunciante/cadastro?parte=enviar" : "/anunciante"} class={classesBotao("azul", "g")}>
+            {passoAPasso ? "Continuar" : "Pronto"}
+          </a>
+        </div>
+      </>
+    )
+  }
+
+  {
+    etapa === "enviar" && cadastro && (
+      <>
+        <p class="mt-4 text-slate-700">
+          Confira cada parte. Quando estiver tudo certo, envie: a equipe confere o cadastro e fala com você.{" "}
+          {tipo === "profissional"
+            ? "Depois da aprovação, o seu perfil vai para o ar com o pagamento do plano."
+            : "Depois da aprovação, o seu perfil vai para o ar (no plano pago, com o pagamento)."}
+        </p>
+        <CardsDoCadastro
+          situacoes={situacoes}
+          tipo={cadastro.tipo}
+          resumos={resumosDasPartes(cadastro, o, fotosDados)}
+          enderecos={Object.fromEntries(PARTES_DO_CADASTRO.map((p) => [p, `/anunciante/cadastro?parte=${p}`]))}
+        />
+        <form method="post" class={caixa}>
+          <label for="codigoRepresentante" class={classesRotulo}>
+            Código do representante (opcional)
+          </label>
+          <p class="mt-1 text-sm text-slate-600">Se um representante do Ache Aqui RO te atendeu, informe o código dele.</p>
+          <input
+            id="codigoRepresentante"
+            name="codigoRepresentante"
+            value={codigoIndicacao}
+            maxlength="30"
+            autocomplete="off"
+            class={classesCampo}
+            aria-invalid={erros.codigoRepresentante ? "true" : undefined}
+          />
+          {erros.codigoRepresentante && <p class={classesErroCampo}>{erros.codigoRepresentante}</p>}
+          {!podeEnviar && <p class="mt-4 text-sm font-semibold text-vermelho-700">Preencha as partes marcadas com "Falta preencher" para poder enviar.</p>}
+          <div class="mt-6 flex flex-wrap items-center justify-end gap-3">
+            <a href="/anunciante/cadastro?parte=fotos" class={classesBotao("contorno", "g")}>
+              Voltar
+            </a>
+            <button type="submit" class={classesBotao("azul", "g")} disabled={!podeEnviar}>
+              Enviar para análise
+            </button>
+          </div>
+        </form>
+      </>
+    )
+  }
+</PaginaAcesso>
