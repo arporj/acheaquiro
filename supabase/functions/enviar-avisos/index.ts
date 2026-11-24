@@ -8,6 +8,7 @@
 // o Supabase entrega à função.
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 
+// Repetido em packages/domain/avisos.ts (TETO_AVISOS_POR_DIA), que a tela usa na previsão do aviso em massa: mudou um, muda o outro.
 const TETO_POR_DIA = 280;
 const POR_CHAMADA = 40;
 const MAXIMO_TENTATIVAS = 5;

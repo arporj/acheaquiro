@@ -4,7 +4,16 @@
 // recebe um e-mail com o próprio valor e a partir de qual vencimento ele vale
 // (avisoDePreco, em packages/domain): pelo menos 30 dias depois do aviso, como
 // dizem os Termos de Uso (item 7.1). Quem contrata depois paga o valor novo.
-import { avisoDePreco, situacaoCobranca, somarDias, validarEscalaFundador, type AvisoDePreco } from "@acheaqui/domain";
+import {
+  LIMITE_DIARIO_DE_EMAILS,
+  TETO_AVISOS_POR_DIA,
+  avisoDePreco,
+  previsaoDoAvisoEmMassa,
+  situacaoCobranca,
+  somarDias,
+  validarEscalaFundador,
+  type AvisoDePreco,
+} from "@acheaqui/domain";
 import type { DegrauDescontoFundador, Resultado } from "@acheaqui/types";
 import {
   esquemaBannerPorDia,
@@ -83,6 +92,8 @@ export interface Catalogo {
   escala: DegrauDescontoFundador[];
   /** Com Fundadores, a escala não muda: mudaria o valor deles sem o aviso de 30 dias. */
   temFundadores: boolean;
+  /** E-mails que ainda esperam na fila de avisos, para a previsão do aviso em massa. */
+  avisosNaFila: number;
 }
 
 type LinhaAssinatura = { anunciante_id: string; plano_id: string; ancora: string; vence_em: string; periodicidade: "mensal" | "anual" };
@@ -107,7 +118,7 @@ async function assinaturasAtivas(supabase: SupabaseClient, planoId?: string) {
 }
 
 export async function lerCatalogo(supabase: SupabaseClient): Promise<Resultado<Catalogo>> {
-  const [planos, extras, escala, fundadores, ativas] = await Promise.all([
+  const [planos, extras, escala, fundadores, ativas, fila] = await Promise.all([
     supabase
       .from("planos")
       .select(
@@ -123,12 +134,14 @@ export async function lerCatalogo(supabase: SupabaseClient): Promise<Resultado<C
     supabase.from("configuracoes").select("valor").eq("chave", "desconto_fundador_escala").maybeSingle(),
     supabase.from("anunciantes").select("id", { count: "exact", head: true }).eq("fundador", true),
     assinaturasAtivas(supabase),
+    supabase.from("avisos_email").select("id", { count: "exact", head: true }).is("enviado_em", null),
   ]);
   if (planos.error) return mensagemDoBanco(planos.error, "lerCatalogo: planos");
   if (extras.error) return mensagemDoBanco(extras.error, "lerCatalogo: extras");
   if (escala.error) return mensagemDoBanco(escala.error, "lerCatalogo: escala");
   if (fundadores.error) return mensagemDoBanco(fundadores.error, "lerCatalogo: Fundadores");
   if (!ativas.ok) return ativas;
+  if (fila.error) return mensagemDoBanco(fila.error, "lerCatalogo: fila de avisos");
 
   type LinhaPlano = {
     id: string;
@@ -198,6 +211,7 @@ export async function lerCatalogo(supabase: SupabaseClient): Promise<Resultado<C
       })),
       escala: (escala.data?.valor as DegrauDescontoFundador[] | undefined) ?? [],
       temFundadores: (fundadores.count ?? 0) > 0,
+      avisosNaFila: fila.count ?? 0,
     },
   };
 }
@@ -385,4 +399,19 @@ export async function salvarEscala(
   if (error) return mensagemDoBanco(error, "salvarEscala");
   await limparCacheDoSite(origemDoSite);
   return { ok: true, dados: { avisos: Number(data ?? 0), mudou: true } };
+}
+
+/**
+ * Texto da previsão do aviso em massa (decisão de 24/11/2026), mostrado na
+ * confirmação antes de salvar: quantos e-mails, em quantos dias e quanto sobra
+ * para os e-mails do login no primeiro dia.
+ */
+export function textoPrevisaoDoAviso(novos: number, jaNaFila: number): string {
+  const { total, dias, sobraParaOLogin } = previsaoDoAvisoEmMassa(novos, jaNaFila);
+  const fila = jaNaFila > 0 ? ` (${novos} deste aviso e ${jaNaFila} que já esperavam)` : "";
+  const prazo = dias <= 1 ? "saem hoje" : `levam ${dias} dias para sair`;
+  return (
+    `Ao todo, ${total} e-mail(s) na fila${fila}: ${prazo}, com até ${TETO_AVISOS_POR_DIA} por dia. ` +
+    `No primeiro dia, sobram ${sobraParaOLogin} dos ${LIMITE_DIARIO_DE_EMAILS} e-mails diários do Brevo para a confirmação de cadastro e a recuperação de senha.`
+  );
 }
