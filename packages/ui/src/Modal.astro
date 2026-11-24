@@ -8,16 +8,18 @@ import Icone from "./Icone.astro";
 interface Props {
   id: string;
   titulo: string;
+  /** "larga" para conteúdo que precisa de espaço, como a prévia das fotos. */
+  largura?: "normal" | "larga";
 }
 
-const { id, titulo } = Astro.props;
+const { id, titulo, largura = "normal" } = Astro.props;
 ---
 
 <dialog
   id={id}
   data-modal
   aria-labelledby={`${id}-titulo`}
-  class="m-auto w-[calc(100%-2rem)] max-w-md rounded-3xl bg-white p-0 text-tinta shadow-2xl backdrop:bg-azul-900/60 backdrop:backdrop-blur-sm"
+  class:list={["m-auto w-[calc(100%-2rem)] rounded-3xl bg-white p-0 text-tinta shadow-2xl backdrop:bg-azul-900/60 backdrop:backdrop-blur-sm", largura === "larga" ? "max-w-3xl" : "max-w-md"]}
 >
   <div class="flex items-center justify-between gap-4 border-b border-slate-100 px-6 py-4">
     <h2 id={`${id}-titulo`} data-modal-titulo class="font-display text-xl font-bold text-azul-900">{titulo}</h2>

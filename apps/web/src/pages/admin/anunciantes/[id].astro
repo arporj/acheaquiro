@@ -433,7 +433,7 @@ const caixa = "rounded-xl bg-fundo p-3";
           <Aviso tipo="erro" class="mt-4">{opcoes.erro.mensagem}</Aviso>
         )}
 
-        {fotos?.ok && <FotosDoPerfil anuncianteId={a.id} tipo={a.tipo} fotos={fotos.dados} />}
+        {fotos?.ok && <FotosDoPerfil anuncianteId={a.id} nome={a.nome} tipo={a.tipo} fotos={fotos.dados} />}
         {fotos && !fotos.ok && <Aviso tipo="erro" class="mt-4">{fotos.erro.mensagem}</Aviso>}
 
         {atendimentos.ok ? (

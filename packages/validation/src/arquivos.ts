@@ -30,28 +30,29 @@ export type FinalidadeFotoPerfil = "perfil" | "capa" | "galeria";
 /**
  * Tamanho recomendado de cada foto do perfil, pelo recorte da página
  * /perfil/[slug]. Perfil: círculo (autônomo) ou quadrado de cantos arredondados
- * (comércio), de 96 a 112 px, cortado a partir do centro. Capa: faixa do topo,
+ * (comércio), de 96 a 112 px. A proporção do ideal é a da moldura do ajuste
+ * (AjusteDaFoto.astro), em que a pessoa escolhe o recorte antes do envio. Capa: faixa do topo,
  * de 128 px de altura no celular a 192 px no computador (cerca de 4 por 1 no
  * computador e 2,7 por 1 no celular), mostrada inteira, sem corte, com as sobras
  * preenchidas pela própria foto desfocada (decisão de 24/11/2026). Galeria:
- * quadrados, cortados a partir do centro. A foto abaixo do mínimo é aceita, com aviso.
+ * quadrados. A foto abaixo do mínimo é aceita, com aviso.
  */
 export const MEDIDAS_FOTO: Record<FinalidadeFotoPerfil, { ideal: [number, number]; minimo: [number, number]; orientacao: string }> = {
   perfil: {
     ideal: [800, 800],
     minimo: [400, 400],
-    orientacao: "Quadrada, de 800 × 800 px (mínimo de 400 × 400 px). Aparece redonda no autônomo; deixe o rosto ou o logo no centro, com folga nas bordas.",
+    orientacao: "Quadrada, de 800 × 800 px (mínimo de 400 × 400 px). Depois de escolher, você ajusta o enquadramento; no autônomo, ela aparece redonda.",
   },
   capa: {
     ideal: [1600, 400],
     minimo: [1200, 300],
     orientacao:
-      "Horizontal, de 1.600 × 400 px (proporção de 4 por 1; mínimo de 1.200 × 300 px). A capa aparece inteira, sem corte; no celular ela fica mais baixa, então evite texto pequeno. Fora dessa proporção, as sobras aparecem com a própria foto desfocada.",
+      "Horizontal, de 1.600 × 400 px (proporção de 4 por 1; mínimo de 1.200 × 300 px). Depois de escolher, você ajusta o enquadramento ou usa a foto inteira. No celular a capa fica mais baixa: evite texto pequeno.",
   },
   galeria: {
     ideal: [1200, 1200],
     minimo: [800, 800],
-    orientacao: "Quadrada, de 1.200 × 1.200 px (mínimo de 800 × 800 px). Na lista aparece quadrada, cortada a partir do centro.",
+    orientacao: "Quadrada, de 1.200 × 1.200 px (mínimo de 800 × 800 px). Depois de escolher, você escolhe a parte que aparece.",
   },
 };
 

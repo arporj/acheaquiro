@@ -1,0 +1,55 @@
+---
+// Topo do perfil: a capa (inteira, com o fundo desfocado) e a foto de perfil
+// sobre ela. Usado pela página /perfil/[slug] e pela prévia das fotos no
+// cadastro (AjusteDaFoto.astro), para a prévia nunca ficar diferente do site.
+// As medidas seguem a largura do quadro (@container, 38rem = a largura do
+// quadro numa tela de 640 px), e não a da tela: assim a prévia do celular sai
+// certa também no computador.
+import type { Foto } from "@acheaqui/types";
+import { FotoMarcador } from "@acheaqui/ui";
+
+interface Props {
+  /** A capa, ou a 1ª foto da galeria quando não há capa (esta preenche a faixa, cortada). */
+  capa?: Foto;
+  capaInteira: boolean;
+  fotoPerfil?: Foto;
+  tipo: "profissional" | "comercio";
+  icone: string;
+  cor: string;
+  /** Atributo sizes da capa (versões de 400, 800 e 1.600 px). */
+  tamanhosCapa?: string;
+  prioritaria?: boolean;
+  /** Prévia: marca as fotos (data-foto) para a tela trocar a imagem antes do envio. */
+  previa?: boolean;
+}
+
+const { capa, capaInteira, fotoPerfil, tipo, icone, cor, tamanhosCapa, prioritaria = false, previa = false } = Astro.props;
+---
+
+<section class="@container overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5">
+  <FotoMarcador
+    foto={capa}
+    inteira={capaInteira}
+    tamanhos={tamanhosCapa}
+    prioritaria={prioritaria}
+    marca={previa ? "capa" : undefined}
+    icone={icone}
+    cor={cor}
+    class="h-32 w-full @min-[38rem]:h-48"
+    tamanhoIcone="text-6xl @min-[38rem]:text-7xl"
+  />
+  <div class="px-5 pb-5 @min-[38rem]:px-6">
+    <div class="flex items-end justify-between gap-3">
+      <FotoMarcador
+        foto={fotoPerfil}
+        marca={previa ? "perfil" : undefined}
+        icone={icone}
+        cor={cor}
+        class={`relative -mt-12 size-24 shrink-0 ring-4 ring-white @min-[38rem]:size-28 ${tipo === "profissional" ? "rounded-full" : "rounded-2xl"}`}
+        tamanhoIcone="text-4xl"
+      />
+      <slot name="acoes" />
+    </div>
+    <slot />
+  </div>
+</section>

@@ -19,6 +19,8 @@ interface Props {
   inteira?: boolean;
   /** Atributo sizes da imagem; com ele, a foto do bucket (<chave>-800) ganha as versões de 400 e 1.600 px. */
   tamanhos?: string;
+  /** Vira data-foto no elemento de fora, para a prévia do cadastro trocar a imagem (AjusteDaFoto.astro). */
+  marca?: string;
 }
 
 /** Versões que o envio grava no bucket público: <chave>-400, -800 e -1600 (src/lib/fotoNavegador.ts). */
@@ -35,7 +37,7 @@ function variacao(semente: string): number {
   return soma;
 }
 
-const { foto, icone, cor, class: classe = "", tamanhoIcone = "text-4xl", prioritaria = false, inteira = false, tamanhos } = Astro.props;
+const { foto, icone, cor, class: classe = "", tamanhoIcone = "text-4xl", prioritaria = false, inteira = false, tamanhos, marca } = Astro.props;
 const srcset = foto?.url && tamanhos ? versoes(foto.url) : undefined;
 const carregamento = {
   loading: prioritaria ? "eager" : "lazy",
@@ -49,7 +51,7 @@ const claridade = 18 + (semente % 3) * 8;
 
 {
   foto?.url && inteira ? (
-    <div class={`relative overflow-hidden bg-tinta ${classe}`}>
+    <div class={`relative overflow-hidden bg-tinta ${classe}`} data-foto={marca}>
       <img
         src={foto.url}
         srcset={srcset}
@@ -76,11 +78,13 @@ const claridade = 18 + (semente % 3) * 8;
       alt={foto.legenda ?? ""}
       {...carregamento}
       class={`object-cover ${classe}`}
+      data-foto={marca}
     />
   ) : (
     <div
       role="img"
       aria-label={foto?.legenda ?? "Foto ilustrativa"}
+      data-foto={marca}
       class={`relative grid place-items-center overflow-hidden ${classe}`}
       style={`background: linear-gradient(${angulo}deg, ${cor} 0%, color-mix(in srgb, ${cor} ${100 - claridade}%, white) 100%)`}
     >

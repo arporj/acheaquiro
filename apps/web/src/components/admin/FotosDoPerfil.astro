@@ -1,20 +1,25 @@
 ---
 // Fotos do perfil no cadastro (administração e representante, antes de o
-// anunciante assumir): foto de perfil, capa e galeria. A foto é preparada no
-// navegador (fotoNavegador.ts: três versões em JPEG, sem a localização) e vai
+// anunciante assumir): foto de perfil, capa e galeria. Escolhida a foto, a
+// pessoa ajusta o enquadramento e vê a prévia no celular e no computador
+// (AjusteDaFoto.astro); a foto é preparada no navegador (fotoNavegador.ts: três
+// versões em JPEG do recorte, sem a localização) e vai
 // para /api/fotos, que confere o tipo, o tamanho, o limite do plano e a
 // permissão (RLS) de novo. Tamanhos recomendados em MEDIDAS_FOTO.
 import { Modal, classesBotao } from "@acheaqui/ui";
 import { MEDIDAS_FOTO } from "@acheaqui/validation";
+import AjusteDaFoto from "@/components/fotos/AjusteDaFoto.astro";
 import type { FotoDoCadastro, FotosDoCadastro } from "@/lib/fotos";
 
 interface Props {
   anuncianteId: string;
+  /** Nome do anunciante, para a prévia do topo do perfil. */
+  nome: string;
   tipo: "profissional" | "comercio";
   fotos: FotosDoCadastro;
 }
 
-const { anuncianteId, tipo, fotos } = Astro.props;
+const { anuncianteId, nome, tipo, fotos } = Astro.props;
 const galeriaCheia = fotos.galeria.length >= fotos.limiteGaleria;
 const secao = "mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
 const subtitulo = "font-display text-base font-bold text-azul-900";
@@ -39,7 +44,8 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
 <section id="fotos" class={secao} data-fotos-perfil data-anunciante={anuncianteId}>
   <h2 class="font-display text-lg font-bold text-azul-900">Fotos</h2>
   <p class="mt-1 text-sm text-slate-600">
-    Qualquer foto do celular serve (JPG, PNG, WebP): o site reduz e tira a localização antes de enviar. As alterações aparecem no site na hora.
+    Qualquer foto do celular serve (JPG, PNG, WebP). Depois de escolher, você ajusta o enquadramento e vê como fica no celular e no computador; o
+    site reduz a foto e tira a localização antes de enviar. As alterações aparecem no site na hora.
   </p>
   <p data-mensagem-fotos role="status" aria-live="polite" class="mt-3 hidden rounded-2xl p-3 text-sm font-semibold"></p>
 
@@ -139,14 +145,9 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
     {galeriaCheia && fotos.limiteGaleria > 0 && <p class="mt-2 text-sm text-slate-600">A galeria está cheia: apague uma foto para enviar outra.</p>}
   </div>
 
-  <div data-foto-pequena hidden class="mt-4 rounded-2xl bg-amarelo-200 p-4 text-sm text-azul-900">
-    <p data-texto-foto-pequena class="font-semibold"></p>
-    <div class="mt-3 flex flex-wrap gap-2">
-      <button type="button" class={classesBotao("azul", "m")} data-enviar-assim>Enviar assim mesmo</button>
-      <button type="button" class={classesBotao("contorno", "m")} data-escolher-outra>Escolher outra</button>
-    </div>
-  </div>
 </section>
+
+<AjusteDaFoto nome={nome} tipo={tipo} urlPerfil={fotos.perfil?.url} urlCapa={fotos.capa?.url} />
 
 <Modal id="modal-apagar-foto" titulo="Apagar foto">
   <p class="text-sm text-slate-600">
@@ -159,8 +160,9 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
 </Modal>
 
 <script>
-  import { avisoDeMedida, type FinalidadeFotoPerfil } from "@acheaqui/validation";
-  import { prepararFoto, type FotoPreparada } from "@/lib/fotoNavegador";
+  import type { FinalidadeFotoPerfil } from "@acheaqui/validation";
+  import { ajustarFoto } from "@/lib/ajusteFotoNavegador";
+  import type { FotoPreparada } from "@/lib/fotoNavegador";
 
   const secao = document.querySelector<HTMLElement>("[data-fotos-perfil]");
   const modal = document.querySelector<HTMLDialogElement>("#modal-apagar-foto");
@@ -168,11 +170,8 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
   if (secao && modal) {
     const anuncianteId = secao.dataset.anunciante ?? "";
     const mensagem = secao.querySelector<HTMLElement>("[data-mensagem-fotos]")!;
-    const blocoPequena = secao.querySelector<HTMLElement>("[data-foto-pequena]")!;
-    const textoPequena = secao.querySelector<HTMLElement>("[data-texto-foto-pequena]")!;
     const legendaGaleria = secao.querySelector<HTMLInputElement>("[data-legenda-galeria]");
     const controles = () => [...secao.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button"), ...modal.querySelectorAll("button")];
-    let pendente: { finalidade: FinalidadeFotoPerfil; foto: FotoPreparada; campo: HTMLInputElement } | null = null;
     let idParaApagar = "";
 
     const mostrar = (texto: string, tipo: "erro" | "info") => {
@@ -210,7 +209,6 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
     };
 
     const enviar = async (finalidade: FinalidadeFotoPerfil, foto: FotoPreparada, campo: HTMLInputElement) => {
-      blocoPequena.hidden = true;
       ocupar(true);
       mostrar("Enviando a foto…", "info");
       try {
@@ -235,42 +233,24 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
         const arquivo = campo.files?.[0];
         if (!arquivo) return;
         const finalidade = campo.dataset.escolherFoto as FinalidadeFotoPerfil;
-        blocoPequena.hidden = true;
-        ocupar(true);
-        mostrar("Preparando a foto…", "info");
-        let foto: FotoPreparada;
+        mensagem.classList.add("hidden");
+        let foto: FotoPreparada | null;
         try {
-          foto = await prepararFoto(arquivo, finalidade);
+          foto = await ajustarFoto(arquivo, finalidade);
         } catch (erro) {
-          console.error("Fotos: preparo falhou", erro);
+          console.error("Fotos: ajuste falhou", erro);
           mostrar(erro instanceof Error && erro.message ? erro.message : "Não foi possível ler esta imagem.", "erro");
           campo.value = "";
-          ocupar(false);
           return;
         }
-        ocupar(false);
-        const aviso = avisoDeMedida(finalidade, foto.largura, foto.altura);
-        if (!aviso) return enviar(finalidade, foto, campo);
-        // Foto pequena: a pessoa decide se envia assim mesmo.
-        pendente = { finalidade, foto, campo };
-        mensagem.classList.add("hidden");
-        textoPequena.textContent = aviso;
-        blocoPequena.hidden = false;
-        blocoPequena.querySelector<HTMLButtonElement>("[data-enviar-assim]")?.focus();
+        // Cancelou o ajuste: nada muda.
+        if (!foto) {
+          campo.value = "";
+          return;
+        }
+        await enviar(finalidade, foto, campo);
       });
     }
-
-    secao.querySelector("[data-enviar-assim]")?.addEventListener("click", () => {
-      if (pendente) void enviar(pendente.finalidade, pendente.foto, pendente.campo);
-      pendente = null;
-    });
-    secao.querySelector("[data-escolher-outra]")?.addEventListener("click", () => {
-      blocoPequena.hidden = true;
-      if (!pendente) return;
-      pendente.campo.value = "";
-      pendente.campo.click();
-      pendente = null;
-    });
 
     for (const botao of secao.querySelectorAll<HTMLButtonElement>("[data-apagar-foto]")) {
       botao.addEventListener("click", () => {

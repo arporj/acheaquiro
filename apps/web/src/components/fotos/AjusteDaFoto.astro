@@ -1,0 +1,90 @@
+---
+// Ajuste da foto antes do envio (decisões C2 e C3 de 24/11/2026): a pessoa
+// arrasta e aproxima a foto na moldura (perfil e galeria quadradas, capa de 4
+// por 1, com a opção de usar a capa inteira) e vê como fica no celular e no
+// computador, com o mesmo topo do perfil da página pública (TopoDoPerfil). A
+// tela fica em src/lib/ajusteFotoNavegador.ts; as contas do recorte, em
+// packages/domain/enquadramento.ts. Usado pelo quadro "Fotos" do cadastro.
+import { ZOOM_MAXIMO } from "@acheaqui/domain";
+import { Modal, classesBotao } from "@acheaqui/ui";
+import TopoDoPerfil from "@/components/perfil/TopoDoPerfil.astro";
+
+interface Props {
+  nome: string;
+  tipo: "profissional" | "comercio";
+  /** Endereços das fotos já enviadas, para a prévia mostrar o resto do topo como está. */
+  urlPerfil?: string;
+  urlCapa?: string;
+}
+
+const { nome, tipo, urlPerfil, urlCapa } = Astro.props;
+// Sem foto enviada, a prévia mostra um fundo cinza no lugar (o marcador da categoria não muda com a foto nova).
+// Sem viewBox nem medidas, a imagem não tem proporção própria e ocupa a faixa toda, sem as sobras desfocadas.
+const VAZIA = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23cbd5e1'/%3E%3C/svg%3E";
+const fotoPerfil = { id: "previa-perfil", url: urlPerfil ?? VAZIA };
+const capa = { id: "previa-capa", url: urlCapa ?? VAZIA };
+// Largura do quadro do perfil num celular de 360 px (tela menos as margens de 16 px) e no computador.
+const quadros = [
+  { titulo: "No celular", largura: 328 },
+  { titulo: "No computador", largura: 760 },
+];
+const botaoRedondo = "grid size-11 shrink-0 place-items-center rounded-full bg-azul-50 text-xl font-bold text-azul-700 hover:bg-azul-100 disabled:opacity-50";
+---
+
+<Modal id="modal-ajuste-foto" titulo="Ajustar a foto" largura="larga">
+  <div data-ajuste-foto data-tipo={tipo}>
+    <p class="text-sm text-slate-600" data-instrucao>Arraste a foto para escolher o que aparece e use o controle para aproximar ou afastar.</p>
+
+    <div
+      data-moldura
+      tabindex="0"
+      role="application"
+      aria-label="Enquadramento da foto. Use as setas para mover e as teclas + e − para aproximar."
+      class="relative mx-auto mt-4 w-full max-w-sm cursor-grab touch-none overflow-hidden rounded-2xl bg-tinta select-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-azul-500 active:cursor-grabbing"
+    >
+      <canvas data-tela class="block w-full"></canvas>
+    </div>
+
+    <div class="mx-auto mt-3 flex max-w-sm items-center gap-3" data-controles-zoom>
+      <button type="button" class={botaoRedondo} data-afastar aria-label="Afastar">−</button>
+      <input type="range" min="1" max={ZOOM_MAXIMO} step="0.01" value="1" data-zoom aria-label="Aproximar" class="h-11 min-w-0 flex-1 accent-azul-600" />
+      <button type="button" class={botaoRedondo} data-aproximar aria-label="Aproximar">+</button>
+    </div>
+
+    <label class="mx-auto mt-3 flex max-w-sm min-h-11 cursor-pointer items-center gap-3 text-sm font-bold text-azul-900" data-opcao-inteira>
+      <input type="checkbox" data-inteira class="size-5 accent-azul-600" />
+      Usar a foto inteira, sem cortar
+    </label>
+
+    <p data-aviso-medida hidden class="mt-3 rounded-2xl bg-amarelo-200 p-3 text-sm font-semibold text-azul-900"></p>
+
+    <div data-previa class="mt-6">
+      <h3 class="font-display text-base font-bold text-azul-900">Assim fica no site</h3>
+      <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,5fr)_minmax(0,9fr)] md:items-start">
+        {
+          quadros.map((q) => (
+            <figure>
+              <figcaption class="text-sm font-bold text-slate-600">{q.titulo}</figcaption>
+              {/* O quadro reduz o perfil, na largura real, até caber aqui (zoom no script). */}
+              <div data-quadro data-largura={q.largura} class="mt-1 overflow-hidden rounded-3xl bg-fundo p-2">
+                <div data-quadro-interno style={`width: ${q.largura}px`} aria-hidden="true">
+                  <TopoDoPerfil previa capa={capa} capaInteira fotoPerfil={fotoPerfil} tipo={tipo} icone="" cor="">
+                    <p class="mt-3 font-display text-3xl leading-tight font-extrabold text-azul-900">{nome}</p>
+                  </TopoDoPerfil>
+                </div>
+              </div>
+            </figure>
+          ))
+        }
+      </div>
+    </div>
+    <p data-previa-galeria hidden class="mt-4 text-sm text-slate-600">Na galeria do perfil, a foto aparece quadrada, como na moldura acima.</p>
+
+    <p data-erro-ajuste role="alert" hidden class="mt-4 rounded-2xl bg-vermelho-500/10 p-3 text-sm font-semibold text-vermelho-700"></p>
+
+    <div class="mt-6 flex gap-2">
+      <button type="button" data-modal-fechar class={classesBotao("contorno", "m", "flex-1")}>Cancelar</button>
+      <button type="button" data-confirmar-ajuste class={classesBotao("azul", "m", "flex-1")}>Enviar foto</button>
+    </div>
+  </div>
+</Modal>
