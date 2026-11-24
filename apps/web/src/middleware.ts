@@ -84,7 +84,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
       if (!aceito.dados) return context.redirect("/representante/termo", 303);
     }
     // O anunciante (e o cliente sem anúncio) aceita a versão em vigor dos Termos e da Política antes de usar a área.
-    if (comecaCom(pathname, "/anunciante") && pathname !== "/anunciante/aceite") {
+    // A exclusão da conta não depende do aceite: quem não aceita a versão nova pode sair (LGPD).
+    if (comecaCom(pathname, "/anunciante") && pathname !== "/anunciante/aceite" && pathname !== "/anunciante/excluir") {
       const pendente = await aceitePendente(supabase, usuario.id);
       if (!pendente.ok) {
         return new Response(pendente.erro.mensagem, {

@@ -27,6 +27,7 @@ if (Astro.request.method === "GET" && usuario) {
 const avisos: Record<string, string> = {
   confirmado: "E-mail confirmado. Agora é só entrar.",
   saiu: "Você saiu da sua conta.",
+  "conta-excluida": "Sua conta foi excluída. Você recebe um e-mail de confirmação.",
 };
 const aviso = [...Astro.url.searchParams.keys()].map((chave) => avisos[chave]).find(Boolean);
 // Cadastro próprio aberto ao público a partir da abertura (decisão G6 de 24/11/2026).

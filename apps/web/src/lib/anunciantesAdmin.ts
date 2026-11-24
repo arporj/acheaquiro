@@ -46,7 +46,9 @@ export type Situacao =
   | "publicado"
   | "pausado"
   | "escondido_por_vencimento"
-  | "suspenso";
+  | "suspenso"
+  /** Conta excluída pelo anunciante depois de pagar: só o registro mínimo da lei fiscal (decisão X2). */
+  | "excluido";
 
 export const ROTULO_SITUACAO: Record<Situacao, string> = {
   rascunho: "Rascunho",
@@ -57,6 +59,7 @@ export const ROTULO_SITUACAO: Record<Situacao, string> = {
   pausado: "Pausado pelo anunciante",
   escondido_por_vencimento: "Escondido (plano vencido)",
   suspenso: "Suspenso",
+  excluido: "Conta excluída",
 };
 
 /** Abas da lista: cada uma junta as situações que pedem a mesma atenção. */
@@ -64,7 +67,7 @@ export const ABAS = {
   analisar: { rotulo: "Para analisar", situacoes: ["em_analise"] },
   andamento: { rotulo: "Em andamento", situacoes: ["rascunho", "aguardando_anunciante", "aguardando_pagamento"] },
   publicados: { rotulo: "Publicados", situacoes: ["publicado", "pausado"] },
-  fora: { rotulo: "Fora do ar", situacoes: ["suspenso", "escondido_por_vencimento"] },
+  fora: { rotulo: "Fora do ar", situacoes: ["suspenso", "escondido_por_vencimento", "excluido"] },
   todos: { rotulo: "Todos", situacoes: [] },
 } as const satisfies Record<string, { rotulo: string; situacoes: readonly Situacao[] }>;
 export type Aba = keyof typeof ABAS;

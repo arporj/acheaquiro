@@ -34,7 +34,9 @@ interface Aviso {
     | "extra_lembrete_vencimento"
     | "extra_vencido"
     | "termos_novos"
-    | "privacidade_nova";
+    | "privacidade_nova"
+    | "conta_excluida"
+    | "exclusao_agendada";
   para: string;
   tentativas: number;
   dados: {
@@ -60,6 +62,8 @@ interface Aviso {
     /** Termos novos (item 15 dos Termos): a versão e o dia em que passa a valer. */
     versao?: string;
     vigenteDesde?: string;
+    /** Exclusão agendada da conta: o dia em que ela será excluída. */
+    excluirEm?: string;
     /** Denúncia de perfil, para os administradores: o perfil e o motivo (sem o texto de quem denunciou). */
     slug?: string;
     motivo?: string;
@@ -159,6 +163,29 @@ function montar(
       ],
       botao: { texto: "Ler os Termos de Uso", link: `${PRODUCAO}/termos/v${d.versao ?? ""}` },
       rodape: "Você recebe este aviso porque tem conta no Ache Aqui RO e aceitou os Termos de Uso.",
+    };
+  }
+  if (aviso.tipo === "conta_excluida") {
+    return {
+      assunto: "Sua conta no Ache Aqui RO foi excluída",
+      paragrafos: [
+        `${d.nome ? `Olá, ${d.nome}. ` : ""}A sua conta no Ache Aqui RO foi excluída, como você pediu.`,
+        "Saíram do site o seu anúncio, as fotos, os contatos e os eventos. Se você já tinha feito algum pagamento, guardamos só o registro dele (nome, plano, valores e datas) pelo prazo da lei fiscal, como diz a Política de Privacidade.",
+        "Se não foi você que pediu, fale com a equipe pelo WhatsApp.",
+      ],
+      botao: { texto: "Falar com a equipe", link: `https://wa.me/${WHATSAPP_EQUIPE}` },
+      rodape: "Você recebe este aviso porque a sua conta no Ache Aqui RO foi excluída.",
+    };
+  }
+  if (aviso.tipo === "exclusao_agendada") {
+    return {
+      assunto: "A exclusão da sua conta no Ache Aqui RO está agendada",
+      paragrafos: [
+        `${d.nome ? `Olá, ${d.nome}. ` : ""}A sua conta no Ache Aqui RO será excluída em ${data(d.excluirEm)}, quando termina o período que você já pagou.`,
+        "Até lá, o seu anúncio continua no site, e você não recebe lembretes de renovação. Se mudar de ideia, é só entrar na sua área e desistir da exclusão.",
+      ],
+      botao: { texto: "Entrar na minha área", link: `${PRODUCAO}/anunciante/excluir` },
+      rodape: "Você recebe este aviso porque pediu a exclusão da sua conta no Ache Aqui RO.",
     };
   }
   if (aviso.tipo === "privacidade_nova") {

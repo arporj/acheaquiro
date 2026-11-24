@@ -1,0 +1,163 @@
+---
+// Excluir minha conta (LGPD; decisões X1 a X6 de 24/11/2026). Explica o que é
+// apagado e o que fica, oferece manter o cadastro até o fim do período pago
+// (exclusão automática nesse dia) e pede a senha de novo, com a confirmação
+// num modal. Não depende do aceite dos documentos em vigor (middleware).
+import { opcoesDeExclusao } from "@acheaqui/domain";
+import { Icone, Modal, classesBotao } from "@acheaqui/ui";
+import Aviso from "@/components/conta/Aviso.astro";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
+import Turnstile from "@/components/conta/Turnstile.astro";
+import LinkContatoEquipe from "@/components/institucional/LinkContatoEquipe.astro";
+import { mensagemEquipe } from "@/lib/contato";
+import { desistirDaExclusao, excluirConta, lerSituacaoParaExcluir } from "@/lib/exclusao";
+import { hojeNaCidade } from "@/lib/pagamentos";
+import { ipDaRequisicao } from "@/lib/sessao";
+import { formatarData } from "@/lib/texto";
+
+const supabase = Astro.locals.supabase!;
+const usuario = Astro.locals.usuario!;
+const hoje = hojeNaCidade();
+const AVISOS: Record<string, string> = {
+  agendada: "Exclusão agendada. Você recebe um e-mail com a data.",
+  desistiu: "Pronto: a sua conta não será mais excluída.",
+};
+const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""];
+let erro = "";
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  if (form.get("acao") === "desistir") {
+    const r = await desistirDaExclusao(supabase);
+    if (r.ok) return Astro.redirect("/anunciante/excluir?aviso=desistiu", 303);
+    erro = r.erro.mensagem;
+  } else {
+    const r = await excluirConta(supabase, {
+      email: usuario.email ?? "",
+      senha: String(form.get("senha") ?? "").slice(0, 200),
+      tokenRobo: String(form.get("tokenRobo") ?? "").slice(0, 4000),
+      ip: ipDaRequisicao(Astro.clientAddress),
+      manter: form.get("quando") === "manter",
+      origemDoSite: Astro.url.origin,
+    });
+    if (r.ok) return Astro.redirect(r.dados.agendadaPara ? "/anunciante/excluir?aviso=agendada" : "/entrar?conta-excluida", 303);
+    erro = r.erro.mensagem;
+    Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
+  }
+}
+
+const situacao = await lerSituacaoParaExcluir(supabase, hoje);
+if (!situacao.ok) erro ||= situacao.erro.mensagem;
+const opcoes = situacao.ok ? opcoesDeExclusao(situacao.dados) : null;
+const exclusaoEm = situacao.ok ? situacao.dados.exclusaoEm : null;
+const secao = "mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
+---
+
+<PaginaAcesso titulo="Excluir minha conta" logado>
+  <a href="/anunciante" class="mt-1 inline-block text-sm font-bold text-azul-600 hover:underline">← Área do anunciante</a>
+  {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  {
+    opcoes?.agendada && exclusaoEm ? (
+      <section class={secao}>
+        <h2 class="font-display text-lg font-bold text-azul-900">Exclusão agendada para {formatarData(exclusaoEm)}</h2>
+        <p class="mt-2 text-slate-700">
+          Até lá, o seu anúncio continua no site, e você não recebe lembretes de renovação. Nesse dia, a conta é excluída sozinha.
+        </p>
+        <form method="post" class="mt-4">
+          <input type="hidden" name="acao" value="desistir" />
+          <button type="submit" class={classesBotao("azul", "m")}>
+            Desistir da exclusão
+          </button>
+        </form>
+      </section>
+    ) : (
+      opcoes && (
+        <>
+          <section class={secao}>
+            <h2 class="font-display text-lg font-bold text-azul-900">O que acontece</h2>
+            <ul class="mt-3 space-y-2 text-slate-700">
+              <li class="flex gap-2">
+                <Icone nome="fechar" class="mt-0.5 size-5 shrink-0 text-vermelho-700" />
+                Saem do site e são apagados: o seu anúncio, as fotos, os contatos, o endereço, os horários e os seus eventos.
+              </li>
+              <li class="flex gap-2">
+                <Icone nome="fechar" class="mt-0.5 size-5 shrink-0 text-vermelho-700" />
+                Você não consegue mais entrar com este e-mail e esta senha.
+              </li>
+              <li class="flex gap-2">
+                <Icone nome="info" class="mt-0.5 size-5 shrink-0 text-azul-600" />
+                Se você já pagou algo, guardamos só o registro do pagamento (nome, plano, valores e datas) pelo prazo da lei fiscal, e o registro de que você
+                aceitou os Termos e a Política, como diz a Política de Privacidade.
+              </li>
+              <li class="flex gap-2">
+                <Icone nome="info" class="mt-0.5 size-5 shrink-0 text-azul-600" />
+                Não dá para desfazer. Para anunciar de novo, será preciso fazer um cadastro novo.
+              </li>
+            </ul>
+          </section>
+
+          {opcoes.devolucaoAte && (
+            <Aviso tipo="info">
+              O seu último pagamento ainda pode ser devolvido, até {formatarData(opcoes.devolucaoAte)}. Se quiser o dinheiro de volta,{" "}
+              <LinkContatoEquipe mensagem={mensagemEquipe("Quero desistir e pedir a devolução do pagamento")} class="font-bold underline">
+                peça à equipe
+              </LinkContatoEquipe>{" "}
+              antes de excluir a conta: depois da exclusão, a devolução não é mais possível.
+            </Aviso>
+          )}
+
+          <form method="post" id="form-excluir" class={secao}>
+            {opcoes.podeManter && opcoes.excluirEm && (
+              <fieldset>
+                <legend class="font-display text-lg font-bold text-azul-900">Quando excluir</legend>
+                <label class="mt-3 flex items-start gap-3">
+                  <input type="radio" name="quando" value="manter" checked class="mt-1 size-5 shrink-0 accent-azul-600" />
+                  <span>
+                    <strong>Manter até {formatarData(opcoes.excluirEm)} e excluir depois</strong>
+                    <span class="block text-sm text-slate-600">Você aproveita o período que já pagou. Nesse dia, a conta é excluída sozinha.</span>
+                  </span>
+                </label>
+                <label class="mt-3 flex items-start gap-3">
+                  <input type="radio" name="quando" value="agora" class="mt-1 size-5 shrink-0 accent-azul-600" />
+                  <span>
+                    <strong>Excluir agora</strong>
+                    <span class="block text-sm text-slate-600">Você perde o período que falta, sem devolução.</span>
+                  </span>
+                </label>
+              </fieldset>
+            )}
+            <div class:list={[opcoes.podeManter && "mt-5"]}>
+              <label class={classesRotulo} for="senha">
+                Sua senha, para confirmar
+              </label>
+              <input id="senha" name="senha" type="password" autocomplete="current-password" required maxlength="200" class={classesCampo} />
+            </div>
+            <Turnstile />
+            <button type="button" data-abrir-modal="modal-excluir" class={classesBotao("perigo", "m", "mt-5")}>
+              Excluir minha conta
+            </button>
+          </form>
+
+          <Modal id="modal-excluir" titulo="Excluir a sua conta?">
+            <p class="text-slate-700">
+              {opcoes.podeManter
+                ? "Se você escolheu manter até o fim do período pago, a conta é excluída sozinha nesse dia. Se escolheu excluir agora, tudo sai na hora e não dá para desfazer."
+                : "Tudo sai na hora e não dá para desfazer."}
+            </p>
+            <div class="mt-4 flex flex-wrap justify-end gap-2">
+              <button type="button" data-modal-fechar class={classesBotao("contorno", "m")}>
+                Voltar
+              </button>
+              <button type="submit" form="form-excluir" class={classesBotao("perigo", "m")}>
+                Confirmar a exclusão
+              </button>
+            </div>
+          </Modal>
+        </>
+      )
+    )
+  }
+</PaginaAcesso>
