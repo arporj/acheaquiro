@@ -2,6 +2,7 @@
 // digitar o código do aplicativo autenticador. Usados no servidor; a tela usa
 // os mesmos requisitos de senha (senha.ts) para mostrar o que falta.
 import { z } from "zod";
+import { esquemaCodigoIndicacao } from "./negociacao";
 import { REQUISITOS_SENHA, TAMANHO_MAXIMO_SENHA } from "./senha";
 
 export const esquemaEmail = z
@@ -81,8 +82,10 @@ export function mensagensPorCampo(erro: z.ZodError): Record<string, string> {
 
 /**
  * Criar conta de anunciante pelo site (cadastro próprio, decisões G1 e G2 de
- * 24/11/2026): nome, e-mail, senha forte repetida e o Turnstile, que o Supabase
- * Auth confere. O papel de anunciante vem do banco, nunca do envio.
+ * 24/11/2026): nome, e-mail, senha forte repetida, o código opcional do
+ * representante (decisão de 24/11/2026: pedido só aqui, e não no envio do
+ * cadastro) e o Turnstile, que o Supabase Auth confere. O papel de anunciante
+ * vem do banco, nunca do envio.
  */
 export const esquemaCriarConta = z
   .object({
@@ -93,6 +96,7 @@ export const esquemaCriarConta = z
     email: esquemaEmail,
     senha: esquemaSenhaForte,
     confirmacao: z.string({ error: "Repita a senha." }),
+    codigoRepresentante: esquemaCodigoIndicacao,
     tokenRobo: esquemaTokenRobo,
   })
   .refine((dados) => dados.senha === dados.confirmacao, {

@@ -144,7 +144,8 @@ const a = lido.ok ? lido.dados : null;
 const planos = opcoes.ok ? opcoes.dados.planos : [];
 const nomePlano = (pid: string | null) => (pid ? (planos.find((p) => p.id === pid)?.nome ?? "plano inativo") : null);
 const representante = opcoes.ok && a?.representante_id ? opcoes.dados.representantes.find((r) => r.id === a.representante_id) : undefined;
-// Cadastro próprio (decisão G2 de 24/11/2026): o representante do código informado vira quem trouxe o anunciante na aprovação.
+// Cadastro próprio (decisão G2 de 24/11/2026): o representante do código informado ao criar a conta vira quem trouxe o
+// anunciante na aprovação, se continuar ativo (a lista só tem os ativos, então o desativado não aparece aqui).
 const indicado =
   opcoes.ok && a?.representante_indicado_id && !a.representante_id ? opcoes.dados.representantes.find((r) => r.id === a.representante_indicado_id) : undefined;
 const nomes = new Map((equipe.ok ? equipe.dados : []).map((m) => [m.usuario_id, m.nome || m.email]));

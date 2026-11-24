@@ -1,7 +1,9 @@
 ---
 // Criar conta de anunciante pelo site (cadastro próprio, decisões G1 e G2 de
-// 24/11/2026): nome, e-mail e senha forte; o Supabase Auth confere o Turnstile e
-// manda o link de confirmação. Confirmado o e-mail, a pessoa entra, aceita os
+// 24/11/2026): nome, e-mail, senha forte e o código opcional do representante
+// (decisão de 24/11/2026: pedido só aqui, já preenchido pelo link /r/codigo, e
+// guardado na conta); o Supabase Auth confere o Turnstile e manda o link de
+// confirmação. Confirmado o e-mail, a pessoa entra, aceita os
 // Termos e a Política (/anunciante/aceite) e preenche as etapas do anúncio
 // (/anunciante/cadastro). Aberto ao público na abertura (G6): antes, o Auth
 // recusa o cadastro (enable_signup) e a tela explica.
@@ -13,6 +15,7 @@ import { classesCampo, classesErroCampo, classesRotulo } from "@/components/cont
 import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
 import RequisitosSenha from "@/components/conta/RequisitosSenha.astro";
 import Turnstile from "@/components/conta/Turnstile.astro";
+import { lerIndicacao } from "@/lib/indicacao";
 import { destinoDepoisDeEntrar } from "@/lib/sessao";
 
 const supabase = Astro.locals.supabase!;
@@ -25,17 +28,21 @@ let erro = "";
 let campos: Record<string, string> = {};
 let nome = "";
 let email = "";
+// Já vem com o código do link do representante (cookie de 30 dias), se houver.
+let codigoRepresentante = lerIndicacao(Astro.request.headers.get("cookie") ?? "");
 let enviado = false;
 
 if (Astro.request.method === "POST") {
   const formulario = await Astro.request.formData();
   nome = String(formulario.get("nome") ?? "").slice(0, 100);
   email = String(formulario.get("email") ?? "").slice(0, 254);
+  codigoRepresentante = String(formulario.get("codigoRepresentante") ?? "").slice(0, 30);
   const dados = esquemaCriarConta.safeParse({
     nome: formulario.get("nome"),
     email: formulario.get("email"),
     senha: formulario.get("senha"),
     confirmacao: formulario.get("confirmacao"),
+    codigoRepresentante: formulario.get("codigoRepresentante") ?? undefined,
     tokenRobo: formulario.get("tokenRobo"),
   });
   if (!dados.success) {
@@ -46,6 +53,7 @@ if (Astro.request.method === "POST") {
       nome: dados.data.nome,
       email: dados.data.email,
       senha: dados.data.senha,
+      codigoRepresentante: dados.data.codigoRepresentante,
       tokenRobo: dados.data.tokenRobo,
     });
     if (resultado.ok) {
@@ -53,6 +61,7 @@ if (Astro.request.method === "POST") {
       email = dados.data.email;
     } else {
       erro = resultado.erro.mensagem;
+      campos = resultado.erro.campos ?? {};
       Astro.response.status = resultado.erro.codigo === "LIMITE_DE_REQUISICOES" ? 429 : 400;
     }
   }
@@ -139,6 +148,21 @@ if (Astro.request.method === "POST") {
             aria-describedby={campos.confirmacao ? "confirmacao-erro" : undefined}
           />
           {campos.confirmacao && <p id="confirmacao-erro" class={classesErroCampo}>{campos.confirmacao}</p>}
+
+          <label for="codigoRepresentante" class={classesRotulo}>Código do representante (opcional)</label>
+          <p id="codigo-ajuda" class="mt-1 text-sm text-slate-600">Se um representante do Ache Aqui RO te indicou, informe o código dele.</p>
+          <input
+            id="codigoRepresentante"
+            name="codigoRepresentante"
+            autocomplete="off"
+            autocapitalize="none"
+            maxlength="30"
+            value={codigoRepresentante}
+            class={classesCampo}
+            aria-invalid={campos.codigoRepresentante ? "true" : undefined}
+            aria-describedby={campos.codigoRepresentante ? "codigo-ajuda codigo-erro" : "codigo-ajuda"}
+          />
+          {campos.codigoRepresentante && <p id="codigo-erro" class={classesErroCampo}>{campos.codigoRepresentante}</p>}
 
           <Turnstile />
           {campos.tokenRobo && <p class={classesErroCampo}>{campos.tokenRobo}</p>}

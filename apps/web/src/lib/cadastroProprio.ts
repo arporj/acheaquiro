@@ -7,7 +7,7 @@
 // no perfil publicado, marca "Para conferir" (migration 20261124125805).
 import { situacaoDoCadastro, podeEnviarCadastro, type ParteDoCadastro, type ResumoDoCadastro, type SituacaoDaParte } from "@acheaqui/domain";
 import type { Resultado } from "@acheaqui/types";
-import { esquemaCodigoIndicacao, esquemaEtapaContato, esquemaEtapaOnde, esquemaEtapaSobre, esquemaHorario } from "@acheaqui/validation";
+import { esquemaEtapaContato, esquemaEtapaOnde, esquemaEtapaSobre, esquemaHorario } from "@acheaqui/validation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { aceitarDocumentosVigentes } from "./anunciante";
 import {
@@ -278,25 +278,18 @@ export async function salvarParte(
 
 /**
  * Envia o rascunho do cadastro próprio para análise (G3): confere o que é
- * obrigatório, liga o representante do código (se houver), grava o aceite das
- * versões em vigor e muda a situação. O banco confere tudo de novo.
+ * obrigatório, grava o aceite das versões em vigor e muda a situação. O banco
+ * confere tudo de novo. O representante indicado vem da conta (código informado
+ * ao criar a conta, decisão de 24/11/2026).
  */
 export async function enviarCadastroProprio(
   supabase: SupabaseClient,
   usuarioId: string,
   cadastro: AnuncianteAdmin,
   fotos: FotosDoCadastro | null,
-  codigoInformado: string,
 ): Promise<Resultado<null>> {
   if (!ehRascunhoProprio(cadastro, usuarioId)) return falha("CONFLITO", "Este cadastro já foi enviado.");
   if (!podeEnviarCadastro(situacaoDoMeuCadastro(cadastro, fotos))) return falha("DADOS_INVALIDOS", "Ainda falta preencher partes obrigatórias do cadastro.");
-  const codigo = esquemaCodigoIndicacao.safeParse(codigoInformado);
-  if (!codigo.success) return errosDoEsquema(codigo.error, "codigoRepresentante");
-  const indicado = await supabase.rpc("indicar_representante", { p_codigo: codigo.data ?? "" });
-  if (indicado.error) return mensagemDoBanco(indicado.error, "enviarCadastroProprio: indicação");
-  if (indicado.data === false) {
-    return falha("DADOS_INVALIDOS", CONFIRA, { codigoRepresentante: "Não achamos um representante com este código. Confira ou deixe em branco." });
-  }
   const aceite = await aceitarDocumentosVigentes(supabase, usuarioId);
   if (!aceite.ok) return aceite;
   const { data, error } = await supabase.from("anunciantes").update({ status: "em_analise" }).eq("id", cadastro.id).eq("usuario_id", usuarioId).select("id");

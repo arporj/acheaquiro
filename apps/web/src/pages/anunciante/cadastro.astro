@@ -12,7 +12,7 @@ import FormularioAnunciante from "@/components/admin/FormularioAnunciante.astro"
 import FotosDoPerfil from "@/components/admin/FotosDoPerfil.astro";
 import CardsDoCadastro from "@/components/anunciante/CardsDoCadastro.astro";
 import Aviso from "@/components/conta/Aviso.astro";
-import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
+import { classesErroCampo } from "@/components/conta/estilos";
 import PaginaAcesso from "@/components/conta/PaginaAcesso.astro";
 import { obterRegrasCobranca } from "@/dados/consultas";
 import { lerMeuCadastro } from "@/lib/anunciante";
@@ -27,7 +27,6 @@ import {
   tituloDaParte,
 } from "@/lib/cadastroProprio";
 import { listarFotosDoCadastro } from "@/lib/fotos";
-import { lerIndicacao } from "@/lib/indicacao";
 import { textoValorPlano } from "@/lib/precos";
 
 type Etapa = ParteDoCadastro | "enviar";
@@ -60,7 +59,7 @@ if (Astro.request.method === "POST") {
   const form = await Astro.request.formData();
   if (etapa === "enviar" && cadastro) {
     const fotosAtuais = await listarFotosDoCadastro(supabase, cadastro);
-    const r = await enviarCadastroProprio(supabase, usuario.id, cadastro, fotosAtuais.ok ? fotosAtuais.dados : null, String(form.get("codigoRepresentante") ?? ""));
+    const r = await enviarCadastroProprio(supabase, usuario.id, cadastro, fotosAtuais.ok ? fotosAtuais.dados : null);
     if (r.ok) return Astro.redirect("/anunciante?aviso=enviado", 303);
     erro = r.erro.mensagem;
     erros = r.erro.campos ?? {};
@@ -109,7 +108,6 @@ const textoBotao = passoAPasso ? "Salvar e continuar" : "Salvar";
 const planos = o && tipo ? o.planos.filter((p) => p.tipo === tipo) : [];
 const planoEscolhido = String(enviado?.get("planoEscolhidoId") ?? cadastro?.plano_escolhido_id ?? (tipo === "comercio" ? (planos.find((p) => p.valor_mensal_centavos === 0)?.id ?? "") : ""));
 const periodicidade = String(enviado?.get("periodicidade") ?? cadastro?.periodicidade_escolhida ?? "anual");
-const codigoIndicacao = String(enviado?.get("codigoRepresentante") ?? lerIndicacao(Astro.request.headers.get("cookie") ?? ""));
 const caixa = "mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
 ---
 
@@ -264,21 +262,7 @@ const caixa = "mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
           enderecos={Object.fromEntries(PARTES_DO_CADASTRO.map((p) => [p, `/anunciante/cadastro?parte=${p}`]))}
         />
         <form method="post" class={caixa}>
-          <label for="codigoRepresentante" class={classesRotulo}>
-            Código do representante (opcional)
-          </label>
-          <p class="mt-1 text-sm text-slate-600">Se um representante do Ache Aqui RO te atendeu, informe o código dele.</p>
-          <input
-            id="codigoRepresentante"
-            name="codigoRepresentante"
-            value={codigoIndicacao}
-            maxlength="30"
-            autocomplete="off"
-            class={classesCampo}
-            aria-invalid={erros.codigoRepresentante ? "true" : undefined}
-          />
-          {erros.codigoRepresentante && <p class={classesErroCampo}>{erros.codigoRepresentante}</p>}
-          {!podeEnviar && <p class="mt-4 text-sm font-semibold text-vermelho-700">Preencha as partes marcadas com "Falta preencher" para poder enviar.</p>}
+          {!podeEnviar && <p class="text-sm font-semibold text-vermelho-700">Preencha as partes marcadas com "Falta preencher" para poder enviar.</p>}
           <div class="mt-6 flex flex-wrap items-center justify-end gap-3">
             <a href="/anunciante/cadastro?parte=fotos" class={classesBotao("contorno", "g")}>
               Voltar

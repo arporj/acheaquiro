@@ -19,4 +19,16 @@ describe("esquemaCriarConta", () => {
     const r = mensagens(esquemaCriarConta.safeParse({ ...valido, nome: " ", email: "sem-arroba", tokenRobo: "" }));
     expect(r).toMatchObject({ nome: "Informe o seu nome.", email: "E-mail inválido.", tokenRobo: "Confirme que você não é um robô." });
   });
+
+  it("aceita o código do representante opcional, sem diferenciar maiúscula nem espaço", () => {
+    expect(esquemaCriarConta.parse(valido)).toMatchObject({ codigoRepresentante: null });
+    expect(esquemaCriarConta.parse({ ...valido, codigoRepresentante: "  " })).toMatchObject({ codigoRepresentante: null });
+    expect(esquemaCriarConta.parse({ ...valido, codigoRepresentante: " Joao-Silva " })).toMatchObject({ codigoRepresentante: "joao-silva" });
+  });
+
+  it("recusa código do representante fora do formato do link", () => {
+    expect(mensagens(esquemaCriarConta.safeParse({ ...valido, codigoRepresentante: "joão silva" })).codigoRepresentante).toBe(
+      "Código do representante inválido. Confira com quem te indicou.",
+    );
+  });
 });

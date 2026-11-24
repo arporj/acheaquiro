@@ -4,6 +4,7 @@
 // 20261021160000_limites_de_acesso.sql, executadas com a chave service_role.
 import type { Resultado } from "@acheaqui/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { codigoRepresentanteValido } from "./representantes";
 
 const TENTATIVAS_POR_IP = 20;
 const JANELA_IP_SEGUNDOS = 15 * 60;
@@ -118,16 +119,35 @@ export async function entrar(
  * com o link para /auth/confirmar no endereço do site). O papel de anunciante vem do banco. Por segurança, um e-mail
  * que já tem conta recebe a mesma resposta (o Auth não manda e-mail nem diz que
  * a conta existe): a tela orienta a entrar ou a recuperar a senha.
+ * O código do representante (opcional, decisão de 24/11/2026) é conferido antes
+ * e vai nos dados da conta; o banco guarda o representante ativo dele na conta
+ * (interno.criar_perfil_usuario) e o passa para o rascunho do anúncio.
  */
 export async function criarConta(
   sessao: SupabaseClient,
-  { nome, email, senha, tokenRobo }: { nome: string; email: string; senha: string; tokenRobo: string },
+  {
+    nome,
+    email,
+    senha,
+    codigoRepresentante,
+    tokenRobo,
+  }: { nome: string; email: string; senha: string; codigoRepresentante: string | null; tokenRobo: string },
 ): Promise<Resultado<null>> {
   const falhaInterna = { ok: false, erro: { codigo: "ERRO_INTERNO", mensagem: "Não foi possível criar a conta agora. Tente de novo em instantes." } } as const;
+  if (codigoRepresentante && !(await codigoRepresentanteValido(sessao, codigoRepresentante))) {
+    return {
+      ok: false,
+      erro: {
+        codigo: "DADOS_INVALIDOS",
+        mensagem: "Confira os campos marcados.",
+        campos: { codigoRepresentante: "Não achamos um representante com este código. Confira com quem te indicou ou deixe em branco." },
+      },
+    };
+  }
   const { error } = await sessao.auth.signUp({
     email,
     password: senha,
-    options: { captchaToken: tokenRobo, data: { nome } },
+    options: { captchaToken: tokenRobo, data: codigoRepresentante ? { nome, codigo_representante: codigoRepresentante } : { nome } },
   });
   if (!error) return { ok: true, dados: null };
   switch (error.code) {
