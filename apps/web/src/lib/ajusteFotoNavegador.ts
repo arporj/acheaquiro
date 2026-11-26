@@ -56,11 +56,21 @@ async function imagemDaPrevia(imagem: ImageBitmap, recorte: Recorte): Promise<st
 export type FotoAjustada = FotoPreparada & { legenda: string };
 
 /**
- * Abre o ajuste para a foto escolhida. Resolve com a foto pronta para o envio,
- * ou null quando a pessoa cancela. Erro (com mensagem para a pessoa) quando a
- * imagem não abre.
+ * Envia a foto ajustada, avisando o andamento (de 0 a 100) enquanto os bytes
+ * sobem. Termina quando o servidor gravou; falha com um Error cuja mensagem é
+ * para a pessoa.
  */
-export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfil): Promise<FotoAjustada | null> {
+export type EnviarFoto = (foto: FotoAjustada, aoProgredir: (porcentagem: number) => void) => Promise<void>;
+
+/**
+ * Abre o ajuste para a foto escolhida e, ao confirmar, envia pela função
+ * recebida sem fechar a janela: o andamento aparece nela até o envio terminar
+ * (decisão de 26/11/2026, porque a janela fechada parecia envio que falhou).
+ * Resolve com true depois do envio, com a janela ainda aberta mostrando
+ * "Atualizando a página", para quem chamou recarregar; com false quando a
+ * pessoa cancela. Erro (com mensagem para a pessoa) quando a imagem não abre.
+ */
+export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfil, enviar: EnviarFoto): Promise<boolean> {
   const modal = document.querySelector<HTMLDialogElement>("#modal-ajuste-foto");
   const raiz = modal?.querySelector<HTMLElement>("[data-ajuste-foto]");
   if (!modal || !raiz) throw new Error("A tela de ajuste da foto não está nesta página.");
@@ -86,7 +96,24 @@ export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfi
   const previaGaleria = q<HTMLElement>("[data-previa-galeria]");
   const erro = q<HTMLElement>("[data-erro-ajuste]");
   const confirmar = q<HTMLButtonElement>("[data-confirmar-ajuste]");
+  const andamento = q<HTMLElement>("[data-andamento]");
+  const andamentoTexto = q<HTMLElement>("[data-andamento-texto]");
+  const andamentoBarra = q<HTMLElement>("[data-andamento-barra]");
   const titulo = modal.querySelector<HTMLElement>("[data-modal-titulo]");
+  // Durante o envio, nada do ajuste muda e a janela não fecha (Modal.astro respeita data-ocupado).
+  const travaveis = [moldura, q<HTMLElement>("[data-controles-zoom]"), opcaoInteira, campoLegenda];
+  const fechar = [...modal.querySelectorAll<HTMLButtonElement>("[data-modal-fechar]")];
+  const ocupar = (ocupado: boolean) => {
+    modal.toggleAttribute("data-ocupado", ocupado);
+    for (const el of travaveis) el.inert = ocupado;
+    for (const botao of fechar) botao.disabled = ocupado;
+    confirmar.disabled = ocupado;
+  };
+  const mostrarAndamento = (texto: string, porcentagem: number) => {
+    andamento.hidden = false;
+    andamentoTexto.textContent = texto;
+    andamentoBarra.style.width = `${Math.min(100, Math.max(0, porcentagem))}%`;
+  };
 
   let recorte = recorteInicial(largura, altura, proporcao);
   // Na galeria, folheto ou foto fora do quadrado começa inteira (comecaInteira); na capa, a pessoa escolhe.
@@ -108,7 +135,8 @@ export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfi
   previa.hidden = finalidade === "galeria";
   previaGaleria.hidden = finalidade !== "galeria";
   erro.hidden = true;
-  confirmar.disabled = false;
+  andamento.hidden = true;
+  ocupar(false);
   confirmar.textContent = "Enviar foto";
   moldura.style.aspectRatio = String(proporcao);
 
@@ -272,31 +300,41 @@ export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfi
   observador.observe(moldura);
   observador.observe(previa);
 
-  return new Promise<FotoAjustada | null>((resolver) => {
-    let resultado: FotoAjustada | null = null;
-
+  return new Promise<boolean>((resolver) => {
     confirmar.addEventListener(
       "click",
       async () => {
-        confirmar.disabled = true;
-        confirmar.textContent = "Preparando…";
+        ocupar(true);
         erro.hidden = true;
+        confirmar.textContent = "Enviando…";
+        mostrarAndamento("Preparando a foto…", 0);
+        let etapa: "preparo" | "envio" = "preparo";
         try {
           const versoes = await versoesDaImagem(imagem, finalidade, recorteFinal());
-          resultado = { ...versoes, legenda: finalidade === "galeria" ? legenda.value.trim() : "" };
-          modal.close();
+          etapa = "envio";
+          mostrarAndamento("Enviando a foto… 0%", 0);
+          await enviar({ ...versoes, legenda: finalidade === "galeria" ? legenda.value.trim() : "" }, (porcentagem) =>
+            // Bytes enviados: falta o servidor gravar as três versões.
+            porcentagem < 100 ? mostrarAndamento(`Enviando a foto… ${porcentagem}%`, porcentagem) : mostrarAndamento("Gravando a foto…", 100),
+          );
+          // A janela continua aberta, travada, até a página nova (com a foto) chegar.
+          mostrarAndamento("Foto enviada. Atualizando a página…", 100);
+          confirmar.textContent = "Foto enviada";
+          resolver(true);
         } catch (falha) {
-          console.error("Ajuste da foto: preparo falhou", falha);
-          erro.textContent = falha instanceof Error && falha.message ? falha.message : "Não foi possível preparar a foto. Tente de novo.";
+          console.error(`Ajuste da foto: ${etapa} falhou`, falha);
+          const padrao = etapa === "preparo" ? "Não foi possível preparar a foto. Tente de novo." : "Não foi possível enviar a foto. Tente de novo.";
+          erro.textContent = falha instanceof Error && falha.message ? falha.message : padrao;
           erro.hidden = false;
-          confirmar.disabled = false;
-          confirmar.textContent = "Enviar foto";
+          andamento.hidden = true;
+          ocupar(false);
+          confirmar.textContent = "Tentar de novo";
         }
       },
       { signal },
     );
 
-    // Fechar (Cancelar, Esc, clique fora ou depois de preparar) limpa tudo e devolve a prévia como estava.
+    // Fechar (Cancelar, Esc ou clique fora) limpa tudo e devolve a prévia como estava.
     modal.addEventListener(
       "close",
       () => {
@@ -307,7 +345,8 @@ export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfi
         fotosDaPrevia.forEach((img, i) => (img.src = originais[i] ?? img.src));
         if (urlPrevia) URL.revokeObjectURL(urlPrevia);
         imagem.close();
-        resolver(resultado);
+        ocupar(false);
+        resolver(false);
       },
       { signal },
     );

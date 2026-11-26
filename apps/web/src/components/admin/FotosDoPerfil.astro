@@ -185,36 +185,47 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
       const url = new URL(location.href);
       url.searchParams.set("aviso", aviso);
       url.hash = "fotos";
-      location.assign(url.toString());
+      // O mesmo endereço (segunda foto seguida) só rolaria até #fotos, sem recarregar.
+      if (url.toString() === location.href) location.reload();
+      else location.assign(url.toString());
     };
-    const textoDoErro = async (resposta: Response) => {
+    const ERRO_PADRAO = "Não foi possível concluir. Tente de novo.";
+    // Mensagem do servidor ({ erro: { mensagem } }) para a pessoa; o detalhe vai só para o console.
+    const mensagemDoErro = (status: number, corpo: string) => {
       try {
-        const corpo = (await resposta.json()) as { erro?: { mensagem?: string } };
-        return corpo.erro?.mensagem ?? "Não foi possível concluir. Tente de novo.";
+        return (JSON.parse(corpo) as { erro?: { mensagem?: string } }).erro?.mensagem ?? ERRO_PADRAO;
       } catch (erro) {
-        console.error("Fotos: resposta sem JSON", resposta.status, erro);
-        return "Não foi possível concluir. Tente de novo.";
+        console.error("Fotos: resposta sem JSON", status, erro);
+        return ERRO_PADRAO;
       }
     };
+    const textoDoErro = async (resposta: Response) => mensagemDoErro(resposta.status, await resposta.text());
 
-    const enviar = async (finalidade: FinalidadeFotoPerfil, foto: FotoAjustada, campo: HTMLInputElement) => {
-      ocupar(true);
-      mostrar("Enviando a foto…", "info");
-      try {
-        const dados = new FormData();
-        dados.set("anunciante", anuncianteId);
-        dados.set("finalidade", finalidade);
-        if (finalidade === "galeria") dados.set("legenda", foto.legenda);
-        for (const [tamanho, arquivo] of foto.versoes) dados.set(`foto_${tamanho}`, arquivo);
-        const resposta = await fetch("/api/fotos", { method: "POST", body: dados });
-        if (resposta.ok) return recarregar("foto");
-        mostrar(await textoDoErro(resposta), "erro");
-      } catch (erro) {
-        console.error("Fotos: envio falhou", erro);
-        mostrar("Sem conexão com o site. Confira a internet e tente de novo.", "erro");
-      }
-      campo.value = "";
-      ocupar(false);
+    // XMLHttpRequest, e não fetch, porque só ele informa quanto do envio já subiu.
+    const enviarComAndamento = (dados: FormData, aoProgredir: (porcentagem: number) => void) =>
+      new Promise<void>((resolver, rejeitar) => {
+        const pedido = new XMLHttpRequest();
+        pedido.open("POST", "/api/fotos");
+        pedido.timeout = 120_000;
+        pedido.upload.addEventListener("progress", (evento) => {
+          if (evento.lengthComputable) aoProgredir(Math.floor((evento.loaded / evento.total) * 100));
+        });
+        pedido.addEventListener("load", () => {
+          if (pedido.status >= 200 && pedido.status < 300) return resolver();
+          rejeitar(new Error(mensagemDoErro(pedido.status, pedido.responseText)));
+        });
+        pedido.addEventListener("error", () => rejeitar(new Error("Sem conexão com o site. Confira a internet e tente de novo.")));
+        pedido.addEventListener("timeout", () => rejeitar(new Error("O envio demorou demais. Confira a internet e tente de novo.")));
+        pedido.send(dados);
+      });
+
+    const enviar = (finalidade: FinalidadeFotoPerfil) => (foto: FotoAjustada, aoProgredir: (porcentagem: number) => void) => {
+      const dados = new FormData();
+      dados.set("anunciante", anuncianteId);
+      dados.set("finalidade", finalidade);
+      if (finalidade === "galeria") dados.set("legenda", foto.legenda);
+      for (const [tamanho, arquivo] of foto.versoes) dados.set(`foto_${tamanho}`, arquivo);
+      return enviarComAndamento(dados, aoProgredir);
     };
 
     for (const campo of secao.querySelectorAll<HTMLInputElement>("[data-escolher-foto]")) {
@@ -223,21 +234,15 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
         if (!arquivo) return;
         const finalidade = campo.dataset.escolherFoto as FinalidadeFotoPerfil;
         mensagem.classList.add("hidden");
-        let foto: FotoAjustada | null;
         try {
-          foto = await ajustarFoto(arquivo, finalidade);
+          // O ajuste envia e mostra o andamento; enviado, a página volta com a foto nova.
+          if (await ajustarFoto(arquivo, finalidade, enviar(finalidade))) return recarregar("foto");
         } catch (erro) {
           console.error("Fotos: ajuste falhou", erro);
           mostrar(erro instanceof Error && erro.message ? erro.message : "Não foi possível ler esta imagem.", "erro");
-          campo.value = "";
-          return;
         }
-        // Cancelou o ajuste: nada muda.
-        if (!foto) {
-          campo.value = "";
-          return;
-        }
-        await enviar(finalidade, foto, campo);
+        // Cancelou ou a imagem não abriu: nada muda.
+        campo.value = "";
       });
     }
 

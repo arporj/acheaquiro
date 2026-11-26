@@ -2,7 +2,8 @@
 // Modal da própria interface (o projeto não usa alert/confirm do navegador).
 // Usa <dialog> nativo: prende o foco e fecha com Esc. Quem usa abre com
 // dialogo.showModal(), ouve o evento "close" e pode trocar o título pelo
-// elemento [data-modal-titulo].
+// elemento [data-modal-titulo]. Com o atributo data-ocupado (por exemplo,
+// durante um envio), nem o Esc nem o clique no fundo fecham o modal.
 import Icone from "./Icone.astro";
 
 interface Props {
@@ -41,7 +42,10 @@ const { id, titulo, largura = "normal" } = Astro.props;
   for (const dialogo of document.querySelectorAll<HTMLDialogElement>("dialog[data-modal]")) {
     // Clique no fundo escurecido fecha o modal.
     dialogo.addEventListener("click", (evento) => {
-      if (evento.target === dialogo) dialogo.close();
+      if (evento.target === dialogo && !dialogo.hasAttribute("data-ocupado")) dialogo.close();
+    });
+    dialogo.addEventListener("cancel", (evento) => {
+      if (dialogo.hasAttribute("data-ocupado")) evento.preventDefault();
     });
     for (const botao of dialogo.querySelectorAll("[data-modal-fechar]")) {
       botao.addEventListener("click", () => dialogo.close());
