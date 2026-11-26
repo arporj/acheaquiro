@@ -67,7 +67,7 @@ export interface EventoDoBanco {
 
 const CAMPOS_EVENTO =
   "id, slug, nome, descricao, origem, produtor, local, endereco, bairro_id, data_inicio, data_fim, entrada, couvert_centavos, ingressos, " +
-  "aberto_ao_publico, classificacao, cadeira_de_praia, cooler, ruas_fechadas, cartaz_chave, anunciantes(id, slug, nome), cidades!inner(slug), bairros(slug), " +
+  "aberto_ao_publico, classificacao, cadeira_de_praia, cooler, ruas_fechadas, cartaz_chave, anunciantes!eventos_anunciante_id_fkey(id, slug, nome), cidades!inner(slug), bairros(slug), " +
   "programacao_evento(id, dia, inicio, fim, titulo, artista_id, artista_nome)";
 
 interface LinhaEvento {

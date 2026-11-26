@@ -164,7 +164,7 @@ export interface EventoAdmin extends EventoResumoAdmin {
 
 const CAMPOS_RESUMO =
   "id, slug, nome, origem, situacao, data_inicio, data_fim, local, cortesia_em, bairros(nome), pagamentos(blocos, devolvido_em), " +
-  "anunciantes(id, nome, slug, status, categoria_principal_id, planos!anunciantes_plano_id_fkey(inclui_agenda), anunciante_categorias(categoria_id), " +
+  "anunciantes!eventos_anunciante_id_fkey(id, nome, slug, status, categoria_principal_id, planos!anunciantes_plano_id_fkey(inclui_agenda), anunciante_categorias(categoria_id), " +
   "extras_contratados(encerrado_em, extras(codigo)))";
 
 type LinhaResumo = Omit<EventoResumoAdmin, "bairro" | "anunciante" | "cortesia" | "impedimento"> & {
@@ -599,7 +599,7 @@ export interface EventoDaConta {
   anunciante: { nome: string } | null;
 }
 
-const CAMPOS_DA_CONTA = "id, slug, nome, origem, situacao, data_inicio, data_fim, local, publicado_em, anunciantes(nome)";
+const CAMPOS_DA_CONTA = "id, slug, nome, origem, situacao, data_inicio, data_fim, local, publicado_em, anunciantes!eventos_anunciante_id_fkey(nome)";
 
 function paraEventoDaConta(linhas: unknown[]): EventoDaConta[] {
   return (linhas as (Omit<EventoDaConta, "anunciante"> & { anunciantes: { nome: string } | null })[])

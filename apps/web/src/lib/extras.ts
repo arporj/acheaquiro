@@ -386,7 +386,7 @@ export async function lerContextoEvento(supabase: SupabaseClient, eventoId: stri
   if (!UUID.test(eventoId)) return falha("NAO_ENCONTRADO", "Evento não encontrado.");
   const ev = await supabase
     .from("eventos")
-    .select("id, nome, slug, origem, situacao, data_inicio, data_fim, cidade_id, cortesia_em, anunciante:anunciantes(representante_id)")
+    .select("id, nome, slug, origem, situacao, data_inicio, data_fim, cidade_id, cortesia_em, anunciante:anunciantes!eventos_anunciante_id_fkey(representante_id)")
     .eq("id", eventoId)
     .maybeSingle();
   if (ev.error) return mensagemDoBanco(ev.error, "lerContextoEvento: evento");
