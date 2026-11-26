@@ -83,6 +83,6 @@ describe("escolha do artista na programação", () => {
       { id: "d", artistaNome: "   " },
     ]);
     expect(grupos.map((g) => g.nome)).toEqual(["Banda Nova", "Uns e Outros"]);
-    expect(grupos[1].itens.map((i) => i.id)).toEqual(["a", "c"]);
+    expect(grupos[1]?.itens.map((i) => i.id)).toEqual(["a", "c"]);
   });
 });
