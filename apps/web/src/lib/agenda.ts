@@ -152,6 +152,10 @@ export interface EventoAdmin extends EventoResumoAdmin {
   cadeira_de_praia: boolean | null;
   cooler: boolean | null;
   ruas_fechadas: string | null;
+  /** O que se leva para entrar, na entrada por doação. */
+  doacao: string | null;
+  /** Comércio do site onde o evento acontece. */
+  local_anuncio: { nome: string; slug: string } | null;
   cartaz: string | null;
   cortesia_motivo: string | null;
   cortesia_em: string | null;
@@ -232,7 +236,8 @@ export async function lerEventoAdmin(supabase: SupabaseClient, id: string): Prom
       .from("eventos")
       .select(
         `${CAMPOS_RESUMO}, descricao, produtor, endereco, bairro_id, entrada, couvert_centavos, ingressos, aberto_ao_publico, classificacao, ` +
-          "cadeira_de_praia, cooler, ruas_fechadas, cartaz_chave, cortesia_motivo, usuario_id, publicado_em, conferido_em, " +
+          "cadeira_de_praia, cooler, ruas_fechadas, doacao, local_anuncio:anunciantes!eventos_local_anunciante_id_fkey(nome, slug), " +
+          "cartaz_chave, cortesia_motivo, usuario_id, publicado_em, conferido_em, " +
           "programacao_evento(id, dia, inicio, fim, titulo, artista_nome, cadastro_pedido, artistas(id, nome, slug)), " +
           "barracas_evento(id, nome, vende, whatsapp, ordem, anunciantes(nome, slug))",
       )
@@ -286,6 +291,7 @@ function camposDoEvento(f: FormData): Record<string, unknown> {
     cadeiraDePraia: texto("cadeira_de_praia"),
     cooler: texto("cooler"),
     ruasFechadas: texto("ruas_fechadas"),
+    doacao: texto("doacao"),
   };
 }
 
@@ -302,7 +308,10 @@ export async function salvarEvento(
 ): Promise<Resultado<{ id: string }>> {
   const perfil = await anuncianteDoEndereco(supabase, String(f.get("perfil") ?? "").slice(0, 300));
   if (!perfil.ok) return perfil;
-  const validado = esquemaEvento.safeParse({ ...camposDoEvento(f), anuncianteId: perfil.dados?.id ?? "" });
+  // Comércio do site onde o evento acontece (decisão D1 de 26/11/2026), pelo link do perfil.
+  const local = await anuncianteDoEndereco(supabase, String(f.get("local_perfil") ?? "").slice(0, 300));
+  if (!local.ok) return local;
+  const validado = esquemaEvento.safeParse({ ...camposDoEvento(f), anuncianteId: perfil.dados?.id ?? "", localAnuncianteId: local.dados?.id ?? "" });
   if (!validado.success) return falha("DADOS_INVALIDOS", validado.error.issues[0]?.message ?? "Dados inválidos.");
   const d = validado.data;
   const problema = problemaNasDatasDoEvento({ inicio: d.dataInicio, fim: d.dataFim, hoje: hoje() });
@@ -327,6 +336,8 @@ export async function salvarEvento(
     cadeira_de_praia: d.cadeiraDePraia,
     cooler: d.cooler,
     ruas_fechadas: d.ruasFechadas,
+    doacao: d.doacao,
+    local_anunciante_id: d.localAnuncianteId,
   };
   if (id) {
     const { data, error } = await supabase.from("eventos").update(registro).eq("id", id).select("id").maybeSingle();

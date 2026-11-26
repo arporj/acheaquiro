@@ -17,13 +17,15 @@ export const ROTULO_ORIGEM_EVENTO: Record<OrigemEvento, string> = {
   orgao_publico: "Órgão público (gratuito)",
 };
 
-export const TIPOS_ENTRADA = ["gratuita", "couvert", "ingressos"] as const;
+export const TIPOS_ENTRADA = ["gratuita", "couvert", "ingressos", "doacao"] as const;
 export type TipoEntrada = (typeof TIPOS_ENTRADA)[number];
 
 export const ROTULO_ENTRADA: Record<TipoEntrada, string> = {
   gratuita: "Entrada gratuita",
   couvert: "Couvert artístico",
   ingressos: "Ingressos",
+  // Decisão D5 de 26/11/2026: entra quem leva a doação (alimento, ração).
+  doacao: "Doação para entrar",
 };
 
 export const CLASSIFICACOES_ETARIAS = ["livre", "12", "14", "16", "18"] as const;
@@ -73,6 +75,9 @@ export const esquemaEvento = z
     entrada: z.enum(TIPOS_ENTRADA, { error: "Escolha o tipo de entrada." }),
     couvert: z.string().optional(),
     ingressos: z.array(z.object({ nome: z.string(), valor: z.string() })).optional(),
+    doacao: textoOpcional(160, "O que doar"),
+    // Comércio do site onde o evento acontece (decisão D1 de 26/11/2026).
+    localAnuncianteId: uuidOuVazio("Perfil do local inválido."),
     abertoAoPublico: z.enum(["sim", "nao"], { error: "Diga se o evento é aberto ao público." }).transform((v) => v === "sim"),
     classificacao: z
       .enum([...CLASSIFICACOES_ETARIAS, ""], { error: "Classificação inválida." })
@@ -87,6 +92,9 @@ export const esquemaEvento = z
       ctx.addIssue({ code: "custom", path: ["anuncianteId"], message: "Escolha o anunciante." });
     }
     if (d.dataFim < d.dataInicio) ctx.addIssue({ code: "custom", path: ["dataFim"], message: "O último dia não pode vir antes do primeiro." });
+    if (d.entrada === "doacao" && d.doacao.length < 3) {
+      ctx.addIssue({ code: "custom", path: ["doacao"], message: "Diga o que a pessoa leva para entrar." });
+    }
   })
   .transform((d, ctx) => {
     let couvertCentavos: number | null = null;
@@ -113,6 +121,8 @@ export const esquemaEvento = z
       produtor: d.produtor || null,
       endereco: d.endereco || null,
       ruasFechadas: d.ruasFechadas || null,
+      doacao: d.entrada === "doacao" ? d.doacao : null,
+      localAnuncianteId: d.localAnuncianteId || null,
       couvertCentavos,
       ingressos,
     };

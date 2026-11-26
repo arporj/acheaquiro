@@ -37,7 +37,11 @@ const entrada =
     ? "Entrada gratuita"
     : evento.entrada === "couvert" && evento.couvertCentavos
       ? `Couvert artístico: ${formatarCentavos(evento.couvertCentavos)}`
-      : undefined;
+      : evento.entrada === "doacao" && evento.doacao
+        ? `Entrada solidária: ${evento.doacao}`
+        : undefined;
+// O lugar leva ao perfil: o do comércio dono do evento ou o perfil do local informado (decisão D1 de 26/11/2026).
+const perfilDoLugar = evento.origem === "comercio" && evento.anunciante ? evento.anunciante.slug : evento.localAnuncio?.slug;
 const simNao = (v: boolean | null, sim: string, nao: string) => (v === true ? sim : v === false ? nao : undefined);
 // Só o que foi informado aparece (decisão 9).
 const informacoes = [
@@ -90,8 +94,8 @@ const detalheDoItem = (it: ItemAgenda) =>
           <p class="mt-1 flex items-center gap-1.5 text-slate-600">
             <Icone nome="pin" class="size-4 shrink-0 text-vermelho-500" />
             {
-              evento.anunciante && evento.origem === "comercio" ? (
-                <a href={`/perfil/${evento.anunciante.slug}`} class="font-bold text-azul-600 hover:underline">
+              perfilDoLugar ? (
+                <a href={`/perfil/${perfilDoLugar}`} class="font-bold text-azul-600 hover:underline">
                   {evento.local}
                 </a>
               ) : (

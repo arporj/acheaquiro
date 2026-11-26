@@ -100,6 +100,30 @@ describe("esquemaEvento", () => {
     expect(r.ingressos).toEqual([]);
   });
 
+  it("aceita a entrada por doação, com o que levar, e o perfil do local", () => {
+    const r = esquemaEvento.parse({
+      ...evento,
+      entrada: "doacao",
+      doacao: " 1 kg de alimento não perecível ou 1 kg de ração por pessoa ",
+      localAnuncianteId: ANUNCIANTE,
+    });
+    expect(r.doacao).toBe("1 kg de alimento não perecível ou 1 kg de ração por pessoa");
+    expect(r.localAnuncianteId).toBe(ANUNCIANTE);
+    expect(r.couvertCentavos).toBeNull();
+    expect(r.ingressos).toEqual([]);
+  });
+
+  it("exige o que levar na entrada por doação e ignora o texto nas outras entradas", () => {
+    expect(mensagem(esquemaEvento.safeParse({ ...evento, entrada: "doacao", doacao: "" }))).toBe("Diga o que a pessoa leva para entrar.");
+    const r = esquemaEvento.parse({ ...evento, doacao: "1 kg de alimento" });
+    expect(r.doacao).toBeNull();
+    expect(r.localAnuncianteId).toBeNull();
+  });
+
+  it("recusa perfil do local inválido", () => {
+    expect(mensagem(esquemaEvento.safeParse({ ...evento, localAnuncianteId: "bar-do-ze" }))).toBe("Perfil do local inválido.");
+  });
+
   it("recusa origem, classificação e sim/não fora da lista", () => {
     expect(esquemaEvento.safeParse({ ...evento, origem: "outra" }).success).toBe(false);
     expect(esquemaEvento.safeParse({ ...evento, classificacao: "10" }).success).toBe(false);
@@ -213,7 +237,7 @@ describe("estilo musical e cortesia", () => {
 describe("rótulos", () => {
   it("cobrem todas as opções", () => {
     expect(Object.keys(ROTULO_ORIGEM_EVENTO)).toEqual(["comercio", "artista", "avulso", "orgao_publico"]);
-    expect(Object.keys(ROTULO_ENTRADA)).toEqual(["gratuita", "couvert", "ingressos"]);
+    expect(Object.keys(ROTULO_ENTRADA)).toEqual(["gratuita", "couvert", "ingressos", "doacao"]);
     expect(CLASSIFICACOES_ETARIAS.map((c) => ROTULO_CLASSIFICACAO[c])).toEqual([
       "Livre para todos",
       "A partir de 12 anos",

@@ -594,6 +594,8 @@ function eventoDoBanco(e: EventoDoBanco): EventoAgenda {
     dataInicio: e.dataInicio,
     dataFim: e.dataFim,
     entrada: e.entrada,
+    doacao: e.doacao ?? undefined,
+    localAnuncio: e.localAnuncio ?? undefined,
     couvertCentavos: e.couvertCentavos ?? undefined,
     ingressos: e.ingressos,
     abertoAoPublico: e.abertoAoPublico,

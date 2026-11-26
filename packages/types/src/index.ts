@@ -370,7 +370,11 @@ export interface EventoAgenda {
   /** AAAA-MM-DD. */
   dataInicio: string;
   dataFim: string;
-  entrada: "gratuita" | "couvert" | "ingressos";
+  entrada: "gratuita" | "couvert" | "ingressos" | "doacao";
+  /** Entrada por doação: o que se leva para entrar. */
+  doacao?: string;
+  /** Comércio do site onde o evento acontece (só o perfil no ar). */
+  localAnuncio?: { slug: string; nome: string };
   couvertCentavos?: number;
   ingressos: { nome: string; valorCentavos: number }[];
   abertoAoPublico: boolean;

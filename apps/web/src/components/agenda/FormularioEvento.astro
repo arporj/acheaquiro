@@ -98,6 +98,20 @@ const enderecoPerfil = slugPerfil ? `${Astro.url.origin}/perfil/${slugPerfil}` :
       <label class={classesRotulo} for="local">Nome do lugar</label>
       <input id="local" name="local" value={evento?.local ?? ""} required minlength="2" maxlength="100" class={classesCampo} placeholder="Ex.: Praça São Pedro" />
     </div>
+    <div class="sm:col-span-2" data-sem-comercio hidden={origemAtual === "comercio"}>
+      <label class={classesRotulo} for="local_perfil">Perfil do lugar no Ache Aqui (opcional)</label>
+      <input
+        id="local_perfil"
+        name="local_perfil"
+        value={evento?.local_anuncio ? `${Astro.url.origin}/perfil/${evento.local_anuncio.slug}` : ""}
+        maxlength="300"
+        class={classesCampo}
+        placeholder="https://acheaquiro.com.br/perfil/..."
+      />
+      <p class="mt-1 text-xs text-slate-500">
+        Se o evento acontece num comércio do site, cole o endereço do perfil dele: a página do evento leva ao perfil.
+      </p>
+    </div>
     <div>
       <label class={classesRotulo} for="endereco">Endereço (opcional)</label>
       <input id="endereco" name="endereco" value={evento?.endereco ?? ""} maxlength="160" class={classesCampo} />
@@ -138,6 +152,17 @@ const enderecoPerfil = slugPerfil ? `${Astro.url.origin}/perfil/${slugPerfil}` :
     <div data-so-couvert hidden={evento?.entrada !== "couvert"}>
       <label class={classesRotulo} for="couvert">Valor do couvert (R$)</label>
       <input id="couvert" name="couvert" inputmode="decimal" value={reais(evento?.couvert_centavos)} class={classesCampo} placeholder="15,00" />
+    </div>
+    <div class="sm:col-span-2" data-so-doacao hidden={evento?.entrada !== "doacao"}>
+      <label class={classesRotulo} for="doacao">O que a pessoa leva para entrar</label>
+      <input
+        id="doacao"
+        name="doacao"
+        value={evento?.doacao ?? ""}
+        maxlength="160"
+        class={classesCampo}
+        placeholder="Ex.: 1 kg de alimento não perecível ou 1 kg de ração por pessoa"
+      />
     </div>
     <fieldset class="sm:col-span-2" data-so-ingressos hidden={evento?.entrada !== "ingressos"}>
       <legend class={classesRotulo}>Ingressos (até {MAXIMO_INGRESSOS} tipos; deixe em branco o que não usar)</legend>
@@ -210,6 +235,8 @@ const enderecoPerfil = slugPerfil ? `${Astro.url.origin}/perfil/${slugPerfil}` :
       form.querySelector<HTMLElement>("[data-so-com-anunciante]")!.hidden = origem.value !== "comercio" && origem.value !== "artista";
       form.querySelector<HTMLElement>("[data-so-couvert]")!.hidden = entrada.value !== "couvert";
       form.querySelector<HTMLElement>("[data-so-ingressos]")!.hidden = entrada.value !== "ingressos";
+      form.querySelector<HTMLElement>("[data-so-doacao]")!.hidden = entrada.value !== "doacao";
+      form.querySelector<HTMLElement>("[data-sem-comercio]")!.hidden = origem.value === "comercio";
     };
     origem.addEventListener("change", atualizar);
     entrada.addEventListener("change", atualizar);
