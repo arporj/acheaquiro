@@ -6,6 +6,7 @@
 import { Icone, type NomeIcone } from "@acheaqui/ui";
 import Aviso from "@/components/conta/Aviso.astro";
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
+import { listarArtistasACadastrar } from "@/lib/agenda";
 import { ABAS } from "@/lib/anunciantesAdmin";
 import { listarEquipe, type MembroEquipe } from "@/lib/equipe";
 import { listarEmAtraso } from "@/lib/pagamentos";
@@ -21,7 +22,7 @@ async function contar(tabela: string, filtros: Record<string, string | string[]>
   return count ?? 0;
 }
 
-const [equipe, pedidos, denuncias, publicados, importados, emAnalise, emAndamento, bairrosPendentes, emAtraso] = await Promise.all([
+const [equipe, pedidos, denuncias, publicados, importados, emAnalise, emAndamento, bairrosPendentes, emAtraso, artistasACadastrar] = await Promise.all([
   listarEquipe(supabase),
   contar("pedidos_perfil", { situacao: "aberto" }),
   contar("denuncias", { situacao: "aberta" }),
@@ -32,8 +33,10 @@ const [equipe, pedidos, denuncias, publicados, importados, emAnalise, emAndament
   contar("anunciantes", { status: [...ABAS.andamento.situacoes] }),
   supabase.from("apelidos_bairro").select("comercios").is("bairro_id", null).eq("ignorar", false),
   listarEmAtraso(supabase),
+  listarArtistasACadastrar(supabase),
 ]);
 if (!emAtraso.ok) console.error("admin: lista de atraso falhou", { mensagem: emAtraso.erro.mensagem });
+if (!artistasACadastrar.ok) console.error("admin: artistas a cadastrar falhou", { mensagem: artistasACadastrar.erro.mensagem });
 if (bairrosPendentes.error) {
   console.error("admin: bairros pendentes falhou", { codigo: bairrosPendentes.error.code, mensagem: bairrosPendentes.error.message });
 }
@@ -74,6 +77,13 @@ const pendencias: Cartao[] = [
   },
   { rotulo: "Pedidos de perfil abertos", valor: pedidos, icone: "info", href: "/admin/pedidos" },
   { rotulo: "Denúncias abertas", valor: denuncias, icone: "bandeira", href: "/admin/denuncias" },
+  {
+    rotulo: "Artistas a cadastrar",
+    valor: artistasACadastrar.ok ? artistasACadastrar.dados.length : 0,
+    icone: "musica",
+    href: "/admin/agenda/artistas#a-cadastrar",
+    detalhe: "nomes usados na programação sem o artista cadastrado",
+  },
   {
     rotulo: "Bairros da importação pendentes",
     valor: listaBairros.length,

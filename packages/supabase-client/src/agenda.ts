@@ -26,6 +26,8 @@ export interface ItemProgramacaoDoBanco {
   fim: string | null;
   titulo: string | null;
   artistaId: string | null;
+  /** Artista sem cadastro no site: só o nome, sem página. */
+  artistaNome: string | null;
 }
 
 export interface BarracaDoBanco {
@@ -65,7 +67,7 @@ export interface EventoDoBanco {
 const CAMPOS_EVENTO =
   "id, slug, nome, descricao, origem, produtor, local, endereco, bairro_id, data_inicio, data_fim, entrada, couvert_centavos, ingressos, " +
   "aberto_ao_publico, classificacao, cadeira_de_praia, cooler, ruas_fechadas, cartaz_chave, anunciantes(id, slug, nome), cidades!inner(slug), " +
-  "programacao_evento(id, dia, inicio, fim, titulo, artista_id)";
+  "programacao_evento(id, dia, inicio, fim, titulo, artista_id, artista_nome)";
 
 interface LinhaEvento {
   id: string;
@@ -89,7 +91,15 @@ interface LinhaEvento {
   ruas_fechadas: string | null;
   cartaz_chave: string | null;
   anunciantes: { id: string; slug: string; nome: string } | null;
-  programacao_evento: { id: string; dia: string; inicio: string; fim: string | null; titulo: string | null; artista_id: string | null }[];
+  programacao_evento: {
+    id: string;
+    dia: string;
+    inicio: string;
+    fim: string | null;
+    titulo: string | null;
+    artista_id: string | null;
+    artista_nome: string | null;
+  }[];
   barracas_evento?: { nome: string; vende: string; whatsapp: string | null; ordem: number; anunciantes: { slug: string } | null }[];
 }
 
@@ -118,7 +128,15 @@ function paraEvento(l: LinhaEvento): EventoDoBanco {
     cartazChave: l.cartaz_chave,
     // O horário vem como 21:00:00; a tela usa 21:00.
     programacao: l.programacao_evento
-      .map((p) => ({ id: p.id, dia: p.dia, inicio: p.inicio.slice(0, 5), fim: p.fim?.slice(0, 5) ?? null, titulo: p.titulo, artistaId: p.artista_id }))
+      .map((p) => ({
+        id: p.id,
+        dia: p.dia,
+        inicio: p.inicio.slice(0, 5),
+        fim: p.fim?.slice(0, 5) ?? null,
+        titulo: p.titulo,
+        artistaId: p.artista_id,
+        artistaNome: p.artista_nome,
+      }))
       .sort((a, b) => `${a.dia}${a.inicio}`.localeCompare(`${b.dia}${b.inicio}`)),
     barracas: (l.barracas_evento ?? [])
       .sort((a, b) => a.ordem - b.ordem)

@@ -122,7 +122,11 @@ export type DadosEvento = z.output<typeof esquemaEvento>;
 
 const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-/** Uma linha da programação: um artista ou uma atividade (largada, feira, premiação), com dia e horário. */
+/**
+ * Uma linha da programação, com dia e horário: um artista cadastrado, só o nome
+ * de um artista sem cadastro (decisões de 26/11/2026) ou uma atividade (largada,
+ * feira, premiação). A atividade também serve de observação do artista.
+ */
 export const esquemaItemProgramacao = z
   .object({
     dia: z.iso.date("Informe o dia."),
@@ -134,10 +138,14 @@ export const esquemaItemProgramacao = z
       .transform((v) => (v ?? "").trim())
       .refine((v) => v === "" || HORA.test(v), "Horário de fim inválido: use HH:MM, como 23:30."),
     artistaId: uuidOuVazio("Artista inválido."),
+    artistaNome: textoOpcional(80, "Nome do artista")
+      .transform((v) => v.replace(/\s+/g, " "))
+      .refine((v) => v === "" || v.length >= 2, "Nome do artista: pelo menos 2 letras."),
     titulo: textoOpcional(80, "Atividade"),
   })
-  .refine((d) => d.artistaId !== "" || d.titulo !== "", { path: ["titulo"], message: "Escolha o artista ou escreva a atividade." })
-  .transform((d) => ({ ...d, fim: d.fim || null, artistaId: d.artistaId || null, titulo: d.titulo || null }));
+  .refine((d) => d.artistaId === "" || d.artistaNome === "", { path: ["artistaNome"], message: "Escolha o artista cadastrado ou use só o nome, não os dois." })
+  .refine((d) => d.artistaId !== "" || d.artistaNome !== "" || d.titulo !== "", { path: ["titulo"], message: "Escolha o artista ou escreva a atividade." })
+  .transform((d) => ({ ...d, fim: d.fim || null, artistaId: d.artistaId || null, artistaNome: d.artistaNome || null, titulo: d.titulo || null }));
 
 export type DadosItemProgramacao = z.output<typeof esquemaItemProgramacao>;
 

@@ -4,7 +4,15 @@
 // Tudo com a sessão de quem está logado, para a auditoria registrar quem fez;
 // o RLS decide o que cada papel pode alterar (migration 20261118012727). Regras em packages/domain/agenda.ts e esquemas em
 // packages/validation/agenda.ts; o banco repete as travas (migration da Agenda).
-import { blocosDoEventoAvulso, impedimentoParaAparecerNaAgenda, momentoLocal, problemaNasDatasDoEvento, diaDentroDoEvento } from "@acheaqui/domain";
+import {
+  agruparArtistasACadastrar,
+  artistaComOMesmoNome,
+  blocosDoEventoAvulso,
+  impedimentoParaAparecerNaAgenda,
+  momentoLocal,
+  problemaNasDatasDoEvento,
+  diaDentroDoEvento,
+} from "@acheaqui/domain";
 import type { OrigemEvento, Resultado } from "@acheaqui/types";
 import {
   ArquivoInvalido,
@@ -117,6 +125,10 @@ export interface ItemProgramacaoAdmin {
   fim: string | null;
   titulo: string | null;
   artista: { id: string; nome: string; slug: string } | null;
+  /** Artista sem cadastro: só o nome. */
+  artista_nome: string | null;
+  /** O nome sem cadastro espera a administração em "Artistas a cadastrar". */
+  cadastro_pedido: boolean;
 }
 
 export interface BarracaAdmin {
@@ -221,7 +233,7 @@ export async function lerEventoAdmin(supabase: SupabaseClient, id: string): Prom
       .select(
         `${CAMPOS_RESUMO}, descricao, produtor, endereco, bairro_id, entrada, couvert_centavos, ingressos, aberto_ao_publico, classificacao, ` +
           "cadeira_de_praia, cooler, ruas_fechadas, cartaz_chave, cortesia_motivo, usuario_id, publicado_em, conferido_em, " +
-          "programacao_evento(id, dia, inicio, fim, titulo, artistas(id, nome, slug)), " +
+          "programacao_evento(id, dia, inicio, fim, titulo, artista_nome, cadastro_pedido, artistas(id, nome, slug)), " +
           "barracas_evento(id, nome, vende, whatsapp, ordem, anunciantes(nome, slug))",
       )
       .eq("id", id)
@@ -446,10 +458,21 @@ export async function adicionarProgramacao(supabase: SupabaseClient, eventoId: s
     inicio: texto("inicio"),
     fim: texto("fim"),
     artistaId: texto("artista"),
+    artistaNome: texto("artista_nome"),
     titulo: texto("titulo"),
   });
   if (!validado.success) return falha("DADOS_INVALIDOS", validado.error.issues[0]?.message ?? "Dados inválidos.");
   const d = validado.data;
+  // Nome igual ao de um artista cadastrado vira o artista, sem gerar pedido de cadastro.
+  if (d.artistaNome) {
+    const { data: artistas, error: erroArtistas } = await supabase.from("artistas").select("id, nome");
+    if (erroArtistas) return mensagemDoBanco(erroArtistas, "adicionarProgramacao: artistas");
+    const mesmo = artistaComOMesmoNome((artistas ?? []) as { id: string; nome: string }[], d.artistaNome);
+    if (mesmo) {
+      d.artistaId = mesmo.id;
+      d.artistaNome = null;
+    }
+  }
   const { data: evento, error: erroEvento } = await supabase.from("eventos").select("data_inicio, data_fim").eq("id", eventoId).maybeSingle();
   if (erroEvento) return mensagemDoBanco(erroEvento, "adicionarProgramacao");
   if (!evento) return falha("NAO_ENCONTRADO", "Evento não encontrado.");
@@ -458,7 +481,7 @@ export async function adicionarProgramacao(supabase: SupabaseClient, eventoId: s
   }
   const { error } = await supabase
     .from("programacao_evento")
-    .insert({ evento_id: eventoId, dia: d.dia, inicio: d.inicio, fim: d.fim, artista_id: d.artistaId, titulo: d.titulo });
+    .insert({ evento_id: eventoId, dia: d.dia, inicio: d.inicio, fim: d.fim, artista_id: d.artistaId, artista_nome: d.artistaNome, titulo: d.titulo });
   if (error?.code === "42501") return falha("CONFLITO", "Este evento não pode mais ser alterado por você.");
   if (error) return mensagemDoBanco(error, "adicionarProgramacao");
   return ok(null);
@@ -838,6 +861,75 @@ export async function salvarArtista(supabase: SupabaseClient, id: string | null,
 function mensagemArtista(erro: { code?: string; message: string }): Falha {
   if (erro.code === "23505" && erro.message.includes("anunciante")) return falha("CONFLITO", "Este anúncio já está ligado a outro artista.");
   return mensagemDoBanco(erro, "salvarArtista");
+}
+
+// ---------------------------------------------------------------------------
+// Artista sem cadastro na programação (decisões de 26/11/2026; migration
+// 20261126175109): o "só o nome" de cliente ou representante entra em
+// "Artistas a cadastrar", e a administração cadastra o artista (ou escolhe um
+// já cadastrado), que entra no lugar do nome, ou deixa só o nome.
+// ---------------------------------------------------------------------------
+
+/**
+ * Cadastro do artista só com o nome e os estilos (janela da programação e
+ * "Artistas a cadastrar"). Recusa nome igual ao de um artista já cadastrado.
+ */
+export async function cadastrarArtistaRapido(supabase: SupabaseClient, f: FormData): Promise<Resultado<{ id: string; nome: string }>> {
+  const nome = String(f.get("nome") ?? "")
+    .slice(0, 200)
+    .trim()
+    .replace(/\s+/g, " ");
+  const { data: artistas, error } = await supabase.from("artistas").select("id, nome");
+  if (error) return mensagemDoBanco(error, "cadastrarArtistaRapido: artistas");
+  const mesmo = artistaComOMesmoNome((artistas ?? []) as { id: string; nome: string }[], nome);
+  if (mesmo) return falha("CONFLITO", `“${mesmo.nome}” já está cadastrado. Escolha o artista na lista.`);
+  const dados = new FormData();
+  dados.set("nome", nome);
+  for (const estilo of f.getAll("estilo").slice(0, 20)) dados.append("estilo", String(estilo));
+  const r = await salvarArtista(supabase, null, dados);
+  if (!r.ok) return r;
+  return ok({ id: r.dados.id, nome });
+}
+
+export interface ArtistaACadastrar {
+  /** Nome como foi digitado no horário mais antigo. */
+  nome: string;
+  itens: { id: string; dia: string; inicio: string; evento: { id: string; nome: string } }[];
+}
+
+/** "Artistas a cadastrar": os nomes sem cadastro usados por clientes e representantes, agrupados pelo nome. */
+export async function listarArtistasACadastrar(supabase: SupabaseClient): Promise<Resultado<ArtistaACadastrar[]>> {
+  const { data, error } = await supabase
+    .from("programacao_evento")
+    .select("id, dia, inicio, artista_nome, eventos(id, nome)")
+    .eq("cadastro_pedido", true)
+    .order("criado_em")
+    .limit(500);
+  if (error) return mensagemDoBanco(error, "listarArtistasACadastrar");
+  type Linha = { id: string; dia: string; inicio: string; artista_nome: string; eventos: { id: string; nome: string } };
+  const itens = (data as unknown as Linha[]).map((l) => ({
+    id: l.id,
+    dia: l.dia,
+    inicio: l.inicio.slice(0, 5),
+    artistaNome: l.artista_nome,
+    evento: l.eventos,
+  }));
+  return ok(
+    agruparArtistasACadastrar(itens).map((g) => ({
+      nome: g.nome,
+      itens: g.itens.map((item) => ({ id: item.id, dia: item.dia, inicio: item.inicio, evento: item.evento })),
+    })),
+  );
+}
+
+/** Põe o artista no lugar do nome nos horários indicados ou, sem artista, deixa só o nome. Devolve quantos horários mudaram. */
+export async function resolverArtistaACadastrar(supabase: SupabaseClient, itens: string[], artistaId: string | null): Promise<Resultado<number>> {
+  const ids = itens.filter((i) => /^[0-9a-f-]{36}$/.test(i)).slice(0, 500);
+  if (ids.length === 0) return falha("DADOS_INVALIDOS", "Nenhum horário para resolver.");
+  if (artistaId !== null && !/^[0-9a-f-]{36}$/.test(artistaId)) return falha("DADOS_INVALIDOS", "Escolha o artista na lista.");
+  const { data, error } = await supabase.rpc("resolver_artista_a_cadastrar", { p_itens: ids, p_artista: artistaId });
+  if (error) return mensagemDoBanco(error, "resolverArtistaACadastrar");
+  return ok(data as number);
 }
 
 export async function listarBairros(supabase: SupabaseClient): Promise<Resultado<{ id: string; nome: string }[]>> {

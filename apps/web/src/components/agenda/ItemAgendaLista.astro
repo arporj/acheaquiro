@@ -21,7 +21,7 @@ const estilos = it.artista ? `|${it.artista.estilos.map(normalizar).join("|")}|`
   hidden
   data-dia={it.data}
   data-artista={it.artista?.slug ?? ""}
-  data-artista-nome={it.artista?.nome}
+  data-artista-nome={it.artista?.nome ?? it.artistaNome}
   data-estilos={estilos}
   data-item-bairro={it.lugar.bairroId}
   class="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5"
@@ -64,7 +64,8 @@ const estilos = it.artista ? `|${it.artista.estilos.map(normalizar).join("|")}|`
         </>
       ) : (
         <a href={it.lugar.href} class="block font-bold text-azul-900 hover:underline">
-          {it.titulo}
+          {it.artistaNome ?? it.titulo}
+          {it.artistaNome && it.titulo && <span class="font-semibold text-slate-500"> · {it.titulo}</span>}
         </a>
       )
     }

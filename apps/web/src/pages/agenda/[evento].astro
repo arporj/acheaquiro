@@ -50,7 +50,10 @@ const informacoes = [
 
 // O link compartilhado é propaganda do evento: o cartaz, a data, o local e o texto (packages/domain/previa.ts).
 const resumo = resumirTexto(`${datas.charAt(0).toUpperCase()}${datas.slice(1)} · ${evento.local}, ${bairro}. ${evento.descricao}`);
-const nomeDoItem = (it: ItemAgenda) => it.artista?.nome ?? it.titulo ?? "";
+const nomeDoItem = (it: ItemAgenda) => it.artista?.nome ?? it.artistaNome ?? it.titulo ?? "";
+// Embaixo do nome: os estilos do artista cadastrado e a observação (a do artista sem cadastro também).
+const detalheDoItem = (it: ItemAgenda) =>
+  it.artista ? [it.artista.estilos.join(", "), it.titulo].filter(Boolean).join(" · ") : it.artistaNome ? (it.titulo ?? "") : "";
 ---
 
 <Layout
@@ -179,7 +182,7 @@ const nomeDoItem = (it: ItemAgenda) => it.artista?.nome ?? it.titulo ?? "";
                         ) : (
                           <span class="block font-bold text-azul-900">{nomeDoItem(it)}</span>
                         )}
-                        <span class="text-xs text-slate-500">{it.artista ? [it.artista.estilos.join(", "), it.titulo].filter(Boolean).join(" · ") : ""}</span>
+                        <span class="text-xs text-slate-500">{detalheDoItem(it)}</span>
                       </span>
                     </li>
                   ))}

@@ -1,0 +1,80 @@
+---
+// Campo de escolha do artista (decisões de 26/11/2026): busca pelo nome entre
+// os artistas cadastrados enquanto a pessoa digita; sem artista com o mesmo
+// nome, "Usar só o nome" e, para a administração, "Cadastrar como novo artista".
+// Manda "artista" (o cadastrado) ou "artista_nome" (só o nome) no formulário.
+// Comportamento em src/lib/escolherArtistaNavegador.ts.
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+
+interface Props {
+  id: string;
+  artistas: { id: string; nome: string }[];
+  rotulo?: string;
+  /** Mostra "Usar só o nome" quando o nome não está cadastrado. */
+  permiteSoNome?: boolean;
+  /** Mostra "Cadastrar como novo artista" (a janela CadastroRapidoArtista precisa estar na página). */
+  podeCadastrar?: boolean;
+  /** O que aparece embaixo do campo depois de "Usar só o nome". */
+  textoSoNome?: string;
+  obrigatorio?: boolean;
+  class?: string;
+}
+
+const {
+  id,
+  artistas,
+  rotulo = "Artista",
+  permiteSoNome = true,
+  podeCadastrar = false,
+  textoSoNome = "",
+  obrigatorio = false,
+  class: classe,
+} = Astro.props;
+const lista = artistas.map((a) => ({ id: a.id, nome: a.nome }));
+---
+
+<div
+  data-escolher-artista
+  data-so-nome={permiteSoNome ? "sim" : "nao"}
+  data-cadastrar={podeCadastrar ? "sim" : "nao"}
+  data-texto-so-nome={textoSoNome}
+  class={classe}
+>
+  <label class={classesRotulo} for={id}>{rotulo}</label>
+  <div class="relative">
+    <input
+      id={id}
+      type="text"
+      role="combobox"
+      aria-autocomplete="list"
+      aria-expanded="false"
+      aria-controls={`${id}-sugestoes`}
+      aria-describedby={`${id}-situacao`}
+      autocomplete="off"
+      maxlength="80"
+      required={obrigatorio}
+      placeholder="Digite o nome do artista ou da banda"
+      data-busca-artista
+      class={classesCampo}
+    />
+    <ul
+      id={`${id}-sugestoes`}
+      role="listbox"
+      aria-label="Artistas"
+      hidden
+      data-sugestoes-artista
+      class="absolute inset-x-0 z-20 mt-1 max-h-72 overflow-auto rounded-xl bg-white py-1 shadow-lg ring-1 ring-black/10"
+    >
+    </ul>
+  </div>
+  <input type="hidden" name="artista" data-artista-id />
+  <input type="hidden" name="artista_nome" data-artista-nome />
+  <p id={`${id}-situacao`} hidden aria-live="polite" data-situacao-artista class="mt-1 text-sm font-semibold text-slate-600"></p>
+  <script type="application/json" data-artistas set:html={JSON.stringify(lista).replace(/</g, "\\u003c")} />
+</div>
+
+<script>
+  import { ligarEscolhaDeArtista } from "@/lib/escolherArtistaNavegador";
+
+  for (const raiz of document.querySelectorAll<HTMLElement>("[data-escolher-artista]")) ligarEscolhaDeArtista(raiz);
+</script>

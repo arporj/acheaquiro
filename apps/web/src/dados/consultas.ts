@@ -480,7 +480,9 @@ export interface ItemAgenda {
   inicio: string;
   fim?: string;
   artista?: Artista;
-  /** Atividade sem artista, ou o nome do evento no dia sem programação. */
+  /** Artista sem cadastro no site: só o nome, sem página. */
+  artistaNome?: string;
+  /** Atividade sem artista, observação do artista, ou o nome do evento no dia sem programação. */
   titulo?: string;
   lugar: { nome: string; href: string; bairroId: string; bairro: string; evento: boolean };
 }
@@ -626,6 +628,7 @@ async function itensDoEvento(e: EventoDoBanco, artistas: Map<string, Artista>, d
       inicio: p.inicio,
       fim: p.fim ?? undefined,
       artista: p.artistaId ? artistas.get(p.artistaId) : undefined,
+      artistaNome: p.artistaNome ?? undefined,
       titulo: p.titulo ?? undefined,
       lugar,
     }));

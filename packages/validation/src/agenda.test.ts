@@ -114,9 +114,22 @@ describe("esquemaItemProgramacao", () => {
       inicio: "08:00",
       fim: null,
       artistaId: null,
+      artistaNome: null,
       titulo: "Largada do pedal",
     });
     expect(esquemaItemProgramacao.parse({ dia: "2026-11-27", inicio: "22:00", fim: "02:00", artistaId: ANUNCIANTE }).fim).toBe("02:00");
+  });
+  it("aceita só o nome do artista sem cadastro, com a observação", () => {
+    const r = esquemaItemProgramacao.parse({ dia: "2026-11-27", inicio: "22:30", artistaNome: "  Uns   e Outros ", titulo: "acústico" });
+    expect(r.artistaNome).toBe("Uns e Outros");
+    expect(r.artistaId).toBeNull();
+    expect(r.titulo).toBe("acústico");
+  });
+  it("recusa artista cadastrado e nome sem cadastro juntos, e nome curto", () => {
+    expect(mensagem(esquemaItemProgramacao.safeParse({ dia: "2026-11-27", inicio: "22:30", artistaId: ANUNCIANTE, artistaNome: "Outro" }))).toBe(
+      "Escolha o artista cadastrado ou use só o nome, não os dois.",
+    );
+    expect(mensagem(esquemaItemProgramacao.safeParse({ dia: "2026-11-27", inicio: "22:30", artistaNome: "U" }))).toBe("Nome do artista: pelo menos 2 letras.");
   });
   it("exige artista ou atividade", () => {
     expect(mensagem(esquemaItemProgramacao.safeParse({ dia: "2026-11-27", inicio: "08:00" }))).toBe("Escolha o artista ou escreva a atividade.");

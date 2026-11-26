@@ -1,0 +1,55 @@
+---
+// Janela de cadastro do artista sem sair da página da programação (só a
+// administração; decisões de 26/11/2026): nome e estilos. Formação, vídeos e o
+// anúncio ligado continuam em /admin/agenda/artistas. Aberta pelo campo
+// EscolherArtista ("Cadastrar como novo artista"), que recebe o artista novo já
+// escolhido. Comportamento em src/lib/escolherArtistaNavegador.ts.
+import { Modal, classesBotao } from "@acheaqui/ui";
+import { MAXIMO_ESTILOS_ARTISTA } from "@acheaqui/validation";
+import { classesCampo, classesRotulo } from "@/components/conta/estilos";
+
+interface Props {
+  artistas: { id: string; nome: string }[];
+  estilos: { id: string; nome: string; ativo: boolean }[];
+}
+
+const { artistas, estilos } = Astro.props;
+const lista = artistas.map((a) => ({ id: a.id, nome: a.nome }));
+---
+
+<Modal id="artista-rapido" titulo="Novo artista">
+  <form data-cadastro-rapido>
+    <label class={classesRotulo} for="artista-rapido-nome">Nome do artista ou da banda</label>
+    <input id="artista-rapido-nome" name="nome" required minlength="2" maxlength="80" class={classesCampo} />
+    <p data-parecidos hidden class="mt-2 rounded-lg bg-amarelo-50 p-2 text-sm font-semibold text-tinta ring-1 ring-amarelo-300"></p>
+    <fieldset>
+      <legend class={classesRotulo}>Estilos (até {MAXIMO_ESTILOS_ARTISTA})</legend>
+      <div class="mt-1 grid grid-cols-2 gap-1">
+        {
+          estilos
+            .filter((e) => e.ativo)
+            .map((e) => (
+              <label class="flex min-h-11 items-center gap-2 text-sm">
+                <input type="checkbox" name="estilo" value={e.id} class="size-4" />
+                {e.nome}
+              </label>
+            ))
+        }
+      </div>
+    </fieldset>
+    <p class="mt-2 text-sm text-slate-600">Formação, vídeos e o anúncio do artista ficam em Artistas, na Agenda.</p>
+    <p data-erro-cadastro hidden role="alert" class="mt-2 text-sm font-semibold text-vermelho-700"></p>
+    <button type="submit" class={classesBotao("azul", "m", "mt-5 w-full")}>Cadastrar artista</button>
+  </form>
+  <script type="application/json" data-artistas-cadastro set:html={JSON.stringify(lista).replace(/</g, "\\u003c")} />
+</Modal>
+
+<script>
+  import { ligarCadastroRapido, type ArtistaDaLista } from "@/lib/escolherArtistaNavegador";
+
+  const dialogo = document.getElementById("artista-rapido");
+  if (dialogo instanceof HTMLDialogElement) {
+    const artistas: ArtistaDaLista[] = JSON.parse(dialogo.querySelector("[data-artistas-cadastro]")?.textContent || "[]");
+    ligarCadastroRapido(dialogo, artistas);
+  }
+</script>

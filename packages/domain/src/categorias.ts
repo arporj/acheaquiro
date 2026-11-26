@@ -12,7 +12,8 @@ export function compararNomes(a: string, b: string): number {
   return COMPARADOR.compare(a, b);
 }
 
-function normalizarBusca(texto: string): string {
+/** Texto para comparar na busca: sem acento, minúsculo e com espaços simples. */
+export function normalizarBusca(texto: string): string {
   return texto
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")

@@ -21,6 +21,7 @@ import {
   lerSituacaoDoEvento,
   listarArtistasAdmin,
   listarBairros,
+  listarEstilos,
   type AcaoDoEvento,
   type EventoAdmin,
 } from "@/lib/agenda";
@@ -56,11 +57,12 @@ if (Astro.request.method === "POST") {
   Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
 }
 
-const [eventoR, bairrosR, artistasR, situacaoR] = await Promise.all([
+const [eventoR, bairrosR, artistasR, situacaoR, estilosR] = await Promise.all([
   novo ? Promise.resolve(null) : lerEventoAdmin(supabase, idParametro),
   listarBairros(supabase),
   novo ? Promise.resolve(null) : listarArtistasAdmin(supabase),
   novo ? Promise.resolve(null) : lerSituacaoDoEvento(supabase, idParametro),
+  novo ? Promise.resolve(null) : listarEstilos(supabase),
 ]);
 // Evento avulso: os blocos de 7 dias pagos e o que falta pagar (decisões E1 a E3 de 17/11/2026).
 const pagamentoR = eventoR?.ok && eventoR.dados.origem === "avulso" ? await lerContextoEvento(supabase, eventoR.dados.id) : null;
@@ -72,6 +74,7 @@ if (!bairrosR.ok) erro ||= bairrosR.erro.mensagem;
 const evento: EventoAdmin | null = eventoR?.ok ? eventoR.dados : null;
 const bairros = bairrosR.ok ? bairrosR.dados : [];
 const artistas = artistasR?.ok ? artistasR.dados : [];
+const estilos = estilosR?.ok ? estilosR.dados : [];
 const organizador = situacaoR?.ok ? situacaoR.dados.organizador : null;
 
 const textoPublicacao = !evento
@@ -221,5 +224,5 @@ const divisoria = "mt-5 border-t border-slate-100 pt-4";
     <FormularioEvento inicial={novo ? lerInicioDoEvento(Astro.url.searchParams) : null} evento={evento} bairros={bairros} origens={origens} hoje={hoje} ultimoDia={ultimoDiaParaComecar(hoje)} origemLivre />
   </section>
 
-  {evento && <PartesDoEvento evento={evento} artistas={artistas} linkArtistas="/admin/agenda/artistas" />}
+  {evento && <PartesDoEvento evento={evento} artistas={artistas} estilosParaCadastro={estilos} />}
 </PaginaAdmin>

@@ -8,31 +8,74 @@ import { MAXIMO_ESTILOS_ARTISTA, MAXIMO_VIDEOS_ARTISTA } from "@acheaqui/validat
 import PaginaAdmin from "@/components/admin/PaginaAdmin.astro";
 import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
-import { listarArtistasAdmin, listarEstilos, salvarArtista, type ArtistaAdmin } from "@/lib/agenda";
+import EscolherArtista from "@/components/agenda/EscolherArtista.astro";
+import {
+  cadastrarArtistaRapido,
+  listarArtistasACadastrar,
+  listarArtistasAdmin,
+  listarEstilos,
+  resolverArtistaACadastrar,
+  salvarArtista,
+  type ArtistaAdmin,
+} from "@/lib/agenda";
 import { limparCacheDoSite } from "@/lib/arquivos";
+import { dataCurtaComSemana } from "@/lib/texto";
 
 const supabase = Astro.locals.supabase!;
 let erro = "";
 
-if (Astro.request.method === "POST") {
-  const f = await Astro.request.formData();
+const AVISOS: Record<string, string> = {
+  salvo: "Artista salvo.",
+  resolvido: "Pronto: o artista entrou no lugar do nome na programação.",
+  "so-nome": "Pronto: o nome continua na programação, sem cadastro.",
+};
+
+/**
+ * Ações da página: salvar artista (sem "acao") e as três de "Artistas a
+ * cadastrar" (decisões de 26/11/2026): cadastrar e pôr no lugar do nome, pôr
+ * um artista já cadastrado no lugar do nome, ou deixar só o nome.
+ */
+async function executarAcao(f: FormData) {
+  const acao = String(f.get("acao") ?? "");
+  const itens = f.getAll("item").map(String);
+  if (acao === "cadastrar-pendente") {
+    const novo = await cadastrarArtistaRapido(supabase, f);
+    if (!novo.ok) return novo;
+    const r = await resolverArtistaACadastrar(supabase, itens, novo.dados.id);
+    return r.ok ? { ok: true as const, dados: "resolvido" } : r;
+  }
+  if (acao === "ligar-pendente") {
+    const r = await resolverArtistaACadastrar(supabase, itens, String(f.get("artista") ?? ""));
+    return r.ok ? { ok: true as const, dados: "resolvido" } : r;
+  }
+  if (acao === "so-nome") {
+    const r = await resolverArtistaACadastrar(supabase, itens, null);
+    return r.ok ? { ok: true as const, dados: "so-nome" } : r;
+  }
   const id = String(f.get("id") ?? "");
   const r = await salvarArtista(supabase, /^[0-9a-f-]{36}$/.test(id) ? id : null, f);
+  return r.ok ? { ok: true as const, dados: "salvo" } : r;
+}
+
+if (Astro.request.method === "POST") {
+  const r = await executarAcao(await Astro.request.formData());
   if (r.ok) {
     await limparCacheDoSite(Astro.url.origin);
-    return Astro.redirect("/admin/agenda/artistas?aviso=salvo", 303);
+    return Astro.redirect(`/admin/agenda/artistas?aviso=${r.dados}`, 303);
   }
   erro = r.erro.mensagem;
   Astro.response.status = r.erro.codigo === "ERRO_INTERNO" ? 500 : 400;
 }
 
-const [artistasR, estilosR] = await Promise.all([listarArtistasAdmin(supabase), listarEstilos(supabase)]);
+const [artistasR, estilosR, pendentesR] = await Promise.all([listarArtistasAdmin(supabase), listarEstilos(supabase), listarArtistasACadastrar(supabase)]);
 if (!artistasR.ok) erro ||= artistasR.erro.mensagem;
 if (!estilosR.ok) erro ||= estilosR.erro.mensagem;
+if (!pendentesR.ok) erro ||= pendentesR.erro.mensagem;
 const artistas = artistasR.ok ? artistasR.dados : [];
 const estilos = estilosR.ok ? estilosR.dados : [];
+const pendentes = pendentesR.ok ? pendentesR.dados : [];
 const nomeEstilo = new Map(estilos.map((e) => [e.id, e.nome]));
-const aviso = Astro.url.searchParams.get("aviso") === "salvo" ? "Artista salvo." : "";
+const aviso = AVISOS[Astro.url.searchParams.get("aviso") ?? ""] ?? "";
 const vazio: ArtistaAdmin = { id: "", slug: "", nome: "", formacao: null, atende: [], videos: [], anunciante: null, estiloIds: [] };
 const linhasDeVideo = (a: ArtistaAdmin) => [...a.videos, ...Array.from({ length: Math.max(0, 2 - a.videos.length) }, () => ({ titulo: "", url: "" }))];
 ---
@@ -44,6 +87,95 @@ const linhasDeVideo = (a: ArtistaAdmin) => [...a.videos, ...Array.from({ length:
   </a>
   {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
   {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+  {
+    pendentes.length > 0 && (
+      <section id="a-cadastrar" aria-labelledby="titulo-a-cadastrar" class="mt-5 rounded-2xl bg-amarelo-50 p-4 ring-1 ring-amarelo-300 sm:p-5">
+        <h2 id="titulo-a-cadastrar" class="font-display text-lg font-bold text-azul-900">
+          Artistas a cadastrar ({pendentes.length})
+        </h2>
+        <p class="mt-1 text-sm text-slate-700">
+          Nomes que clientes e representantes usaram na programação sem o artista cadastrado. Ao cadastrar o artista, ou escolher um já cadastrado, ele
+          entra no lugar do nome em todos os horários. Para banda de fora da cidade, deixe só o nome.
+        </p>
+        <ul class="mt-3 space-y-3">
+          {pendentes.map((p, i) => (
+            <li class="rounded-xl bg-white p-3 shadow-sm ring-1 ring-black/5">
+              <span class="block font-bold text-azul-900">{p.nome}</span>
+              <ul class="mt-1 text-sm text-slate-600">
+                {p.itens.map((item) => (
+                  <li>
+                    <a href={`/admin/agenda/${item.evento.id}`} class="font-semibold text-azul-600 hover:underline">
+                      {item.evento.nome}
+                    </a>{" "}
+                    · {dataCurtaComSemana(item.dia)} às {item.inicio}
+                  </li>
+                ))}
+              </ul>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <button type="button" data-abrir-modal={`pendente-cadastrar-${i}`} class={classesBotao("azul", "p")}>
+                  Cadastrar
+                </button>
+                <button type="button" data-abrir-modal={`pendente-ligar-${i}`} class={classesBotao("contorno", "p")}>
+                  É um artista já cadastrado
+                </button>
+                <form method="post">
+                  <input type="hidden" name="acao" value="so-nome" />
+                  {p.itens.map((item) => (
+                    <input type="hidden" name="item" value={item.id} />
+                  ))}
+                  <button type="submit" class={classesBotao("fantasma", "p")}>
+                    Deixar só o nome
+                  </button>
+                </form>
+              </div>
+              <Modal id={`pendente-cadastrar-${i}`} titulo={`Cadastrar: ${p.nome}`}>
+                <form method="post">
+                  <input type="hidden" name="acao" value="cadastrar-pendente" />
+                  {p.itens.map((item) => (
+                    <input type="hidden" name="item" value={item.id} />
+                  ))}
+                  <label class={classesRotulo} for={`pendente-nome-${i}`}>
+                    Nome do artista ou da banda
+                  </label>
+                  <input id={`pendente-nome-${i}`} name="nome" value={p.nome} required minlength="2" maxlength="80" class={classesCampo} />
+                  <fieldset>
+                    <legend class={classesRotulo}>Estilos (até {MAXIMO_ESTILOS_ARTISTA})</legend>
+                    <div class="mt-1 grid grid-cols-2 gap-1">
+                      {estilos
+                        .filter((e) => e.ativo)
+                        .map((e) => (
+                          <label class="flex min-h-11 items-center gap-2 text-sm">
+                            <input type="checkbox" name="estilo" value={e.id} class="size-4" />
+                            {e.nome}
+                          </label>
+                        ))}
+                    </div>
+                  </fieldset>
+                  <p class="mt-2 text-sm text-slate-600">Formação, vídeos e o anúncio do artista você completa depois, em Editar.</p>
+                  <button type="submit" class={classesBotao("azul", "m", "mt-5 w-full")}>
+                    Cadastrar e pôr na programação
+                  </button>
+                </form>
+              </Modal>
+              <Modal id={`pendente-ligar-${i}`} titulo={`Artista já cadastrado: ${p.nome}`}>
+                <form method="post">
+                  <input type="hidden" name="acao" value="ligar-pendente" />
+                  {p.itens.map((item) => (
+                    <input type="hidden" name="item" value={item.id} />
+                  ))}
+                  <EscolherArtista id={`pendente-artista-${i}`} artistas={artistas} rotulo="Qual artista é?" permiteSoNome={false} obrigatorio />
+                  <button type="submit" class={classesBotao("azul", "m", "mt-5 w-full")}>
+                    Pôr na programação
+                  </button>
+                </form>
+              </Modal>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
 
   <button type="button" data-abrir-modal="artista-novo" class={classesBotao("azul", "m", "mt-5")}>
     <Icone nome="musica" class="size-4" />
