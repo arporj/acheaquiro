@@ -107,7 +107,7 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
               {/* Inteira, como foi enviada: o folheto em pé ou deitado não aparece cortado aqui. */}
               <img src={foto.url} alt={foto.legenda ?? `Foto ${i + 1}`} class="aspect-square w-full object-contain" loading="lazy" decoding="async" />
               <div class="flex items-start justify-between gap-2 p-2">
-                <p class="line-clamp-2 min-w-0 text-xs text-slate-600">{foto.legenda ?? "Sem legenda"}</p>
+                <p class="line-clamp-2 min-w-0 text-xs text-slate-600">{foto.legenda ?? "Sem descrição"}</p>
                 <button
                   type="button"
                   class="min-h-11 shrink-0 rounded-full px-3 text-sm font-bold text-vermelho-700 hover:bg-vermelho-500/10"
@@ -124,18 +124,8 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
     }
     {
       fotos.limiteGaleria > 0 && (
-        <div class="mt-4 flex flex-wrap items-end gap-3">
-          <label class="block min-w-0 flex-1 text-sm font-bold text-azul-900">
-            Legenda da próxima foto (opcional)
-            <input
-              type="text"
-              maxlength="200"
-              data-legenda-galeria
-              disabled={galeriaCheia}
-              placeholder="Ex.: Apartamento de 2 quartos no Centro"
-              class="mt-1 block h-11 w-full rounded-2xl border-2 border-azul-100 bg-white px-4 text-base text-tinta focus:border-azul-500 focus:outline-none disabled:opacity-50"
-            />
-          </label>
+        <div class="mt-4">
+          {/* A descrição é pedida no ajuste, depois de escolher a foto (decisão de 26/11/2026). */}
           <label class={botaoEscolher}>
             Adicionar foto
             <input type="file" accept="image/*" class="sr-only" data-escolher-foto="galeria" disabled={galeriaCheia} />
@@ -162,8 +152,7 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
 
 <script>
   import type { FinalidadeFotoPerfil } from "@acheaqui/validation";
-  import { ajustarFoto } from "@/lib/ajusteFotoNavegador";
-  import type { FotoPreparada } from "@/lib/fotoNavegador";
+  import { ajustarFoto, type FotoAjustada } from "@/lib/ajusteFotoNavegador";
 
   const secao = document.querySelector<HTMLElement>("[data-fotos-perfil]");
   const modal = document.querySelector<HTMLDialogElement>("#modal-apagar-foto");
@@ -171,7 +160,6 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
   if (secao && modal) {
     const anuncianteId = secao.dataset.anunciante ?? "";
     const mensagem = secao.querySelector<HTMLElement>("[data-mensagem-fotos]")!;
-    const legendaGaleria = secao.querySelector<HTMLInputElement>("[data-legenda-galeria]");
     const controles = () => [...secao.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button"), ...modal.querySelectorAll("button")];
     let idParaApagar = "";
 
@@ -209,14 +197,14 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
       }
     };
 
-    const enviar = async (finalidade: FinalidadeFotoPerfil, foto: FotoPreparada, campo: HTMLInputElement) => {
+    const enviar = async (finalidade: FinalidadeFotoPerfil, foto: FotoAjustada, campo: HTMLInputElement) => {
       ocupar(true);
       mostrar("Enviando a foto…", "info");
       try {
         const dados = new FormData();
         dados.set("anunciante", anuncianteId);
         dados.set("finalidade", finalidade);
-        if (finalidade === "galeria") dados.set("legenda", legendaGaleria?.value.trim() ?? "");
+        if (finalidade === "galeria") dados.set("legenda", foto.legenda);
         for (const [tamanho, arquivo] of foto.versoes) dados.set(`foto_${tamanho}`, arquivo);
         const resposta = await fetch("/api/fotos", { method: "POST", body: dados });
         if (resposta.ok) return recarregar("foto");
@@ -235,7 +223,7 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
         if (!arquivo) return;
         const finalidade = campo.dataset.escolherFoto as FinalidadeFotoPerfil;
         mensagem.classList.add("hidden");
-        let foto: FotoPreparada | null;
+        let foto: FotoAjustada | null;
         try {
           foto = await ajustarFoto(arquivo, finalidade);
         } catch (erro) {

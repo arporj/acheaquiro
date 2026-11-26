@@ -52,12 +52,15 @@ async function imagemDaPrevia(imagem: ImageBitmap, recorte: Recorte): Promise<st
   return URL.createObjectURL(blob);
 }
 
+/** Foto pronta para o envio, com a descrição (só na galeria; vazia nas outras). */
+export type FotoAjustada = FotoPreparada & { legenda: string };
+
 /**
  * Abre o ajuste para a foto escolhida. Resolve com a foto pronta para o envio,
  * ou null quando a pessoa cancela. Erro (com mensagem para a pessoa) quando a
  * imagem não abre.
  */
-export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfil): Promise<FotoPreparada | null> {
+export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfil): Promise<FotoAjustada | null> {
   const modal = document.querySelector<HTMLDialogElement>("#modal-ajuste-foto");
   const raiz = modal?.querySelector<HTMLElement>("[data-ajuste-foto]");
   if (!modal || !raiz) throw new Error("A tela de ajuste da foto não está nesta página.");
@@ -76,6 +79,8 @@ export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfi
   const aproximar = q<HTMLButtonElement>("[data-aproximar]");
   const opcaoInteira = q<HTMLElement>("[data-opcao-inteira]");
   const inteira = q<HTMLInputElement>("[data-inteira]");
+  const campoLegenda = q<HTMLElement>("[data-campo-legenda]");
+  const legenda = q<HTMLInputElement>("[data-legenda]");
   const aviso = q<HTMLElement>("[data-aviso-medida]");
   const previa = q<HTMLElement>("[data-previa]");
   const previaGaleria = q<HTMLElement>("[data-previa-galeria]");
@@ -98,6 +103,8 @@ export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfi
   opcaoInteira.hidden = finalidade === "perfil";
   inteira.checked = usarInteira;
   moldura.classList.toggle("cursor-grab", !usarInteira);
+  campoLegenda.hidden = finalidade !== "galeria";
+  legenda.value = "";
   previa.hidden = finalidade === "galeria";
   previaGaleria.hidden = finalidade !== "galeria";
   erro.hidden = true;
@@ -265,8 +272,8 @@ export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfi
   observador.observe(moldura);
   observador.observe(previa);
 
-  return new Promise<FotoPreparada | null>((resolver) => {
-    let resultado: FotoPreparada | null = null;
+  return new Promise<FotoAjustada | null>((resolver) => {
+    let resultado: FotoAjustada | null = null;
 
     confirmar.addEventListener(
       "click",
@@ -275,7 +282,8 @@ export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfi
         confirmar.textContent = "Preparando…";
         erro.hidden = true;
         try {
-          resultado = await versoesDaImagem(imagem, finalidade, recorteFinal());
+          const versoes = await versoesDaImagem(imagem, finalidade, recorteFinal());
+          resultado = { ...versoes, legenda: finalidade === "galeria" ? legenda.value.trim() : "" };
           modal.close();
         } catch (falha) {
           console.error("Ajuste da foto: preparo falhou", falha);
