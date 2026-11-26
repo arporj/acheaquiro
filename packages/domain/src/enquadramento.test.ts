@@ -3,6 +3,7 @@ import {
   ZOOM_MAXIMO,
   aplicarZoom,
   arrastoParaImagem,
+  comecaInteira,
   moverRecorte,
   recorteInicial,
   recorteInteiro,
@@ -40,6 +41,28 @@ describe("recorteInteiro", () => {
 
   it("recusa medidas inválidas", () => {
     expect(() => recorteInteiro(-1, 10)).toThrow(RangeError);
+  });
+});
+
+describe("comecaInteira", () => {
+  it("folheto em pé e foto deitada numa moldura quadrada começam inteiras", () => {
+    expect(comecaInteira(1007, 1600, 1)).toBe(true);
+    expect(comecaInteira(1448, 1086, 1)).toBe(true);
+  });
+
+  it("foto quadrada ou quase quadrada (até 10% de diferença) começa no recorte", () => {
+    expect(comecaInteira(1200, 1200, 1)).toBe(false);
+    expect(comecaInteira(1090, 1000, 1)).toBe(false);
+    expect(comecaInteira(1000, 1090, 1)).toBe(false);
+  });
+
+  it("compara com a proporção da moldura, e não com o quadrado", () => {
+    expect(comecaInteira(1600, 400, 4)).toBe(false);
+    expect(comecaInteira(1600, 900, 4)).toBe(true);
+  });
+
+  it("recusa medidas inválidas", () => {
+    expect(() => comecaInteira(0, 10, 1)).toThrow(RangeError);
   });
 });
 

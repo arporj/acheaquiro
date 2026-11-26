@@ -52,14 +52,21 @@ export const MEDIDAS_FOTO: Record<FinalidadeFotoPerfil, { ideal: [number, number
   galeria: {
     ideal: [1200, 1200],
     minimo: [800, 800],
-    orientacao: "Quadrada, de 1.200 × 1.200 px (mínimo de 800 × 800 px). Depois de escolher, você escolhe a parte que aparece.",
+    orientacao:
+      "De preferência quadrada, de 1.200 × 1.200 px (mínimo de 800 px no lado maior). Folheto ou foto em pé ou deitada entra inteira, sem cortar; se preferir, escolha a parte que aparece. No site, quem toca na foto a vê ampliada.",
   },
 };
 
-/** Aviso (sem recusar) quando a foto escolhida é menor que o mínimo recomendado. */
-export function avisoDeMedida(finalidade: FinalidadeFotoPerfil, largura: number, altura: number): string | null {
+/**
+ * Aviso (sem recusar) quando a foto escolhida é menor que o mínimo recomendado.
+ * Com a foto inteira, sem corte, ela ocupa a moldura por um lado só: basta esse
+ * lado chegar ao mínimo (o outro fica com as sobras desfocadas).
+ */
+export function avisoDeMedida(finalidade: FinalidadeFotoPerfil, largura: number, altura: number, opcoes: { inteira?: boolean } = {}): string | null {
   const [minLargura, minAltura] = MEDIDAS_FOTO[finalidade].minimo;
-  if (largura >= minLargura && altura >= minAltura) return null;
+  const larguraBasta = largura >= minLargura;
+  const alturaBasta = altura >= minAltura;
+  if (opcoes.inteira ? larguraBasta || alturaBasta : larguraBasta && alturaBasta) return null;
   return `A foto tem ${largura} × ${altura} px, menor que o mínimo recomendado de ${minLargura} × ${minAltura} px: pode aparecer sem nitidez.`;
 }
 export const TAMANHO_MAXIMO_PDF = 5 * 1024 * 1024;

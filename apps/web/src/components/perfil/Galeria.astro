@@ -1,7 +1,11 @@
 ---
 // Galeria única do perfil (item 4.3): as fotos soltas e os pares de antes e
 // depois, que ocupam duas colunas e mostram as duas fotos lado a lado.
-import { FotoMarcador } from "@acheaqui/ui";
+// Foto inteira (decisão de 26/11/2026): cada foto aparece sem corte no quadrado,
+// com as sobras preenchidas pela própria foto desfocada, porque a arte dos
+// anunciantes (folhetos em pé, antes e depois deitado) tem telefone, preço e
+// texto nas bordas. Tocar na foto a abre ampliada (src/lib/galeriaNavegador.ts).
+import { FotoMarcador, Icone, versaoAmpliada } from "@acheaqui/ui";
 import type { Categoria, Foto } from "@acheaqui/types";
 
 interface Props {
@@ -28,6 +32,29 @@ for (const foto of fotos) {
   const depois = fotos.find((f) => f.parId === foto.parId && f.papelNoPar === "depois");
   itens.push(depois ? { tipo: "par", antes: foto, depois } : { tipo: "foto", foto });
 }
+
+// Fotos que abrem ampliadas, na ordem da galeria (o par entra como duas fotos, com o rótulo).
+type Ampliada = { url: string; legenda: string; rotulo: string };
+const ampliadas: Ampliada[] = [];
+const indiceAmpliada = (foto: Foto, rotulo = ""): number | undefined => {
+  if (!foto.url) return undefined;
+  ampliadas.push({ url: versaoAmpliada(foto.url), legenda: foto.legenda ?? "", rotulo });
+  return ampliadas.length - 1;
+};
+const indices = new Map<Foto, number | undefined>();
+for (const item of itens) {
+  if (item.tipo === "foto") indices.set(item.foto, indiceAmpliada(item.foto));
+  else {
+    indices.set(item.antes, indiceAmpliada(item.antes, "Antes"));
+    indices.set(item.depois, indiceAmpliada(item.depois, "Depois"));
+  }
+}
+const rotuloBotao = (foto: Foto, rotulo = "") => `Ampliar a foto${rotulo ? ` (${rotulo.toLowerCase()})` : ""}${foto.legenda ? `: ${foto.legenda}` : ""}`;
+const botaoFoto =
+  "block w-full cursor-zoom-in focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-azul-500";
+// Fundo escuro e contorno claro: o botão aparece também sobre a parte branca da foto.
+const botaoRedondo =
+  "grid size-11 place-items-center rounded-full bg-black/65 text-white ring-1 ring-white/40 hover:bg-black/80 focus-visible:outline-3 focus-visible:outline-white";
 ---
 
 <ul class="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -37,7 +64,20 @@ for (const foto of fotos) {
         <li>
           {/* Legenda embaixo da foto, e não por cima: a arte do anunciante costuma ter texto nas bordas (26/11/2026). */}
           <figure>
-            <FotoMarcador foto={item.foto} icone={categoria.icone} cor={categoria.cor} class="aspect-square w-full overflow-hidden rounded-2xl" />
+            {indices.get(item.foto) === undefined ? (
+              <FotoMarcador foto={item.foto} icone={categoria.icone} cor={categoria.cor} class="aspect-square w-full overflow-hidden rounded-2xl" />
+            ) : (
+              <button type="button" class={`${botaoFoto} rounded-2xl`} data-ampliar={indices.get(item.foto)} aria-label={rotuloBotao(item.foto)}>
+                <FotoMarcador
+                  foto={item.foto}
+                  icone={categoria.icone}
+                  cor={categoria.cor}
+                  inteira
+                  tamanhos="(min-width: 640px) 240px, 50vw"
+                  class="aspect-square w-full rounded-2xl"
+                />
+              </button>
+            )}
             {item.foto.legenda && <figcaption class="mt-1.5 text-sm leading-snug font-semibold text-slate-600">{item.foto.legenda}</figcaption>}
           </figure>
         </li>
@@ -50,8 +90,26 @@ for (const foto of fotos) {
                 { foto: item.depois, rotulo: "Depois", cor: categoria.cor },
               ].map((lado) => (
                 <div class="relative">
-                  <FotoMarcador foto={lado.foto} icone={categoria.icone} cor={lado.cor} class="aspect-square w-full" />
-                  <span class="absolute top-2 left-2 rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-extrabold text-white uppercase">
+                  {indices.get(lado.foto) === undefined ? (
+                    <FotoMarcador foto={lado.foto} icone={categoria.icone} cor={lado.cor} class="aspect-square w-full" />
+                  ) : (
+                    <button
+                      type="button"
+                      class={botaoFoto}
+                      data-ampliar={indices.get(lado.foto)}
+                      aria-label={rotuloBotao(lado.foto, lado.rotulo)}
+                    >
+                      <FotoMarcador
+                        foto={lado.foto}
+                        icone={categoria.icone}
+                        cor={lado.cor}
+                        inteira
+                        tamanhos="(min-width: 640px) 240px, 50vw"
+                        class="aspect-square w-full"
+                      />
+                    </button>
+                  )}
+                  <span class="pointer-events-none absolute top-2 left-2 rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-extrabold text-white uppercase">
                     {lado.rotulo}
                   </span>
                 </div>
@@ -64,3 +122,40 @@ for (const foto of fotos) {
     )
   }
 </ul>
+
+{
+  ampliadas.length > 0 && (
+    <dialog
+      data-galeria-ampliada
+      data-fotos={JSON.stringify(ampliadas)}
+      aria-label="Foto ampliada"
+      class="m-0 size-full max-h-none max-w-none bg-black p-0 text-white backdrop:bg-black/80"
+    >
+      <div class="flex h-full flex-col">
+        <div class="flex items-center justify-between gap-4 px-4 py-3">
+          <p data-contador aria-live="polite" class="text-sm font-bold"></p>
+          <button type="button" data-fechar-ampliada class={botaoRedondo} aria-label="Fechar">
+            <Icone nome="fechar" class="size-6" />
+          </button>
+        </div>
+        {/* Arrastar para o lado troca a foto; o gesto de pinça continua aproximando a tela. */}
+        <div data-palco class="relative min-h-0 flex-1 touch-pan-y touch-pinch-zoom">
+          <img data-imagem-ampliada alt="" decoding="async" class="absolute inset-0 size-full object-contain select-none" draggable="false" />
+          <button type="button" data-anterior class={`${botaoRedondo} absolute top-1/2 left-2 -translate-y-1/2`} aria-label="Foto anterior">
+            <Icone nome="esquerda" class="size-6" />
+          </button>
+          <button type="button" data-proxima class={`${botaoRedondo} absolute top-1/2 right-2 -translate-y-1/2`} aria-label="Próxima foto">
+            <Icone nome="direita" class="size-6" />
+          </button>
+        </div>
+        <p data-legenda-ampliada class="min-h-11 px-4 py-3 text-center text-sm font-semibold"></p>
+      </div>
+    </dialog>
+  )
+}
+
+<script>
+  import { ligarGaleriaAmpliada } from "@/lib/galeriaNavegador";
+
+  ligarGaleriaAmpliada();
+</script>

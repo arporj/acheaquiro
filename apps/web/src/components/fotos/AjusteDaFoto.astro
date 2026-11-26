@@ -1,7 +1,8 @@
 ---
 // Ajuste da foto antes do envio (decisões C2 e C3 de 24/11/2026): a pessoa
 // arrasta e aproxima a foto na moldura (perfil e galeria quadradas, capa de 4
-// por 1, com a opção de usar a capa inteira) e vê como fica no celular e no
+// por 1; capa e galeria com a opção de usar a foto inteira, decisão de
+// 26/11/2026 para a galeria) e vê como fica no celular e no
 // computador, com o mesmo topo do perfil da página pública (TopoDoPerfil). A
 // tela fica em src/lib/ajusteFotoNavegador.ts; as contas do recorte, em
 // packages/domain/enquadramento.ts. Usado pelo quadro "Fotos" do cadastro.
@@ -78,7 +79,10 @@ const botaoRedondo = "grid size-11 shrink-0 place-items-center rounded-full bg-a
         }
       </div>
     </div>
-    <p data-previa-galeria hidden class="mt-4 text-sm text-slate-600">Na galeria do perfil, a foto aparece quadrada, como na moldura acima.</p>
+    <p data-previa-galeria hidden class="mt-4 text-sm text-slate-600">
+      Na galeria do perfil, a foto aparece num quadrado, como na moldura acima; com a foto inteira, as sobras ficam com a própria foto desfocada. Quem
+      toca na foto a vê ampliada, inteira.
+    </p>
 
     <p data-erro-ajuste role="alert" hidden class="mt-4 rounded-2xl bg-vermelho-500/10 p-3 text-sm font-semibold text-vermelho-700"></p>
 

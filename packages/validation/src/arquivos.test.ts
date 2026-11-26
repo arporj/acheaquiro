@@ -167,6 +167,15 @@ describe("medidas recomendadas das fotos do perfil", () => {
     expect(avisoDeMedida("perfil", 300, 800)).toContain("400 × 400 px");
   });
 
+  it("com a foto inteira, basta um dos lados chegar ao mínimo", () => {
+    expect(avisoDeMedida("galeria", 744, 1600, { inteira: true })).toBeNull();
+    expect(avisoDeMedida("galeria", 1448, 700, { inteira: true })).toBeNull();
+    expect(avisoDeMedida("galeria", 744, 1600)).toContain("800 × 800 px");
+    expect(avisoDeMedida("galeria", 500, 700, { inteira: true })).toBe(
+      "A foto tem 500 × 700 px, menor que o mínimo recomendado de 800 × 800 px: pode aparecer sem nitidez.",
+    );
+  });
+
   it("o ideal nunca fica abaixo do mínimo nem acima da maior versão gravada", () => {
     for (const { ideal, minimo } of Object.values(MEDIDAS_FOTO)) {
       expect(ideal[0]).toBeGreaterThanOrEqual(minimo[0]);

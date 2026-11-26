@@ -39,6 +39,19 @@ export function recorteInteiro(largura: number, altura: number): Recorte {
   return { x: 0, y: 0, largura, altura };
 }
 
+/** Diferença de proporção (10%) a partir da qual a foto não é considerada da proporção da moldura. */
+export const TOLERANCIA_PROPORCAO = 0.1;
+
+/**
+ * Na galeria, a foto que não tem a proporção da moldura começa com "Usar a foto
+ * inteira" marcado (decisão de 26/11/2026): folhetos e artes costumam ter
+ * telefone, preço e texto nas bordas, e cortar passa a ser escolha da pessoa.
+ */
+export function comecaInteira(largura: number, altura: number, proporcao: number): boolean {
+  conferirMedidas(largura, altura, proporcao);
+  return Math.abs(largura / altura / proporcao - 1) > TOLERANCIA_PROPORCAO;
+}
+
 /** Desloca o recorte em pixels da imagem, parando na borda dela. */
 export function moverRecorte(atual: Recorte, dx: number, dy: number, largura: number, altura: number): Recorte {
   return {

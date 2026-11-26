@@ -7,6 +7,7 @@ import {
   ZOOM_MAXIMO,
   aplicarZoom,
   arrastoParaImagem,
+  comecaInteira,
   moverRecorte,
   recorteInicial,
   recorteInteiro,
@@ -83,7 +84,8 @@ export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfi
   const titulo = modal.querySelector<HTMLElement>("[data-modal-titulo]");
 
   let recorte = recorteInicial(largura, altura, proporcao);
-  let usarInteira = false;
+  // Na galeria, folheto ou foto fora do quadrado começa inteira (comecaInteira); na capa, a pessoa escolhe.
+  let usarInteira = finalidade === "galeria" && comecaInteira(largura, altura, proporcao);
   let urlPrevia = "";
   let quadroPedido = 0;
   let previaPedida = 0;
@@ -93,8 +95,9 @@ export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfi
   const originais = fotosDaPrevia.map((img) => img.src);
 
   if (titulo) titulo.textContent = TITULOS[finalidade];
-  opcaoInteira.hidden = finalidade !== "capa";
-  inteira.checked = false;
+  opcaoInteira.hidden = finalidade === "perfil";
+  inteira.checked = usarInteira;
+  moldura.classList.toggle("cursor-grab", !usarInteira);
   previa.hidden = finalidade === "galeria";
   previaGaleria.hidden = finalidade !== "galeria";
   erro.hidden = true;
@@ -114,7 +117,7 @@ export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfi
     const c = tela.getContext("2d")!;
     c.clearRect(0, 0, w, h);
     if (usarInteira) {
-      // A capa inteira, sem corte, como aparece no site (as sobras ficam escuras aqui).
+      // A foto inteira, sem corte (no site, as sobras ficam com a própria foto desfocada; aqui, escuras).
       const escala = Math.min(w / largura, h / altura);
       const dw = largura * escala;
       const dh = altura * escala;
@@ -141,9 +144,10 @@ export async function ajustarFoto(arquivo: File, finalidade: FinalidadeFotoPerfi
 
   const atualizarAviso = () => {
     const final = recorteFinal();
-    const texto = avisoDeMedida(finalidade, Math.round(final.largura), Math.round(final.altura));
+    const texto = avisoDeMedida(finalidade, Math.round(final.largura), Math.round(final.altura), { inteira: usarInteira });
     aviso.hidden = !texto;
-    aviso.textContent = texto ? `${texto} Afaste um pouco ou escolha outra foto.` : "";
+    const conselho = usarInteira ? "Se tiver, escolha uma foto maior." : "Afaste um pouco ou escolha outra foto.";
+    aviso.textContent = texto ? `${texto} ${conselho}` : "";
   };
 
   const atualizarPrevia = () => {

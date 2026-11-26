@@ -28,6 +28,17 @@
       ],
       "port": 3403,
       "autoPort": false
+    },
+    {
+      "name": "acheaqui-exemplo-previa",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-Command",
+        "Set-Location apps/web; npx astro build --mode teste; if ($?) { npx wrangler dev --port 3401 --inspector-port 3402 }"
+      ],
+      "port": 3401,
+      "autoPort": false
     }
   ]
 }

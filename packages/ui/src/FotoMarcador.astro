@@ -3,6 +3,7 @@
 // categoria com o ícone dela. Quando a foto existir, mostra a imagem.
 import type { Foto } from "@acheaqui/types";
 import IconeCategoria from "./IconeCategoria.astro";
+import { srcsetDaFoto } from "./versoesFoto";
 
 interface Props {
   foto?: Foto;
@@ -23,14 +24,6 @@ interface Props {
   marca?: string;
 }
 
-/** Versões que o envio grava no bucket público: <chave>-400, -800 e -1600 (src/lib/fotoNavegador.ts). */
-function versoes(url: string): string | undefined {
-  const partes = url.match(/^(.*)-800\.(jpg|webp)$/);
-  if (!partes) return undefined;
-  const [, chave, extensao] = partes;
-  return [400, 800, 1600].map((largura) => `${chave}-${largura}.${extensao} ${largura}w`).join(", ");
-}
-
 function variacao(semente: string): number {
   let soma = 0;
   for (const letra of semente) soma = (soma * 31 + letra.charCodeAt(0)) % 997;
@@ -38,7 +31,7 @@ function variacao(semente: string): number {
 }
 
 const { foto, icone, cor, class: classe = "", tamanhoIcone = "text-4xl", prioritaria = false, inteira = false, tamanhos, marca } = Astro.props;
-const srcset = foto?.url && tamanhos ? versoes(foto.url) : undefined;
+const srcset = foto?.url && tamanhos ? srcsetDaFoto(foto.url) : undefined;
 const carregamento = {
   loading: prioritaria ? "eager" : "lazy",
   fetchpriority: prioritaria ? "high" : undefined,

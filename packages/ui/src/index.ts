@@ -8,3 +8,4 @@ export { default as FotoMarcador } from "./FotoMarcador.astro";
 export { default as IconeCategoria } from "./IconeCategoria.astro";
 export { type NomeIconeCategoria } from "./iconesCategoria";
 export { default as Modal } from "./Modal.astro";
+export { srcsetDaFoto, versaoAmpliada } from "./versoesFoto";

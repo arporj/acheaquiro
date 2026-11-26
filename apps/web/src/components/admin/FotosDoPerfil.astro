@@ -104,7 +104,8 @@ const fotosUnicas: { finalidade: "perfil" | "capa"; titulo: string; foto: FotoDo
         <ul class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {fotos.galeria.map((foto, i) => (
             <li class="overflow-hidden rounded-2xl bg-fundo ring-1 ring-black/5">
-              <img src={foto.url} alt={foto.legenda ?? `Foto ${i + 1}`} class="aspect-square w-full object-cover" loading="lazy" decoding="async" />
+              {/* Inteira, como foi enviada: o folheto em pé ou deitado não aparece cortado aqui. */}
+              <img src={foto.url} alt={foto.legenda ?? `Foto ${i + 1}`} class="aspect-square w-full object-contain" loading="lazy" decoding="async" />
               <div class="flex items-start justify-between gap-2 p-2">
                 <p class="line-clamp-2 min-w-0 text-xs text-slate-600">{foto.legenda ?? "Sem legenda"}</p>
                 <button
