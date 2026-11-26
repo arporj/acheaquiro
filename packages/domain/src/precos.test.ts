@@ -81,6 +81,12 @@ describe("avisoDePreco (cada assinante com o próprio valor)", () => {
     ).toBe(52425);
   });
 
+  it("mensal de Fundador no 1º ano: com 50% (decisão de 26/11/2026)", () => {
+    expect(
+      avisoDePreco({ ...base, fundadorDesde: "2026-11-27", assinatura: { ancora: "2026-11-27", venceEm: "2027-03-27", periodicidade: "mensal" } }),
+    ).toEqual({ aPartirDe: "2027-04-27", valorCentavos: 3495, valorAntigoCentavos: 2995 });
+  });
+
   it("assinatura em atraso: o aviso vale para o vencimento seguinte ao prazo", () => {
     expect(avisoDePreco({ ...base, assinatura: { ancora: "2026-11-27", venceEm: "2027-03-05", periodicidade: "mensal" } })?.aPartirDe).toBe("2027-04-27");
   });

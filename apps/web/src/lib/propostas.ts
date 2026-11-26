@@ -98,7 +98,7 @@ export interface ValoresProposta {
   descontoMaximoCentavos: number;
   /** Pagamento em que sai a 1ª parcela da comissão (e o desconto). */
   comissaoEm: "agora" | "proximo" | null;
-  /** Vira Fundador com este pagamento (assinatura anual paga até o prazo); o valor já vem com o desconto de Fundador. */
+  /** Vira Fundador com este pagamento (assinatura, mensal ou anual, paga até o prazo); o valor já vem com o desconto de Fundador. */
   viraFundador: boolean;
   /** Só na assinatura: a conta do domínio, para a tela mostrar de onde vem a comissão (decisão de 02/11/2026). */
   conta: { cobranca: Cobranca; comissao: Comissao | null; numeroPagamento: number } | null;

@@ -1,6 +1,6 @@
 ---
 // A conta da comissão do 1º pagamento, passo a passo (decisão de 02/11/2026):
-// o representante vê por que a comissão do anual de Fundador é menor. Os
+// o representante vê por que a comissão de Fundador é menor. Os
 // números vêm prontos do domínio (calcularPagamentoPlano); aqui só a exibição.
 import { PERCENTUAIS_COMISSAO_MENSAL, PERCENTUAL_COMISSAO_ANUAL, aplicarPercentual, type Cobranca, type Comissao } from "@acheaqui/domain";
 import { formatarCentavos } from "@/lib/precos";
@@ -47,7 +47,14 @@ const seguintes = PERCENTUAIS_COMISSAO_MENSAL.slice(numeroPagamento);
         </>
       ) : (
         <>
-          <li>Mensal: o anunciante paga {formatarCentavos(cobranca.valorDevidoCentavos)} por mês (o desconto de Fundador é só no anual).</li>
+          {cobranca.descontoFundadorCentavos > 0 ? (
+            <li>
+              Mensal: {formatarCentavos(cobranca.valorCheioCentavos)}, com desconto de Fundador de {pct(percentualFundador)}: −{" "}
+              {formatarCentavos(cobranca.descontoFundadorCentavos)}. O anunciante paga {formatarCentavos(cobranca.valorDevidoCentavos)} por mês.
+            </li>
+          ) : (
+            <li>Mensal: o anunciante paga {formatarCentavos(cobranca.valorDevidoCentavos)} por mês.</li>
+          )}
           <li>
             {pct(comissao.percentual)} desta mensalidade: <strong>{formatarCentavos(comissao.valorCentavos)}</strong>.
           </li>
@@ -65,9 +72,9 @@ const seguintes = PERCENTUAIS_COMISSAO_MENSAL.slice(numeroPagamento);
     <li>O desconto que você dá sai desta comissão, só neste 1º pagamento.</li>
   </ol>
   {
-    periodicidade === "anual" && cobranca.descontoFundadorCentavos > 0 && (
+    cobranca.descontoFundadorCentavos > 0 && (
       <p class="mt-2 text-xs text-slate-600">
-        Por isso a comissão do anual de Fundador fica menor que a do mensal: ela é calculada sobre o valor já com o desconto de Fundador (regra da
+        Por isso a comissão de Fundador fica menor que a do preço cheio: ela é calculada sobre o valor já com o desconto de Fundador (regra da
         comissão sobre o valor efetivamente pago).
       </p>
     )

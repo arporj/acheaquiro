@@ -17,9 +17,14 @@ export const DOCUMENTOS: Record<Documento, { titulo: string; vigente: string }> 
   confidencialidade: { titulo: "Termo de Confidencialidade do Representante", vigente: "1" },
 };
 
-/** Texto de uma versão; vazio se a versão não existe. */
+/**
+ * Texto de uma versão; vazio se a versão não existe ou ainda não está em vigor
+ * (a versão nova fica no repositório antes da data e só aparece no site quando
+ * DOCUMENTOS.<documento>.vigente muda).
+ */
 export function textoDocumento(documento: Documento, versao: string): Texto | undefined {
-  return /^\d{1,3}$/.test(versao) ? textos[`../conteudo/${documento}-v${versao}.md`] : undefined;
+  if (!/^\d{1,3}$/.test(versao) || Number(versao) > Number(DOCUMENTOS[documento].vigente)) return undefined;
+  return textos[`../conteudo/${documento}-v${versao}.md`];
 }
 
 export function enderecoDocumento(documento: Documento, versao = DOCUMENTOS[documento].vigente): string {

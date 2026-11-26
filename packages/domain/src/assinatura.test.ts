@@ -119,11 +119,44 @@ describe("calcularPagamentoPlano", () => {
     expect(r.comissao?.valorCentavos).toBe(8087);
   });
 
-  it("mensal no pré-cadastro: não vira Fundador e a 1ª mensalidade rende 100%", () => {
+  it("mensal no pré-cadastro: vira Fundador, com 50%, e a 1ª mensalidade rende 100% do valor pago (decisão de 26/11/2026)", () => {
     const r = calcular({ periodicidade: "mensal" });
-    expect(r.fundador.fundador).toBe(false);
+    expect(r.fundador).toEqual({ fundador: true, fundadorDesde: "2026-11-27", tornou: true, perdeu: false });
     expect(r.periodo.venceEm).toBe("2026-12-27");
+    expect(r.cobranca.valorDevidoCentavos).toBe(2995);
+    expect(r.comissao?.valorCentavos).toBe(2995);
+  });
+
+  it("mensal pago depois do prazo: sem Fundador, preço cheio e 1ª mensalidade rende 100%", () => {
+    const r = calcular({ periodicidade: "mensal", pagoEm: "2026-11-27", confirmadoEm: "2026-11-27" });
+    expect(r.fundador.fundador).toBe(false);
+    expect(r.cobranca.valorDevidoCentavos).toBe(5990);
     expect(r.comissao?.valorCentavos).toBe(5990);
+  });
+
+  it("2ª mensalidade do Fundador mensal, em dia: continua Fundador, com 50%, e rende 20%", () => {
+    const r = calcular({
+      periodicidade: "mensal",
+      pagoEm: "2026-12-27",
+      confirmadoEm: "2026-12-27",
+      fundadorDesde: "2026-11-27",
+      assinatura: { ancora: "2026-11-27", venceEm: "2026-12-27", pagamentosAnteriores: 1, algumAnual: false },
+    });
+    expect(r.fundador).toEqual({ fundador: true, fundadorDesde: "2026-11-27", tornou: false, perdeu: false });
+    expect(r.cobranca.valorDevidoCentavos).toBe(2995);
+    expect(r.comissao?.valorCentavos).toBe(599);
+  });
+
+  it("Fundador mensal que paga depois dos 7 dias perde a condição e paga o valor cheio", () => {
+    const r = calcular({
+      periodicidade: "mensal",
+      pagoEm: "2027-01-04",
+      confirmadoEm: "2027-01-04",
+      fundadorDesde: "2026-11-27",
+      assinatura: { ancora: "2026-11-27", venceEm: "2026-12-27", pagamentosAnteriores: 1, algumAnual: false },
+    });
+    expect(r.fundador).toEqual({ fundador: false, fundadorDesde: null, tornou: false, perdeu: true });
+    expect(r.cobranca.valorDevidoCentavos).toBe(5990);
   });
 
   it("3ª mensalidade rende 10%", () => {
@@ -164,7 +197,7 @@ describe("calcularPagamentoPlano", () => {
     expect(renovar("2029-11-27", "2029-12-01").cobranca.valorDevidoCentavos).toBe(44925);
   });
 
-  it("Fundador que renova no mensal deixa de ser Fundador e não gera parcelas de comissão", () => {
+  it("Fundador anual que renova no mensal continua Fundador, com o desconto, e não gera parcelas de comissão", () => {
     const r = calcular({
       periodicidade: "mensal",
       pagoEm: "2027-11-20",
@@ -172,8 +205,8 @@ describe("calcularPagamentoPlano", () => {
       fundadorDesde: "2026-11-27",
       assinatura: { ancora: "2026-11-27", venceEm: "2027-11-27", pagamentosAnteriores: 1, algumAnual: true },
     });
-    expect(r.fundador).toEqual({ fundador: false, fundadorDesde: null, tornou: false, perdeu: true });
-    expect(r.cobranca.valorDevidoCentavos).toBe(5990);
+    expect(r.fundador).toEqual({ fundador: true, fundadorDesde: "2026-11-27", tornou: false, perdeu: false });
+    expect(r.cobranca.valorDevidoCentavos).toBe(2995);
     expect(r.comissao).toBeNull();
   });
 

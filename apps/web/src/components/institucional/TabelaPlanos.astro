@@ -156,6 +156,10 @@ const botao =
                       <p class="mt-1 text-sm text-slate-600">
                         ou {formatarCentavos(valorPlano(plano, "anual", false, regras))} no plano anual
                       </p>
+                      <p class="mt-1 inline-flex items-center gap-1 rounded-full bg-vermelho-500 px-2.5 py-0.5 text-sm font-extrabold text-white">
+                        <Icone nome="medalha" class="size-4" />
+                        Fundador: {formatarCentavos(valorPlano(plano, "mensal", true, regras))}/mês
+                      </p>
                     </div>
                     <div class="hidden group-data-[periodo=anual]:block">
                       <p>

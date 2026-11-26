@@ -62,8 +62,10 @@ const gruposPreco = [
     .filter((p) => p.valorMensalCentavos > 0)
     .map((plano) => ({
       plano,
+      mensal: valorPlano(plano, "mensal", false, regras),
+      mensalFundador: valorPlano(plano, "mensal", true, regras),
       anual: valorPlano(plano, "anual", false, regras),
-      fundador: valorPlano(plano, "anual", true, regras),
+      anualFundador: valorPlano(plano, "anual", true, regras),
     })),
 }));
 
@@ -75,10 +77,10 @@ const chip =
 
 <Layout
   titulo="Fundadores"
-  descricao={`Quem paga a assinatura anual até ${prazo} vira Fundador do Ache Aqui RO, com desconto ao renovar no anual: ${escala}.`}
+  descricao={`Quem paga a assinatura, mensal ou anual, até ${prazo} vira Fundador do Ache Aqui RO, com desconto enquanto renovar em dia: ${escala}.`}
   previa={{
     titulo: "Fundadores do Ache Aqui RO",
-    descricao: `Pague o anual até ${prazo} e tenha desconto de ${escala}, selo e lugar no Mural dos Fundadores.`,
+    descricao: `Pague a assinatura, mensal ou anual, até ${prazo} e tenha desconto de ${escala}, selo e lugar no Mural dos Fundadores.`,
   }}
 >
   <Topo pagina="interna" />
@@ -87,7 +89,7 @@ const chip =
     <Abertura
       comAbertura
       chamada="Fundadores do Ache Aqui RO"
-      subtitulo={`Pague a assinatura anual de um plano pago até ${prazo}. Desconto de ${escala}. Não há limite de vagas.`}
+      subtitulo={`Pague a assinatura de um plano pago, mensal ou anual, até ${prazo}. Desconto de ${escala}. Não há limite de vagas.`}
     >
       Seja Fundador e tenha <span class="text-amarelo-400">{desconto} de desconto</span> já no primeiro ano
       <Fragment slot="acoes">
@@ -114,9 +116,10 @@ const chip =
         <div class="mt-6 flex gap-3 rounded-2xl bg-azul-50 p-4 text-azul-900">
           <Icone nome="info" class="mt-0.5 size-5 shrink-0 text-azul-600" />
           <p>
-            <strong>Como manter:</strong> a renovação do Fundador é sempre anual. Você continua Fundador enquanto renovar no
-            anual em até {regras.toleranciaVencimentoDias} dias depois do vencimento. Quem passa para o mensal, ou não
-            renova nesse prazo, deixa de ser Fundador de vez e perde o selo, o desconto e o lugar no Mural dos Fundadores.
+            <strong>Como manter:</strong> você continua Fundador enquanto pagar cada renovação, mensal ou anual, em até{" "}
+            {regras.toleranciaVencimentoDias} dias depois do vencimento, e pode trocar entre o mensal e o anual sem perder a
+            condição. Quem não paga nesse prazo deixa de ser Fundador de vez e perde o selo, o desconto e o lugar no Mural dos
+            Fundadores.
           </p>
         </div>
       </div>
@@ -124,14 +127,14 @@ const chip =
 
     <section class="mx-auto max-w-4xl px-4 py-10">
       <h2 class="font-display text-3xl font-extrabold text-azul-900">Quanto o Fundador paga</h2>
-      <p class="mt-1 mb-5 text-slate-600">Valores do primeiro ano, na assinatura anual.</p>
-      <div class="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5">
+      <p class="mt-1 mb-5 text-slate-600">Valores do primeiro ano: o preço cheio riscado e, embaixo, o preço de Fundador.</p>
+      <div class="relative overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5">
         <table class="w-full text-left text-sm sm:text-base">
           <thead class="bg-azul-600 text-white">
             <tr>
               <th scope="col" class="px-3 py-3 font-display font-bold sm:px-5">Plano</th>
+              <th scope="col" class="px-3 py-3 text-right font-display font-bold sm:px-5">Mensal</th>
               <th scope="col" class="px-3 py-3 text-right font-display font-bold sm:px-5">Anual</th>
-              <th scope="col" class="px-3 py-3 text-right font-display font-bold sm:px-5">Fundador</th>
             </tr>
           </thead>
           {
@@ -150,10 +153,21 @@ const chip =
                         <Selo selo={linha.plano.selo} />
                       </span>
                     </th>
-                    <td class="px-3 py-3 text-right text-slate-500 line-through decoration-vermelho-500/60 sm:px-5">
-                      {formatarCentavos(linha.anual)}
-                    </td>
-                    <td class="px-3 py-3 text-right font-extrabold text-vermelho-600 sm:px-5">{formatarCentavos(linha.fundador)}</td>
+                    {[
+                      { cheio: linha.mensal, fundador: linha.mensalFundador },
+                      { cheio: linha.anual, fundador: linha.anualFundador },
+                    ].map((valor) => (
+                      <td class="px-3 py-3 text-right sm:px-5">
+                        <span class="block text-xs text-slate-500 line-through decoration-vermelho-500/60 sm:text-sm">
+                          <span class="sr-only">Preço cheio: </span>
+                          {formatarCentavos(valor.cheio)}
+                        </span>
+                        <span class="block font-extrabold text-vermelho-600">
+                          <span class="sr-only">Fundador: </span>
+                          {formatarCentavos(valor.fundador)}
+                        </span>
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>

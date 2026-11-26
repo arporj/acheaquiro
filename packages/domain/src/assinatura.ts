@@ -170,7 +170,7 @@ export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): Pagament
       ? precoDaRenovacao({ historico: entrada.historicoPlano, inicioPeriodo: periodo.inicio, periodicidade, hoje: entrada.confirmadoEm })
       : entrada.plano;
 
-  // Fundador: quem já é continua só renovando no anual, sem interrupção.
+  // Fundador: quem já é continua renovando, no mensal ou no anual, sem interrupção.
   let fundadorDesde = entrada.fundadorDesde;
   let perdeu = false;
   let tornou = false;
@@ -180,14 +180,12 @@ export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): Pagament
       perdeCondicaoFundador({
         venceuEm: assinatura.venceEm,
         renovadaEm: pagoEm,
-        periodicidadeRenovacao: periodicidade,
         hoje: pagoEm,
         toleranciaDias: regras.toleranciaVencimentoDias,
       });
     if (perdeu) fundadorDesde = null;
   } else if (
     tornaFundador({
-      periodicidade,
       valorMensalPlanoCentavos: plano.valorMensalCentavos,
       comprovanteEnviadoEm: pagoEm,
       prazoFundador: regras.prazoFundador,

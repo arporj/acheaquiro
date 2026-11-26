@@ -82,7 +82,7 @@ export function avisoDePreco(entrada: {
   let aPartirDe = assinatura.venceEm;
   while (aPartirDe < minimo) aPartirDe = vencimentoSeguinte(assinatura.ancora, aPartirDe, assinatura.periodicidade);
 
-  const fundador = fundadorDesde !== null && assinatura.periodicidade === "anual";
+  const fundador = fundadorDesde !== null;
   const percentualFundador = fundador ? percentualFundadorNoAno(entrada.escalaDescontoFundador, anoComoFundador(fundadorDesde!, aPartirDe)) : 0;
   const desconto = { fundador, percentualFundador };
   const valorCentavos = calcularCobrancaPlano(entrada.novo, assinatura.periodicidade, desconto).valorDevidoCentavos;

@@ -61,7 +61,7 @@ const perguntas = [
     ? [
         {
           pergunta: "Quando o site abre?",
-          resposta: `${abertura}. Até ${prazo}, a equipe e os representantes fazem o cadastro de quem quer anunciar, e quem paga a assinatura anual nesse prazo vira Fundador.`,
+          resposta: `${abertura}. Até ${prazo}, a equipe e os representantes fazem o cadastro de quem quer anunciar, e quem paga a assinatura, mensal ou anual, nesse prazo vira Fundador.`,
         },
       ]
     : []),
@@ -85,7 +85,7 @@ const perguntas = [
   },
   {
     pergunta: "E se eu não renovar?",
-    resposta: `O perfil de profissional autônomo sai do ar, sem ser apagado, e volta assim que o pagamento for confirmado. O comércio continua no site, no plano Gratuito. O Fundador renova sempre no anual: se não renovar em até ${regras.toleranciaVencimentoDias} dias depois do vencimento, ou se passar para o mensal, deixa de ser Fundador e perde o selo e o desconto.`,
+    resposta: `O perfil de profissional autônomo sai do ar, sem ser apagado, e volta assim que o pagamento for confirmado. O comércio continua no site, no plano Gratuito. O Fundador que não pagar a renovação, mensal ou anual, em até ${regras.toleranciaVencimentoDias} dias depois do vencimento deixa de ser Fundador e perde o selo e o desconto.`,
   },
   {
     pergunta: "Não tenho facilidade com celular. Consigo anunciar?",
@@ -152,11 +152,11 @@ const perguntas = [
           </span>
           <div>
             <p class="font-display text-2xl leading-tight font-extrabold md:text-3xl">
-              Pague o anual até {prazo} e seja Fundador
+              Pague a assinatura até {prazo} e seja Fundador
             </p>
             <p class="mt-1 text-white/90">
-              Desconto de {descricaoDescontoFundador(regras.escalaDescontoFundador)} nos planos e pacotes, selo
-              Fundador e lugar no Mural dos Fundadores, enquanto você renovar no anual.
+              No mensal ou no anual: desconto de {descricaoDescontoFundador(regras.escalaDescontoFundador)} nos planos e
+              pacotes, selo Fundador e lugar no Mural dos Fundadores, enquanto você renovar em dia.
             </p>
           </div>
         </div>

@@ -58,8 +58,12 @@ describe("calcularCobrancaPlano", () => {
     expect(calcularCobrancaPlano(basicoAutonomo, "anual", comFundador).valorDevidoCentavos).toBe(995);
   });
 
-  it("recusa o plano mensal com desconto de Fundador: a renovação do Fundador é anual", () => {
-    expect(() => calcularCobrancaPlano(vitrine, "mensal", comFundador)).toThrow(RangeError);
+  it("mensal com Fundador tem o mesmo desconto do anual (decisão de 26/11/2026)", () => {
+    expect(calcularCobrancaPlano(vitrine, "mensal", comFundador)).toEqual({
+      valorCheioCentavos: 5990,
+      descontoFundadorCentavos: 2995,
+      valorDevidoCentavos: 2995,
+    });
   });
 });
 
@@ -113,27 +117,22 @@ describe("calcularCobrancaExtra", () => {
 });
 
 describe("tornaFundador", () => {
-  const anualNoPrazo = {
-    periodicidade: "anual" as const,
+  const pagoNoPrazo = {
     valorMensalPlanoCentavos: 5990,
     comprovanteEnviadoEm: "2026-11-26",
     prazoFundador: "2026-11-26",
   };
 
-  it("vira Fundador com o anual pago até o último dia do prazo", () => {
-    expect(tornaFundador(anualNoPrazo)).toBe(true);
-  });
-
-  it("não vira Fundador no plano mensal", () => {
-    expect(tornaFundador({ ...anualNoPrazo, periodicidade: "mensal" })).toBe(false);
+  it("vira Fundador com o plano pago, mensal ou anual, até o último dia do prazo", () => {
+    expect(tornaFundador(pagoNoPrazo)).toBe(true);
   });
 
   it("não vira Fundador depois do prazo", () => {
-    expect(tornaFundador({ ...anualNoPrazo, comprovanteEnviadoEm: "2026-11-27" })).toBe(false);
+    expect(tornaFundador({ ...pagoNoPrazo, comprovanteEnviadoEm: "2026-11-27" })).toBe(false);
   });
 
   it("não vira Fundador no plano Gratuito do comércio", () => {
-    expect(tornaFundador({ ...anualNoPrazo, valorMensalPlanoCentavos: 0 })).toBe(false);
+    expect(tornaFundador({ ...pagoNoPrazo, valorMensalPlanoCentavos: 0 })).toBe(false);
   });
 });
 
@@ -192,16 +191,8 @@ describe("perdeCondicaoFundador", () => {
     expect(perdeCondicaoFundador({ ...base, hoje: "2027-01-04" })).toBe(true);
   });
 
-  it("mantém quando renova no anual, dentro do prazo", () => {
-    expect(
-      perdeCondicaoFundador({ ...base, renovadaEm: "2026-12-20", periodicidadeRenovacao: "anual", hoje: "2026-12-20" }),
-    ).toBe(false);
-  });
-
-  it("perde quando renova no mensal, mesmo pagando em dia", () => {
-    expect(
-      perdeCondicaoFundador({ ...base, renovadaEm: "2026-12-20", periodicidadeRenovacao: "mensal", hoje: "2026-12-20" }),
-    ).toBe(true);
+  it("mantém quando renova antes do vencimento", () => {
+    expect(perdeCondicaoFundador({ ...base, renovadaEm: "2026-12-20", hoje: "2026-12-20" })).toBe(false);
   });
 });
 
