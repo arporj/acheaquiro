@@ -92,10 +92,49 @@ describe("calcularPagamentoPlano", () => {
     regras,
     assinatura: null,
     fundadorDesde: null,
+    // Vagas depois do prazo esgotadas, salvo nos testes das vagas.
+    vagasFundador: { total: 100, usadas: 100 },
     representanteRecebeComissao: true,
     carteira: { percentual: 5 },
   };
   const calcular = (p: Partial<EntradaPagamentoPlano>) => calcularPagamentoPlano({ ...entrada, ...p });
+
+  describe("vagas de Fundador depois do prazo (decisões V1 a V4 de 26/11/2026)", () => {
+    const comVaga = { total: 100, usadas: 99 };
+
+    it("1º pagamento depois do prazo, com vaga: vira Fundador, no mensal, com 50%", () => {
+      const r = calcular({ periodicidade: "mensal", pagoEm: "2026-12-05", confirmadoEm: "2026-12-05", vagasFundador: comVaga });
+      expect(r.fundador).toEqual({ fundador: true, fundadorDesde: "2026-12-05", tornou: true, perdeu: false });
+      expect(r.cobranca.valorDevidoCentavos).toBe(2995);
+    });
+
+    it("1º pagamento depois do prazo, sem vaga: não vira Fundador", () => {
+      const r = calcular({ pagoEm: "2026-12-05", confirmadoEm: "2026-12-05", vagasFundador: { total: 100, usadas: 100 } });
+      expect(r.fundador.tornou).toBe(false);
+      expect(r.cobranca.valorDevidoCentavos).toBe(59900);
+    });
+
+    it("renovação de quem não é Fundador não ocupa vaga, mesmo com vaga livre", () => {
+      const r = calcular({
+        periodicidade: "mensal",
+        pagoEm: "2027-01-20",
+        confirmadoEm: "2027-01-20",
+        vagasFundador: comVaga,
+        assinatura: { ancora: "2026-12-27", venceEm: "2027-01-27", pagamentosAnteriores: 1, algumAnual: false },
+      });
+      expect(r.fundador.tornou).toBe(false);
+    });
+
+    it("quem perdeu a condição e volta a pagar não ocupa vaga (V3: a perda é de vez)", () => {
+      const r = calcular({
+        pagoEm: "2028-01-20",
+        confirmadoEm: "2028-01-20",
+        vagasFundador: comVaga,
+        assinatura: { ancora: "2026-11-27", venceEm: "2027-11-27", pagamentosAnteriores: 1, algumAnual: true },
+      });
+      expect(r.fundador.fundador).toBe(false);
+    });
+  });
 
   it("Fundador no pré-cadastro: anual com 50%, ano contado da abertura, comissão liberada 7 dias depois da confirmação", () => {
     expect(calcular({})).toEqual({

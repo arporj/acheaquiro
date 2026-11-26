@@ -18,7 +18,7 @@ import {
 } from "@acheaqui/domain";
 import type { Resultado } from "@acheaqui/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { obterAberturaAoPublico, obterRegrasCobranca } from "../dados/consultas";
+import { obterAberturaAoPublico, obterRegrasCobranca, obterVagasFundador } from "../dados/consultas";
 import type { Situacao } from "./anunciantesAdmin";
 import { hojeNaCidade } from "./pagamentos";
 
@@ -114,7 +114,8 @@ export async function calcularProposta(
   hoje = hojeNaCidade(),
 ): Promise<Resultado<ValoresProposta>> {
   const tipo = await tipoDaProposta(ctx, hoje);
-  const [regrasCobranca, abertura] = await Promise.all([obterRegrasCobranca(), obterAberturaAoPublico()]);
+  const [regrasCobranca, abertura, vagasFundador] = await Promise.all([obterRegrasCobranca(), obterAberturaAoPublico(), obterVagasFundador()]);
+  if (!vagasFundador) return ERRO_INTERNO;
   const regras = { ...regrasCobranca, aberturaAoPublico: abertura };
   const { plano, descontoCentavos } = escolha;
   try {
@@ -125,6 +126,7 @@ export async function calcularProposta(
         pagoEm: hoje,
         confirmadoEm: hoje,
         regras,
+        vagasFundador,
         assinatura: ctx.assinatura
           ? { ancora: ctx.assinatura.ancora, venceEm: ctx.assinatura.venceEm, pagamentosAnteriores: ctx.pagamentosValidos, algumAnual: ctx.algumAnual }
           : null,
@@ -202,6 +204,7 @@ export async function calcularProposta(
         pagoEm: s.venceEm,
         confirmadoEm: s.venceEm,
         regras,
+        vagasFundador,
         assinatura: { ancora: s.ancora, venceEm: s.venceEm, pagamentosAnteriores: ctx.pagamentosValidos, algumAnual: ctx.algumAnual },
         fundadorDesde,
         representanteRecebeComissao: false,

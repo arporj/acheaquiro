@@ -62,6 +62,8 @@ interface Aviso {
     /** Termos novos (item 15 dos Termos): a versão e o dia em que passa a valer. */
     versao?: string;
     vigenteDesde?: string;
+    /** Resumo do que mudou na versão, sem o ponto final (desde a versão 3 dos Termos). */
+    mudancas?: string;
     /** Exclusão agendada da conta: o dia em que ela será excluída. */
     excluirEm?: string;
     /** Denúncia de perfil, para os administradores: o perfil e o motivo (sem o texto de quem denunciou). */
@@ -158,7 +160,11 @@ function montar(
       assunto: "Os Termos de Uso do Ache Aqui RO mudaram",
       paragrafos: [
         `${d.nome ? `Olá, ${d.nome}. ` : ""}A versão ${d.versao ?? ""} dos Termos de Uso do Ache Aqui RO vale a partir de ${data(d.vigenteDesde)}.`,
-        "O que mudou: o site passa a ter organizadores de eventos da Agenda, com uma conta só para anunciar e organizar eventos (itens 1, 2, 4, 13 e 15); as regras dos eventos na Agenda (novo item 6.5); e a devolução do evento avulso, que vale até 7 dias depois do pagamento e até a véspera do primeiro dia do evento (item 7.6). O resto continua igual.",
+        // Cada versão manda o resumo das mudanças nos dados; o texto fixo é o da versão 2, que saiu antes disso.
+        `O que mudou: ${
+          d.mudancas ??
+          "o site passa a ter organizadores de eventos da Agenda, com uma conta só para anunciar e organizar eventos (itens 1, 2, 4, 13 e 15); as regras dos eventos na Agenda (novo item 6.5); e a devolução do evento avulso, que vale até 7 dias depois do pagamento e até a véspera do primeiro dia do evento (item 7.6)"
+        }. O resto continua igual.`,
         "No próximo acesso à sua área, o site pede o aceite da versão nova.",
       ],
       botao: { texto: "Ler os Termos de Uso", link: `${PRODUCAO}/termos/v${d.versao ?? ""}` },

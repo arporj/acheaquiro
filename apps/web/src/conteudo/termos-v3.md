@@ -1,4 +1,4 @@
-Versão 3 · 27/11/2026 · minuta em revisão jurídica
+Versão 3 · 26/11/2026 · minuta em revisão jurídica
 
 ## 1. Quem somos
 
@@ -114,8 +114,10 @@ Profissionais de saúde, médicos-veterinários, advogados e demais profissões 
 ### 7.5 Fundadores
 
 - É Fundador o anunciante que paga a assinatura de um plano pago, mensal ou anual, até 26/11/2026. Não há limite de quantidade.
+- A partir de 27/11/2026, há mais 100 vagas de Fundador, além dos Fundadores do item anterior, que não ocupam essas vagas. Cada vaga fica com o anunciante que faz o seu primeiro pagamento de um plano pago, mensal ou anual, pela ordem dos pagamentos, até as vagas acabarem. O site informa quantas vagas restam.
+- Se esse primeiro pagamento for devolvido (desistência, item 7.6) ou contestado no cartão, o anunciante não fica com a vaga, que volta a ficar livre. Quem deixa de ser Fundador depois não libera a vaga.
 - O Fundador tem desconto nos planos pagos e nos pacotes extras (categoria adicional, pacote de fotos, encarte adicional, pacote de produtos e endereço adicional) enquanto continuar Fundador: **50% no 1º ano de assinatura, 40% no 2º, 30% no 3º, 20% no 4º e 10% no 5º**. A partir do 6º ano, o Fundador paga o valor cheio e mantém os demais benefícios deste item. O desconto não vale para o Banner Exclusivo, o Carrossel nem os links destacados.
-- O Fundador também recebe o selo "Fundador" no perfil, lugar no Mural dos Fundadores do site, menção na divulgação do lançamento e, quando o recurso existir, o selo "Verificado" sem custo.
+- O Fundador também recebe o selo "Fundador" no perfil, lugar no Mural dos Fundadores do site, menção na divulgação do lançamento (para os Fundadores até 26/11/2026) e, quando o recurso existir, o selo "Verificado" sem custo.
 - O desconto vale no plano mensal e no anual. O Fundador pode passar do mensal para o anual, ou do anual para o mensal, na renovação, sem deixar de ser Fundador. Enquanto for Fundador, ele pode contratar pacotes extras mensais ou anuais, com o desconto.
 - O anunciante deixa de ser Fundador de vez, e perde o selo, o desconto e o lugar no Mural dos Fundadores, quando a assinatura vence e a renovação, mensal ou anual, não é paga em até 7 dias depois do vencimento.
 

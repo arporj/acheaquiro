@@ -13,6 +13,7 @@ import {
   type Cobranca,
   type Periodicidade,
   type ValoresPlano,
+  type VagasFundador,
 } from "./cobranca";
 import { aplicarDescontoRepresentante, calcularComissao, calcularComissaoCarteira, liberacaoDaComissao, type Comissao } from "./comissao";
 import { diasEntre, somarDias, type DataISO } from "./datas";
@@ -98,6 +99,12 @@ export interface EntradaPagamentoPlano {
     toleranciaVencimentoDias: number;
     aberturaAoPublico: DataISO;
   };
+  /**
+   * Vagas de Fundador depois do prazo. Só o primeiro pagamento do anunciante
+   * (sem pagamento válido antes) pode ocupar uma: a renovação de quem não é
+   * Fundador e a volta de quem perdeu a condição não ocupam.
+   */
+  vagasFundador: VagasFundador;
   /**
    * A assinatura do anunciante, se já houve pagamento: quantos pagamentos
    * válidos (não devolvidos) teve e se algum deles foi anual.
@@ -185,10 +192,12 @@ export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): Pagament
       });
     if (perdeu) fundadorDesde = null;
   } else if (
+    (!assinatura || assinatura.pagamentosAnteriores === 0) &&
     tornaFundador({
       valorMensalPlanoCentavos: plano.valorMensalCentavos,
       comprovanteEnviadoEm: pagoEm,
       prazoFundador: regras.prazoFundador,
+      vagasDepoisDoPrazo: entrada.vagasFundador,
     })
   ) {
     fundadorDesde = periodo.inicio;

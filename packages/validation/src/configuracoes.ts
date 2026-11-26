@@ -13,6 +13,8 @@ export const esquemaConfiguracoesGerais = z
     prazoFundador: z.iso.date("Informe o último dia para virar Fundador."),
     toleranciaVencimentoDias: inteiro(1, 30, "Tolerância: de 1 a 30 dias."),
     percentualCarteira: inteiro(0, 30, "Carteira: de 0% a 30%, sem casas decimais."),
+    // Vagas de Fundador depois do prazo (decisão de 24/11/2026).
+    vagasFundadorDepoisDoPrazo: inteiro(0, 1000, "Vagas de Fundador: de 0 a 1.000."),
   })
   .refine((c) => c.prazoFundador < c.aberturaAoPublico, {
     path: ["prazoFundador"],

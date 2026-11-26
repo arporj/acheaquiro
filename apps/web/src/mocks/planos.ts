@@ -152,3 +152,6 @@ export const regrasCobranca: RegrasCobranca = {
   toleranciaVencimentoDias: 7,
   percentualCarteira: 5,
 };
+
+/** Vagas de Fundador depois do prazo, cópia de configuracoes.vagas_fundador_depois_do_prazo (decisão de 24/11/2026). */
+export const VAGAS_FUNDADOR_FICTICIAS = 100;

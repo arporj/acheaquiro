@@ -94,6 +94,7 @@ describe("calcularPagamentoPlano com upgrade e desconto do representante", () =>
     regras,
     assinatura: { ancora: "2026-11-27", venceEm: "2027-01-27", pagamentosAnteriores: 2, algumAnual: false },
     fundadorDesde: null,
+    vagasFundador: { total: 100, usadas: 100 },
     representanteRecebeComissao: true,
     carteira: { percentual: 5 },
     planoVendido: basico,

@@ -6,7 +6,8 @@ import BotaoContato from "@/components/institucional/BotaoContato.astro";
 import ListaExtras from "@/components/institucional/ListaExtras.astro";
 import Passos from "@/components/institucional/Passos.astro";
 import TabelaPlanos from "@/components/institucional/TabelaPlanos.astro";
-import { hojeNaCidade, listarExtras, listarPlanos, obterAberturaAoPublico, obterRegrasCobranca } from "@/dados/consultas";
+import { hojeNaCidade, listarExtras, listarPlanos, obterAberturaAoPublico, obterRegrasCobranca, obterVagasFundador } from "@/dados/consultas";
+import { ofertaFundador, textoVagasRestantes } from "@/lib/fundadores";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
 import { descricaoDescontoFundador, formatarCentavos, percentualInicialFundador } from "@/lib/precos";
@@ -20,6 +21,7 @@ const regras = await obterRegrasCobranca();
 const menorPrecoProfissional = Math.min(...planos.profissional.map((p) => p.valorMensalCentavos));
 const temGratuito = planos.comercio.some((p) => p.valorMensalCentavos === 0);
 const prazo = formatarData(regras.prazoFundador);
+const oferta = ofertaFundador(regras, hojeNaCidade(), await obterVagasFundador());
 const abertura = textoAbertura(await obterAberturaAoPublico(), hojeNaCidade());
 const mesesAnual = planos.profissional[0]?.mesesCobradosNoAnual ?? 10;
 
@@ -144,25 +146,33 @@ const perguntas = [
       <TabelaPlanos planos={planos} regras={regras} />
     </section>
 
-    <section class="mx-auto max-w-6xl px-4">
-      <div class="flex flex-col gap-4 rounded-[2rem] bg-vermelho-500 px-6 py-7 text-white md:flex-row md:items-center md:justify-between md:px-10">
-        <div class="flex gap-4">
-          <span class="grid size-14 shrink-0 place-items-center rounded-2xl bg-amarelo-400 text-vermelho-600">
-            <Icone nome="medalha" class="size-8" />
-          </span>
-          <div>
-            <p class="font-display text-2xl leading-tight font-extrabold md:text-3xl">
-              Pague a assinatura até {prazo} e seja Fundador
-            </p>
-            <p class="mt-1 text-white/90">
-              No mensal ou no anual: desconto de {descricaoDescontoFundador(regras.escalaDescontoFundador)} nos planos e
-              pacotes, selo Fundador e lugar no Mural dos Fundadores, enquanto você renovar em dia.
-            </p>
+    {
+      oferta.tipo !== "esgotada" && (
+        <section class="mx-auto max-w-6xl px-4">
+          <div class="flex flex-col gap-4 rounded-[2rem] bg-vermelho-500 px-6 py-7 text-white md:flex-row md:items-center md:justify-between md:px-10">
+            <div class="flex gap-4">
+              <span class="grid size-14 shrink-0 place-items-center rounded-2xl bg-amarelo-400 text-vermelho-600">
+                <Icone nome="medalha" class="size-8" />
+              </span>
+              <div>
+                <p class="font-display text-2xl leading-tight font-extrabold md:text-3xl">
+                  {oferta.tipo === "prazo"
+                    ? `Pague a assinatura até ${oferta.prazo} e seja Fundador`
+                    : oferta.restantes !== null
+                      ? `Seja Fundador: ${textoVagasRestantes(oferta.restantes).toLowerCase()}`
+                      : "Seja Fundador enquanto houver vaga"}
+                </p>
+                <p class="mt-1 text-white/90">
+                  No mensal ou no anual: desconto de {descricaoDescontoFundador(regras.escalaDescontoFundador)} nos planos e
+                  pacotes, selo Fundador e lugar no Mural dos Fundadores, enquanto você renovar em dia.
+                </p>
+              </div>
+            </div>
+            <a href="/fundadores" class={classesBotao("amarelo", "m", "shrink-0")}>Conheça os benefícios</a>
           </div>
-        </div>
-        <a href="/fundadores" class={classesBotao("amarelo", "m", "shrink-0")}>Conheça os benefícios</a>
-      </div>
-    </section>
+        </section>
+      )
+    }
 
     <section class="mx-auto max-w-6xl px-4 py-10">
       <h2 class="font-display text-3xl font-extrabold text-azul-900">Extras</h2>

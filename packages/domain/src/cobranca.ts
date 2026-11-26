@@ -137,16 +137,36 @@ export function calcularCobrancaExtra(
 }
 
 /**
+ * Vagas de Fundador depois do prazo (decisão de 24/11/2026; V1 a V4 de
+ * 26/11/2026): quantas existem e quantas já viraram Fundador. Usada é o
+ * pagamento pago depois do prazo que tornou Fundador e não foi devolvido nem
+ * contestado (V2: a vaga volta); quem perde a condição depois continua
+ * ocupando a vaga (V3). Sem data final: valem até acabarem (V4).
+ */
+export interface VagasFundador {
+  total: number;
+  usadas: number;
+}
+
+export function vagasFundadorRestantes(vagas: VagasFundador): number {
+  return Math.max(0, vagas.total - vagas.usadas);
+}
+
+/**
  * Vira Fundador quem paga a assinatura de um plano pago, mensal ou anual,
- * até o prazo (item 4.16; decisão de 26/11/2026, no lugar de "só o anual").
- * Não há limite de quantidade.
+ * até o prazo, sem limite de quantidade (item 4.16; decisão de 26/11/2026, no
+ * lugar de "só o anual"). Depois do prazo, só enquanto houver vaga: as vagas
+ * vão para os primeiros pagamentos, na ordem em que são registrados (V1).
  */
 export function tornaFundador(assinatura: {
   valorMensalPlanoCentavos: number;
   comprovanteEnviadoEm: DataISO;
   prazoFundador: DataISO;
+  vagasDepoisDoPrazo: VagasFundador;
 }): boolean {
-  return assinatura.valorMensalPlanoCentavos > 0 && assinatura.comprovanteEnviadoEm <= assinatura.prazoFundador;
+  if (assinatura.valorMensalPlanoCentavos <= 0) return false;
+  if (assinatura.comprovanteEnviadoEm <= assinatura.prazoFundador) return true;
+  return vagasFundadorRestantes(assinatura.vagasDepoisDoPrazo) > 0;
 }
 
 /**

@@ -1,21 +1,23 @@
 ---
-import { Icone, Selo, type NomeIcone } from "@acheaqui/ui";
+import { Icone, Selo, classesBotao, type NomeIcone } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
 import Abertura from "@/components/institucional/Abertura.astro";
 import BotaoContato from "@/components/institucional/BotaoContato.astro";
 import CardResultado from "@/components/resultados/CardResultado.astro";
 import { anoSemDescontoFundador } from "@acheaqui/domain";
-import { hojeNaCidade, listarFundadores, listarPlanos, obterAberturaAoPublico, obterRegrasCobranca } from "@/dados/consultas";
+import { hojeNaCidade, listarFundadores, listarPlanos, obterAberturaAoPublico, obterRegrasCobranca, obterVagasFundador } from "@/dados/consultas";
+import { ofertaFundador, textoComoVirarFundador, textoVagasRestantes } from "@/lib/fundadores";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
 import { descricaoDescontoFundador, formatarCentavos, percentualInicialFundador, valorPlano } from "@/lib/precos";
 import { textoAbertura } from "@/lib/abertura";
-import { formatarData } from "@/lib/texto";
 
 guardarNoCache(Astro);
 
 const regras = await obterRegrasCobranca();
-const prazo = formatarData(regras.prazoFundador);
+const oferta = ofertaFundador(regras, hojeNaCidade(), await obterVagasFundador());
+const esgotada = oferta.tipo === "esgotada";
+const comoVirar = textoComoVirarFundador(oferta);
 const abertura = textoAbertura(await obterAberturaAoPublico(), hojeNaCidade());
 const desconto = `${percentualInicialFundador(regras)}%`;
 const escala = descricaoDescontoFundador(regras.escalaDescontoFundador);
@@ -77,10 +79,12 @@ const chip =
 
 <Layout
   titulo="Fundadores"
-  descricao={`Quem paga a assinatura, mensal ou anual, até ${prazo} vira Fundador do Ache Aqui RO, com desconto enquanto renovar em dia: ${escala}.`}
+  descricao={`${comoVirar} Os Fundadores do Ache Aqui RO têm desconto enquanto renovam em dia: ${escala}.`}
   previa={{
     titulo: "Fundadores do Ache Aqui RO",
-    descricao: `Pague a assinatura, mensal ou anual, até ${prazo} e tenha desconto de ${escala}, selo e lugar no Mural dos Fundadores.`,
+    descricao: esgotada
+      ? "Conheça os anunciantes que acreditaram no Ache Aqui RO desde o começo."
+      : `${comoVirar} Desconto de ${escala}, selo e lugar no Mural dos Fundadores.`,
   }}
 >
   <Topo pagina="interna" />
@@ -89,11 +93,19 @@ const chip =
     <Abertura
       comAbertura
       chamada="Fundadores do Ache Aqui RO"
-      subtitulo={`Pague a assinatura de um plano pago, mensal ou anual, até ${prazo}. Desconto de ${escala}. Não há limite de vagas.`}
+      subtitulo={esgotada ? comoVirar : `${comoVirar} Desconto de ${escala}.${oferta.tipo === "prazo" ? " Não há limite de vagas." : ""}`}
     >
-      Seja Fundador e tenha <span class="text-amarelo-400">{desconto} de desconto</span> já no primeiro ano
+      {
+        esgotada ? (
+          <>Conheça os <span class="text-amarelo-400">Fundadores</span> do Ache Aqui RO</>
+        ) : (
+          <>
+            Seja Fundador e tenha <span class="text-amarelo-400">{desconto} de desconto</span> já no primeiro ano
+          </>
+        )
+      }
       <Fragment slot="acoes">
-        <BotaoContato rotulo="Quero ser Fundador" />
+        {esgotada ? <a href="#mural" class={classesBotao("amarelo", "g")}>Ver o Mural</a> : <BotaoContato rotulo="Quero ser Fundador" />}
       </Fragment>
     </Abertura>
 
@@ -214,17 +226,31 @@ const chip =
       </div>
     </section>
 
-    <section class="mx-auto max-w-6xl px-4 py-10 pb-14">
-      <div class="rounded-[2rem] bg-vermelho-500 px-6 py-8 text-center text-white md:px-10 md:py-10">
-        <h2 class="font-display text-3xl font-extrabold md:text-4xl">
-          O prazo termina em <span class="text-amarelo-400">{prazo}</span>
-        </h2>
-        <p class="mx-auto mt-2 max-w-xl text-white/90">
-          {abertura && <>{abertura}. </>}Fale com a equipe do Ache Aqui e garanta o seu lugar entre os Fundadores.
-        </p>
-        <BotaoContato rotulo="Quero ser Fundador" class="mt-6" />
-      </div>
-    </section>
+    {
+      !esgotada && (
+        <section class="mx-auto max-w-6xl px-4 py-10 pb-14">
+          <div class="rounded-[2rem] bg-vermelho-500 px-6 py-8 text-center text-white md:px-10 md:py-10">
+            <h2 class="font-display text-3xl font-extrabold md:text-4xl">
+              {oferta.tipo === "prazo" ? (
+                <>
+                  O prazo termina em <span class="text-amarelo-400">{oferta.prazo}</span>
+                </>
+              ) : oferta.restantes !== null ? (
+                <span class="text-amarelo-400">{textoVagasRestantes(oferta.restantes)}</span>
+              ) : (
+                <>
+                  Ainda há <span class="text-amarelo-400">vagas de Fundador</span>
+                </>
+              )}
+            </h2>
+            <p class="mx-auto mt-2 max-w-xl text-white/90">
+              {abertura && <>{abertura}. </>}Fale com a equipe do Ache Aqui e garanta o seu lugar entre os Fundadores.
+            </p>
+            <BotaoContato rotulo="Quero ser Fundador" class="mt-6" />
+          </div>
+        </section>
+      )
+    }
   </main>
 </Layout>
 

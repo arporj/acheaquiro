@@ -32,7 +32,7 @@ import {
   type FormaRecebimento,
 } from "@acheaqui/validation";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { obterAberturaAoPublico, obterRegrasCobranca } from "../dados/consultas";
+import { obterAberturaAoPublico, obterRegrasCobranca, obterVagasFundador } from "../dados/consultas";
 import { limparPerfilDoCache, type Situacao } from "./anunciantesAdmin";
 import { limparCacheDoSite } from "./arquivos";
 import { apagarComprovante, enderecoDoComprovante, guardarComprovante } from "./comprovantesGuardados";
@@ -369,9 +369,11 @@ export async function calcular(contexto: ContextoPagamento, escolha: EscolhaPaga
   if (!plano) return falha("DADOS_INVALIDOS", "Escolha um plano pago deste tipo de anunciante.");
   if (escolha.pagoEm > hoje) return falha("DADOS_INVALIDOS", "O dia do pagamento não pode ser depois de hoje.");
   const vendido = contexto.planoVendidoId && contexto.planoVendidoId !== plano.id ? contexto.planos.find((p) => p.id === contexto.planoVendidoId) : null;
-  const [regras, abertura] = await Promise.all([obterRegrasCobranca(), obterAberturaAoPublico()]);
+  const [regras, abertura, vagasFundador] = await Promise.all([obterRegrasCobranca(), obterAberturaAoPublico(), obterVagasFundador()]);
+  if (!vagasFundador) return ERRO_INTERNO;
   try {
     const calculado = calcularPagamentoPlano({
+      vagasFundador,
       plano,
       historicoPlano: proposta ? undefined : contexto.historicos[plano.id],
       planoVendido: vendido ?? null,

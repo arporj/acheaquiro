@@ -11,6 +11,7 @@ import {
   situacaoCobranca,
   vencimentoSeguinte,
   tornaFundador,
+  vagasFundadorRestantes,
   validarEscalaFundador,
   type ValoresExtra,
   type ValoresPlano,
@@ -117,22 +118,34 @@ describe("calcularCobrancaExtra", () => {
 });
 
 describe("tornaFundador", () => {
+  const esgotadas = { total: 100, usadas: 100 };
   const pagoNoPrazo = {
     valorMensalPlanoCentavos: 5990,
     comprovanteEnviadoEm: "2026-11-26",
     prazoFundador: "2026-11-26",
+    vagasDepoisDoPrazo: esgotadas,
   };
 
-  it("vira Fundador com o plano pago, mensal ou anual, até o último dia do prazo", () => {
+  it("vira Fundador com o plano pago, mensal ou anual, até o último dia do prazo, mesmo sem vagas", () => {
     expect(tornaFundador(pagoNoPrazo)).toBe(true);
   });
 
-  it("não vira Fundador depois do prazo", () => {
-    expect(tornaFundador({ ...pagoNoPrazo, comprovanteEnviadoEm: "2026-11-27" })).toBe(false);
+  it("depois do prazo, vira Fundador só enquanto houver vaga", () => {
+    const depois = { ...pagoNoPrazo, comprovanteEnviadoEm: "2026-11-27" };
+    expect(tornaFundador({ ...depois, vagasDepoisDoPrazo: { total: 100, usadas: 99 } })).toBe(true);
+    expect(tornaFundador(depois)).toBe(false);
   });
 
   it("não vira Fundador no plano Gratuito do comércio", () => {
     expect(tornaFundador({ ...pagoNoPrazo, valorMensalPlanoCentavos: 0 })).toBe(false);
+  });
+});
+
+describe("vagasFundadorRestantes", () => {
+  it("vagas livres, nunca negativas", () => {
+    expect(vagasFundadorRestantes({ total: 100, usadas: 3 })).toBe(97);
+    expect(vagasFundadorRestantes({ total: 100, usadas: 100 })).toBe(0);
+    expect(vagasFundadorRestantes({ total: 50, usadas: 60 })).toBe(0);
   });
 });
 

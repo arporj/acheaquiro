@@ -9,7 +9,7 @@ import Aviso from "@/components/conta/Aviso.astro";
 import { classesCampo, classesRotulo } from "@/components/conta/estilos";
 import ContaDaComissao from "@/components/representante/ContaDaComissao.astro";
 import PaginaRepresentante from "@/components/representante/PaginaRepresentante.astro";
-import { obterRegrasCobranca } from "@/dados/consultas";
+import { hojeNaCidade, obterRegrasCobranca } from "@/dados/consultas";
 import { formatarCentavos, percentualInicialFundador } from "@/lib/precos";
 import { lerReais, planosParaSimular, simularAssinatura } from "@/lib/propostas";
 import { lerMeuCadastro } from "@/lib/representante";
@@ -109,8 +109,10 @@ const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
             <li class="flex items-start gap-1.5">
               <Icone nome="medalha" class="mt-0.5 size-4 shrink-0 text-azul-600" />
               <span>
-                Vira Fundador: o valor já tem {percentualInicialFundador(regras)}% de desconto de Fundador no 1º ano (assinatura paga até{" "}
-                {formatarData(regras.prazoFundador)}).
+                Vira Fundador: o valor já tem {percentualInicialFundador(regras)}% de desconto de Fundador no 1º ano
+                {hojeNaCidade() <= regras.prazoFundador
+                  ? ` (assinatura paga até ${formatarData(regras.prazoFundador)}).`
+                  : ", se ainda houver vaga de Fundador quando a equipe registrar o pagamento."}
               </span>
             </li>
           )}

@@ -105,6 +105,7 @@ describe("calcularPagamentoPlano com o histórico de preços", () => {
     periodicidade: "mensal" as const,
     regras: { escalaDescontoFundador: escala, prazoFundador: "2026-11-26", toleranciaVencimentoDias: 7, aberturaAoPublico: "2026-11-27" },
     fundadorDesde: null,
+    vagasFundador: { total: 100, usadas: 100 },
     representanteRecebeComissao: false,
     carteira: null,
   };

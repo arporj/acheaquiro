@@ -25,6 +25,7 @@ const CHAVES: Record<keyof ConfiguracoesGerais, string> = {
   prazoFundador: "prazo_fundador",
   toleranciaVencimentoDias: "tolerancia_vencimento_dias",
   percentualCarteira: "percentual_carteira",
+  vagasFundadorDepoisDoPrazo: "vagas_fundador_depois_do_prazo",
 };
 const CAMPOS = Object.keys(CHAVES) as (keyof ConfiguracoesGerais)[];
 

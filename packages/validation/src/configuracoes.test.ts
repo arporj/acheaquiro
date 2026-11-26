@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { esquemaConfiguracoesGerais } from "./configuracoes";
 
-const atual = { aberturaAoPublico: "2026-11-27", prazoFundador: "2026-11-26", toleranciaVencimentoDias: "7", percentualCarteira: "5" };
+const atual = {
+  aberturaAoPublico: "2026-11-27",
+  prazoFundador: "2026-11-26",
+  toleranciaVencimentoDias: "7",
+  percentualCarteira: "5",
+  vagasFundadorDepoisDoPrazo: "100",
+};
 const mensagem = (r: { success: boolean; error?: { issues: { message: string }[] } }) => (r.success ? "" : r.error!.issues[0]!.message);
 
 describe("esquemaConfiguracoesGerais", () => {
@@ -11,7 +17,15 @@ describe("esquemaConfiguracoesGerais", () => {
       prazoFundador: "2026-11-26",
       toleranciaVencimentoDias: 7,
       percentualCarteira: 5,
+      vagasFundadorDepoisDoPrazo: 100,
     });
+  });
+
+  it("aceita de 0 a 1.000 vagas de Fundador depois do prazo, sem casas decimais", () => {
+    expect(esquemaConfiguracoesGerais.parse({ ...atual, vagasFundadorDepoisDoPrazo: "0" }).vagasFundadorDepoisDoPrazo).toBe(0);
+    for (const vagasFundadorDepoisDoPrazo of ["-1", "1001", "10.5", "x"]) {
+      expect(mensagem(esquemaConfiguracoesGerais.safeParse({ ...atual, vagasFundadorDepoisDoPrazo }))).toBe("Vagas de Fundador: de 0 a 1.000.");
+    }
   });
 
   it("aceita carteira zero (sem carteira)", () => {

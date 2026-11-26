@@ -51,6 +51,25 @@ const dica = "mt-1 text-xs text-slate-500";
         {campos.prazoFundador && <p class={classesErroCampo}>{campos.prazoFundador}</p>}
       </div>
       <div>
+        <label for="vagasFundadorDepoisDoPrazo" class={classesRotulo}>Vagas de Fundador depois do prazo</label>
+        <input
+          id="vagasFundadorDepoisDoPrazo"
+          name="vagasFundadorDepoisDoPrazo"
+          type="number"
+          inputmode="numeric"
+          min="0"
+          max="1000"
+          required
+          value={valor("vagasFundadorDepoisDoPrazo")}
+          class={classesCampo}
+        />
+        <p class={dica}>
+          Depois do último dia, o primeiro pagamento de um plano pago vira Fundador enquanto houver vaga. A vaga volta com a devolução ou a contestação;
+          quem perde a condição depois continua ocupando a vaga.
+        </p>
+        {campos.vagasFundadorDepoisDoPrazo && <p class={classesErroCampo}>{campos.vagasFundadorDepoisDoPrazo}</p>}
+      </div>
+      <div>
         <label for="toleranciaVencimentoDias" class={classesRotulo}>Dias para pagar depois do vencimento</label>
         <input
           id="toleranciaVencimentoDias"

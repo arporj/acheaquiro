@@ -4,7 +4,7 @@
 // anunciantes existirem (etapa 2), mostra a lista de anunciantes vazia. A
 // página "em breve" não acessa o banco: usa as regras de src/mocks/planos.ts.
 import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, DestaqueInicio, Extra, Foto, Patrocinador, CotaPatrocinio, CotaPatrocinioVenda, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
-import { agruparCategorias, categoriaCombinaComBusca, dadosPublicosDoArtista, destaquesNoAr, diasDoEventoNoPeriodo, momentoLocal, novaVagaAPartirDe, somarDias, somarMeses as somarMesesData } from "@acheaqui/domain";
+import { agruparCategorias, categoriaCombinaComBusca, dadosPublicosDoArtista, destaquesNoAr, diasDoEventoNoPeriodo, momentoLocal, novaVagaAPartirDe, somarDias, somarMeses as somarMesesData, type VagasFundador } from "@acheaqui/domain";
 import {
   codigoRepresentanteValido,
   criarClientePublico,
@@ -34,7 +34,7 @@ import { bairros, cidadeAtual } from "@/mocks/localidades";
 import { apresentacoes as apresentacoesRelativas, artistas as artistasFicticios, eventos as eventosFicticios } from "@/mocks/agenda";
 import { destaques as destaquesFicticios } from "@/mocks/destaques";
 import { cotasPatrocinio, patrocinadores as patrocinadoresFicticios } from "@/mocks/patrocinadores";
-import { extrasDisponiveis, planos, regrasCobranca } from "@/mocks/planos";
+import { extrasDisponiveis, planos, regrasCobranca, VAGAS_FUNDADOR_FICTICIAS } from "@/mocks/planos";
 
 /** Anunciantes, Banner Exclusivo, Carrossel e links destacados fictícios. */
 const ficticio = ambiente === "apresentacao";
@@ -197,6 +197,23 @@ export async function listarExtras(): Promise<Extra[]> {
 
 export async function obterRegrasCobranca(): Promise<RegrasCobranca> {
   return (await catalogo()).regras;
+}
+
+/**
+ * Vagas de Fundador depois do prazo (decisões V1 a V4 de 26/11/2026). Lidas a
+ * cada chamada, sem guardar no Worker: mudam a cada pagamento. null quando o
+ * banco não responde (a falha fica no log). O site de apresentação mostra as
+ * vagas todas livres.
+ */
+export async function obterVagasFundador(): Promise<VagasFundador | null> {
+  if (!catalogoDoBanco) return { total: VAGAS_FUNDADOR_FICTICIAS, usadas: 0 };
+  const { data, error } = await clientePublico().rpc("vagas_fundador", { p_cidade: CIDADE });
+  if (error || !data) {
+    console.error("obterVagasFundador falhou", { codigo: error?.code, mensagem: error?.message });
+    return null;
+  }
+  const vagas = data as { total: number; usadas: number };
+  return { total: Number(vagas.total), usadas: Number(vagas.usadas) };
 }
 
 /** Dia da abertura ao público (AAAA-MM-DD): o período pago antes dela começa nela (decisão de 27/10/2026). */
