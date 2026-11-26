@@ -10,6 +10,7 @@ const PAGINAS_SIMPLES = new Set([
   "anuncie",
   "sobre",
   "fundadores",
+  "seja-parceiro",
   "patrocine",
   "representante",
   "seu-anuncio",
@@ -23,7 +24,7 @@ const PAGINAS_SIMPLES = new Set([
   "r",
   "p",
 ]);
-const LISTAS = new Set(["busca", "artistas", "agenda", "patrocinadores"]);
+const LISTAS = new Set(["busca", "artistas", "agenda", "parceiros", "patrocinadores"]);
 const PAINEIS = new Set(["admin", "anunciante", "conta"]);
 
 /** Formato do esqueleto pelo endereço de destino. */

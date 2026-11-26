@@ -10,6 +10,7 @@ import {
   EXTRA_CARROSSEL,
   TEXTOS_BANNER_DA_CASA as TEXTO_BANNER,
   TEXTOS_CONVITE_CARROSSEL as TEXTO_CONVITE,
+  TEXTOS_CONVITE_TITULO_CARROSSEL as CONVITE_TITULO,
   linkDoExtra,
   type AnunciosDaCasa,
 } from "@/lib/anunciosDaCasa";
@@ -35,6 +36,9 @@ const entradas: Entrada[] = [
   ...casa.atalhos.map((categoria) => ({ tipo: "atalho" as const, categoria })),
   ...Array.from({ length: casa.convites }, () => ({ tipo: "convite" as const })),
 ];
+// Convite ao lado do título "Anúncios" (decisão de 26/11/2026): só com vaga
+// livre, a mesma condição dos cards "Sua empresa aqui" (composicaoCarrossel).
+const temVaga = casa.convites > 0;
 // O carrossel repete a lista para o giro contínuo; a cópia fica fora do leitor de tela e do Tab.
 const copias = [0, 1];
 // "relative": o texto oculto do selo (sr-only, posição absoluta) fica preso à
@@ -151,7 +155,14 @@ const classeSeta =
   {
     entradas.length > 0 && !compacta && (
       <div class="pt-4">
-        <h2 class="mx-auto max-w-6xl px-4 text-xs font-extrabold tracking-wider text-azul-700 uppercase">Anúncios</h2>
+        <h2 class="mx-auto max-w-6xl px-4 text-xs font-extrabold tracking-wider text-azul-700 uppercase">
+          Anúncios
+          {temVaga && (
+            <a href={linkCarrossel} class="font-bold tracking-normal normal-case underline-offset-2 hover:underline">
+              {` – ${CONVITE_TITULO.completo}`}
+            </a>
+          )}
+        </h2>
         <div data-carrossel class="relative mt-2">
           <div data-carrossel-trilho class={classeTrilho}>
             <div data-carrossel-faixa class="flex w-max gap-3 py-2">
@@ -227,7 +238,14 @@ const classeSeta =
   {
     entradas.length > 0 && compacta && (
       <div class="flex items-center gap-2 pt-2 pl-4">
-        <span class="shrink-0 text-[0.65rem] font-extrabold tracking-wider text-azul-700 uppercase">Anúncios</span>
+        <span class="flex shrink-0 flex-col text-[0.65rem] leading-tight font-extrabold tracking-wider text-azul-700 uppercase">
+          Anúncios
+          {temVaga && (
+            <a href={linkCarrossel} class="font-bold tracking-normal normal-case underline underline-offset-2">
+              {CONVITE_TITULO.compacto}
+            </a>
+          )}
+        </span>
         <div data-carrossel class="relative min-w-0 flex-1">
           <div data-carrossel-trilho class={classeTrilho}>
             <div data-carrossel-faixa class="flex w-max gap-2">

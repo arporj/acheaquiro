@@ -13,7 +13,7 @@ const { largura, altura } = patrocinador.formatoLogo;
 const tamanhoNome = patrocinador.cota === "master" ? "text-base" : "text-xs";
 ---
 
-<a href={`/patrocinadores#${patrocinador.slug}`} class={`group flex flex-col gap-1.5 ${classe}`}>
+<a href={`/parceiros#${patrocinador.slug}`} class={`group flex flex-col gap-1.5 ${classe}`}>
   <img
     src={patrocinador.logo}
     alt={`Logo de ${patrocinador.nome}`}

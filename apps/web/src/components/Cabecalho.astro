@@ -37,21 +37,22 @@ const links = [
         links.map((l) => (
           <a
             href={l.href}
-            class="hidden rounded-full px-3 py-2 text-sm font-bold whitespace-nowrap text-white/90 hover:bg-white/10 lg:inline-flex xl:px-4"
+            class="hidden rounded-full px-2 py-2 text-sm font-bold whitespace-nowrap text-white/90 hover:bg-white/10 lg:inline-flex xl:px-4"
           >
             {l.rotulo}
           </a>
         ))
       }
-      {/* Abaixo de 1024 px, "Patrocine" fica só no menu, para a logo completa caber (decisão M1 de 30/10/2026). */}
+      {/* Abaixo de 1024 px, "Seja parceiro" (antigo "Patrocine") fica só no menu, para a logo completa caber (decisão M1 de 30/10/2026). */}
       {
         patrocinioDisponivel && (
           <a
-            href="/patrocine"
-            class="hidden items-center gap-1.5 rounded-full border-2 border-amarelo-400 px-4 py-1.5 text-sm font-bold text-amarelo-400 hover:bg-amarelo-400 hover:text-azul-900 lg:inline-flex"
+            href="/seja-parceiro"
+            class="hidden items-center gap-1.5 whitespace-nowrap rounded-full border-2 border-amarelo-400 px-3 py-1.5 text-sm font-bold text-amarelo-400 hover:bg-amarelo-400 hover:text-azul-900 lg:inline-flex"
           >
-            <Icone nome="estrela" class="size-4" />
-            Patrocine
+            {/* Sem o ícone entre 1024 e 1279 px, para a barra caber (26/11/2026). */}
+            <Icone nome="estrela" class="hidden size-4 xl:block" />
+            Seja parceiro
           </a>
         )
       }
@@ -87,8 +88,8 @@ const links = [
       {
         patrocinioDisponivel && (
           <li>
-            <a href="/patrocine" class="block rounded-xl px-3 py-3 font-bold text-amarelo-400 hover:bg-white/10">
-              Patrocine
+            <a href="/seja-parceiro" class="block rounded-xl px-3 py-3 font-bold text-amarelo-400 hover:bg-white/10">
+              Seja parceiro
             </a>
           </li>
         )

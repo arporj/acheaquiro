@@ -34,13 +34,12 @@ for (const foto of fotos) {
   {
     itens.map((item) =>
       item.tipo === "foto" ? (
-        <li class="group relative overflow-hidden rounded-2xl">
-          <FotoMarcador foto={item.foto} icone={categoria.icone} cor={categoria.cor} class="aspect-square w-full" />
-          {item.foto.legenda && (
-            <span class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2.5 pt-6 pb-2 text-xs font-bold text-white">
-              {item.foto.legenda}
-            </span>
-          )}
+        <li>
+          {/* Legenda embaixo da foto, e não por cima: a arte do anunciante costuma ter texto nas bordas (26/11/2026). */}
+          <figure>
+            <FotoMarcador foto={item.foto} icone={categoria.icone} cor={categoria.cor} class="aspect-square w-full overflow-hidden rounded-2xl" />
+            {item.foto.legenda && <figcaption class="mt-1.5 text-sm leading-snug font-semibold text-slate-600">{item.foto.legenda}</figcaption>}
+          </figure>
         </li>
       ) : (
         <li class="col-span-2">

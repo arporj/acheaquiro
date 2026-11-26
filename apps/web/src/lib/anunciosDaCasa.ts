@@ -38,3 +38,9 @@ export const TEXTOS_CONVITE_CARROSSEL = {
   titulo: "Sua empresa aqui",
   subtitulo: "Anuncie no Carrossel",
 } as const;
+
+/** Convite ao lado do título "Anúncios" do Carrossel, quando há vaga (decisão de 26/11/2026). */
+export const TEXTOS_CONVITE_TITULO_CARROSSEL = {
+  completo: "coloque aqui o seu negócio",
+  compacto: "Anuncie aqui",
+} as const;

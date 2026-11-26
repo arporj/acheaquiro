@@ -1,12 +1,14 @@
 ---
-// Faixa "Oferecimento" no fim de todas as páginas (proposta Patrocinadores v3).
+// Faixa "Parceiros do Ache Aqui" no fim de todas as páginas (antiga "Oferecimento",
+// nome trocado em 26/11/2026 porque era confundido com anúncio).
 // No computador, três colunas da mesma largura: o Master, os Ouro um embaixo
 // do outro e os de Apoio dois por linha, todos visíveis, sem revezamento. No
 // celular, as três partes ficam uma embaixo da outra, na mesma ordem, com o
 // Master mais estreito para não ocupar a tela inteira.
-// Cada coluna com vaga termina num convite "Quer seu nome aqui?", um por
-// cota e não por vaga (decisão de 29/10/2026); cota esgotada não convida. Só
-// aparece com algum patrocinador ou convite nessas três cotas.
+// Sem nenhum parceiro no ar, só uma linha discreta com o convite (decisão de
+// 26/11/2026: os três quadros tracejados pareciam espaços de anúncio). Com
+// algum parceiro, cada coluna com vaga termina num convite, um por cota e não
+// por vaga (decisão de 29/10/2026); cota esgotada não convida.
 import type { CotaPatrocinio } from "@acheaqui/types";
 import { mostraConvitePatrocinio } from "@acheaqui/domain";
 import CartaoPatrocinador from "./CartaoPatrocinador.astro";
@@ -25,19 +27,32 @@ const colunas = [
   coluna("ouro", "Ouro", "grid-cols-1"),
   coluna("apoio", "Apoio", "grid-cols-2"),
 ].filter((c) => c.itens.length > 0 || c.convite);
+const semParceiros = todos.length === 0;
 ---
 
 {
-  colunas.length > 0 && (
-    <section aria-labelledby="oferecimento" class="border-t border-slate-200 bg-white">
+  semParceiros && colunas.length > 0 && (
+    <section aria-label="Parceiros do Ache Aqui" class="border-t border-slate-200 bg-white">
+      <p class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-4 text-sm">
+        <span class="text-xs font-extrabold tracking-[0.2em] text-slate-500 uppercase">Parceiros do Ache Aqui</span>
+        <a href="/seja-parceiro" class="inline-flex min-h-11 items-center font-bold text-azul-600 hover:underline">
+          {TEXTO_CONVITE}
+        </a>
+      </p>
+    </section>
+  )
+}
+{
+  !semParceiros && colunas.length > 0 && (
+    <section aria-labelledby="parceiros-rodape" class="border-t border-slate-200 bg-white">
       <div class="mx-auto max-w-6xl px-4 py-8">
         <div class="mb-5 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="oferecimento" class="text-xs font-extrabold tracking-[0.2em] text-slate-500 uppercase">
-            Oferecimento
+          <h2 id="parceiros-rodape" class="text-xs font-extrabold tracking-[0.2em] text-slate-500 uppercase">
+            Parceiros do Ache Aqui
           </h2>
           <span class="flex gap-4 text-sm font-bold">
-            {todos.length > 0 && <a href="/patrocinadores" class="text-azul-600 hover:underline">Conheça os patrocinadores</a>}
-            <a href="/patrocine" class="text-azul-600 hover:underline">Patrocine</a>
+            <a href="/parceiros" class="text-azul-600 hover:underline">Conheça os parceiros</a>
+            <a href="/seja-parceiro" class="text-azul-600 hover:underline">Seja parceiro</a>
           </span>
         </div>
         <div class="grid gap-6 md:grid-cols-3">

@@ -1,0 +1,49 @@
+---
+// Fundadores na página inicial (decisão de 26/11/2026), logo abaixo de "O que
+// você procura?": todos os Fundadores publicados, em cards pequenos (foto, nome
+// e categoria) que levam ao perfil, com o link para o Mural completo. A lista é
+// a mesma do Mural (listarFundadores, em ordem alfabética). Sem Fundador
+// publicado, a seção não aparece.
+import { EtiquetaFundador, FotoMarcador, Icone } from "@acheaqui/ui";
+import { listarFundadores } from "@/dados/consultas";
+
+const fundadores = await listarFundadores();
+---
+
+{
+  fundadores.length > 0 && (
+    <section aria-labelledby="fundadores-inicial" class="mx-auto max-w-6xl px-4 pb-10">
+      <div class="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 md:p-6">
+        <div class="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+          <div>
+            <EtiquetaFundador />
+            <h2 id="fundadores-inicial" class="mt-1 font-display text-2xl font-extrabold text-azul-900 md:text-3xl">
+              Fundadores do Ache Aqui
+            </h2>
+            <p class="text-sm text-slate-600">Os anunciantes que acreditaram no Ache Aqui RO desde o começo.</p>
+          </div>
+          <a href="/fundadores#mural" class="inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-extrabold text-azul-600 hover:underline">
+            Ver o Mural completo
+            <Icone nome="direita" class="size-4" />
+          </a>
+        </div>
+        <ul class="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
+          {fundadores.map((item) => (
+            <li class="min-w-0">
+              <a
+                href={`/perfil/${item.slug}`}
+                class="flex h-full min-w-0 flex-col items-center gap-2 rounded-2xl bg-fundo p-3 text-center transition hover:-translate-y-0.5 hover:bg-azul-50 hover:shadow-md"
+              >
+                <FotoMarcador foto={item.foto} icone={item.icone} cor={item.cor} class="size-16 shrink-0 overflow-hidden rounded-full ring-2 ring-amarelo-400" />
+                <span class="w-full min-w-0">
+                  <span class="line-clamp-2 font-display text-sm leading-tight font-bold break-words text-tinta">{item.nome}</span>
+                  <span class="block truncate text-xs font-bold text-azul-600">{item.categoriaNome}</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )
+}

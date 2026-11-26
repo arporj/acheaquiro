@@ -9,7 +9,7 @@ import { contarCliquePatrocinador, patrocinadorPorSlug } from "@/dados/consultas
 import { linkWhatsApp } from "@/lib/contato";
 import { resumoDoVisitante } from "@/lib/visitante";
 
-const MENSAGEM = "Olá! Vi vocês como patrocinadores do Ache Aqui RO e gostaria de uma informação.";
+const MENSAGEM = "Olá! Vi vocês como parceiros do Ache Aqui RO e gostaria de uma informação.";
 
 export const GET: APIRoute = async ({ params, request, rewrite, url }) => {
   const slug = params.slug ?? "";
@@ -22,6 +22,6 @@ export const GET: APIRoute = async ({ params, request, rewrite, url }) => {
       ? patrocinador.site
       : patrocinador.whatsapp
         ? linkWhatsApp(patrocinador.whatsapp, MENSAGEM)
-        : `/patrocinadores#${patrocinador.slug}`;
+        : `/parceiros#${patrocinador.slug}`;
   return new Response(null, { status: 302, headers: { Location: destino, "Cache-Control": "no-store" } });
 };

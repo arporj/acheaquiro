@@ -3,6 +3,7 @@ import { Icone, IconeCategoria, classesBotao, type NomeIcone } from "@acheaqui/u
 import Topo from "@/components/anuncios/Topo.astro";
 import FormBusca from "@/components/FormBusca.astro";
 import AconteceNaCidade from "@/components/inicio/AconteceNaCidade.astro";
+import FundadoresNaInicial from "@/components/inicio/FundadoresNaInicial.astro";
 import Passos from "@/components/institucional/Passos.astro";
 import { categoriasAtalho, categoriasPorGrupo, destaquesDaInicial } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
@@ -99,14 +100,10 @@ const passos: { icone: NomeIcone; titulo: string; texto: string }[] = [
       </ul>
     </section>
 
-    <section class="bg-white py-10">
-      <div class="mx-auto max-w-6xl px-4">
-        <h2 class="mb-6 font-display text-3xl font-extrabold text-azul-900">Como funciona</h2>
-        <Passos passos={passos} />
-      </div>
-    </section>
+    <!-- Fundadores e o convite para anunciar sobem para antes de "Como funciona" (decisão de 26/11/2026). -->
+    <FundadoresNaInicial />
 
-    <section class="mx-auto max-w-6xl px-4 py-10">
+    <section class="mx-auto max-w-6xl px-4 pb-10">
       <div class="relative overflow-hidden rounded-[2rem] bg-tinta px-6 py-8 text-white md:px-10 md:py-10">
         <div class="relative z-10 max-w-xl">
           <p class="font-display text-lg font-bold text-amarelo-400">Você é profissional ou tem um comércio?</p>
@@ -129,22 +126,32 @@ const passos: { icone: NomeIcone; titulo: string; texto: string }[] = [
             Quero anunciar
           </a>
         </div>
-        <div
-          class="mt-8 grid size-44 place-items-center bg-vermelho-500 text-center text-white md:absolute md:top-1/2 md:right-12 md:mt-0 md:size-60 md:-translate-y-1/2 md:rotate-6"
-          style={`clip-path: polygon(${pontasEstrela})`}
-        >
-          <div class="leading-none">
-            <p class="text-xs font-extrabold uppercase md:text-sm">Profissional,</p>
-            <p class="text-xs font-extrabold uppercase md:text-sm">a partir de</p>
-            <p class="font-display text-5xl font-extrabold text-amarelo-400 md:text-6xl">R$ 1,99</p>
-            <p class="text-xs font-bold md:text-sm">por mês</p>
+        <!-- O selo pulsa para chamar a atenção (decisão de 26/11/2026); parado com "reduzir movimento". -->
+        <div class="mt-8 size-44 md:absolute md:top-1/2 md:right-12 md:mt-0 md:size-60 md:-translate-y-1/2 md:rotate-6">
+          <div
+            class="selo-pulsando grid size-full place-items-center bg-vermelho-500 text-center text-white"
+            style={`clip-path: polygon(${pontasEstrela})`}
+          >
+            <div class="leading-none">
+              <p class="text-xs font-extrabold uppercase md:text-sm">Profissional,</p>
+              <p class="text-xs font-extrabold uppercase md:text-sm">a partir de</p>
+              <p class="font-display text-5xl font-extrabold text-amarelo-400 md:text-6xl">R$ 1,99</p>
+              <p class="text-xs font-bold md:text-sm">por mês</p>
+            </div>
           </div>
         </div>
         <span class="absolute -top-20 -left-20 size-64 rounded-full bg-azul-600/40 blur-2xl" aria-hidden="true"></span>
       </div>
     </section>
 
-    <section id="todas" class="mx-auto max-w-6xl scroll-mt-4 px-4 pb-14">
+    <section class="bg-white py-10">
+      <div class="mx-auto max-w-6xl px-4">
+        <h2 class="mb-6 font-display text-3xl font-extrabold text-azul-900">Como funciona</h2>
+        <Passos passos={passos} />
+      </div>
+    </section>
+
+    <section id="todas" class="mx-auto max-w-6xl scroll-mt-4 px-4 py-10 pb-14">
       <h2 class="mb-5 font-display text-3xl font-extrabold text-azul-900">Todas as categorias</h2>
       <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {
@@ -178,3 +185,24 @@ const passos: { icone: NomeIcone; titulo: string; texto: string }[] = [
     </section>
   </main>
 </Layout>
+
+<style>
+  /* Cresce e clareia de leve a cada 2 segundos: chama a atenção sem piscar (acende e apaga). */
+  @keyframes pulso-selo {
+    0%,
+    70%,
+    100% {
+      transform: scale(1);
+      filter: brightness(1);
+    }
+    35% {
+      transform: scale(1.08);
+      filter: brightness(1.15);
+    }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .selo-pulsando {
+      animation: pulso-selo 2s ease-in-out infinite;
+    }
+  }
+</style>

@@ -5,14 +5,14 @@
 import type { Categoria, CotaPatrocinio } from "@acheaqui/types";
 import { paraSlug } from "./texto";
 
-export const TEXTO_CONVITE = "Quer seu nome aqui? Seja um patrocinador";
+export const TEXTO_CONVITE = "Sua marca aqui? Seja parceiro";
 
-/** /patrocine?cota=categoria&categoria=pizzarias#cota-categoria (a âncora rola até o card). */
+/** /seja-parceiro?cota=categoria&categoria=pizzarias#cota-categoria (a âncora rola até o card). */
 export function linkConvitePatrocinio(cota: CotaPatrocinio, onde: { categoria?: Categoria; grupo?: string } = {}): string {
   const parametros = new URLSearchParams({ cota });
   if (cota === "categoria" && onde.categoria) parametros.set("categoria", onde.categoria.slugLista);
   if (cota === "grupo" && onde.grupo) parametros.set("grupo", paraSlug(onde.grupo));
-  return `/patrocine?${parametros}#cota-${cota}`;
+  return `/seja-parceiro?${parametros}#cota-${cota}`;
 }
 
 export interface CotaPedida {

@@ -1,0 +1,93 @@
+---
+// Página dos parceiros (antiga "Patrocinadores"; /patrocinadores redireciona
+// para cá; nome trocado em 26/11/2026). Só aparece com pelo menos um parceiro no
+// ar; sem nenhum, a página não existe.
+import { Icone, classesBotao } from "@acheaqui/ui";
+import type { CotaPatrocinio, Patrocinador } from "@acheaqui/types";
+import Topo from "@/components/anuncios/Topo.astro";
+import { categoriaPorId, listarPatrocinadores } from "@/dados/consultas";
+import Layout from "@/layouts/Layout.astro";
+import { guardarNoCache } from "@/lib/cache";
+
+const todos = await listarPatrocinadores();
+if (todos.length === 0) return Astro.rewrite("/404");
+guardarNoCache(Astro);
+
+const secoes: { cota: CotaPatrocinio; titulo: string; grade: string }[] = [
+  { cota: "master", titulo: "Parceiro Master", grade: "sm:grid-cols-1 lg:max-w-md" },
+  { cota: "ouro", titulo: "Parceiros Ouro", grade: "sm:grid-cols-2 lg:grid-cols-3" },
+  { cota: "apoio", titulo: "Apoio", grade: "grid-cols-2 lg:grid-cols-3" },
+  { cota: "grupo", titulo: "Parceiros de grupos de categorias", grade: "grid-cols-2 lg:grid-cols-3" },
+  { cota: "categoria", titulo: "Parceiros de categorias", grade: "grid-cols-2 lg:grid-cols-3" },
+];
+
+async function ondeAparece(p: Patrocinador): Promise<string | undefined> {
+  if (p.cota === "grupo") return p.grupo;
+  if (p.cota === "categoria" && p.categoriaId) return (await categoriaPorId(p.categoriaId))?.nomePlural;
+  return undefined;
+}
+
+const grupos = await Promise.all(
+  secoes.map(async (s) => ({
+    ...s,
+    itens: await Promise.all(todos.filter((p) => p.cota === s.cota).map(async (p) => ({ p, onde: await ondeAparece(p) }))),
+  })),
+);
+---
+
+<Layout titulo="Parceiros" descricao="As empresas que apoiam o Ache Aqui RO e o pequeno negócio de Rio das Ostras.">
+  <Topo pagina="interna" />
+  <main class="mx-auto w-full max-w-6xl px-4 pt-6 pb-12">
+    <h1 class="font-display text-3xl font-extrabold text-azul-900">Parceiros do Ache Aqui</h1>
+    <p class="mt-1 max-w-2xl text-slate-600">
+      Estas empresas apoiam o Ache Aqui RO e o pequeno negócio de Rio das Ostras. A parceria não é anúncio e não muda a
+      ordem dos anunciantes nas buscas.
+    </p>
+    <a href="/seja-parceiro" class={classesBotao("amarelo", "m", "mt-4")}>Quero ser parceiro: ver cotas e valores</a>
+
+    {
+      grupos
+        .filter((g) => g.itens.length > 0)
+        .map((g) => (
+          <section class="mt-8">
+            <h2 class="mb-3 font-display text-xl font-bold text-azul-900">{g.titulo}</h2>
+            <ul class={`grid gap-4 ${g.grade}`}>
+              {g.itens.map(({ p, onde }) => {
+                const { largura, altura } = p.formatoLogo;
+                return (
+                  <li id={p.slug} class="flex scroll-mt-4 flex-col gap-2 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+                    <img
+                      src={p.logo}
+                      alt={`Logo de ${p.nome}`}
+                      width={largura}
+                      height={altura}
+                      loading="lazy"
+                      class="w-full rounded-lg ring-1 ring-slate-100"
+                      style={`aspect-ratio: ${largura} / ${altura}`}
+                    />
+                    <p class="font-bold text-azul-900">{p.nome}</p>
+                    {onde && <p class="text-xs font-bold text-slate-500">Parceiro de: {onde}</p>}
+                    <p class="text-sm text-slate-600">{p.frase}</p>
+                    <div class="mt-auto flex flex-wrap gap-2">
+                      {p.whatsapp && (
+                        <a href={`/p/${p.slug}`} target="_blank" rel="sponsored noopener" class={classesBotao("zap", "p")}>
+                          <Icone nome="mensagem" class="size-4" />
+                          Falar com a empresa
+                        </a>
+                      )}
+                      {p.site && (
+                        <a href={`/p/${p.slug}?site`} target="_blank" rel="sponsored noopener" class={classesBotao("contorno", "p")}>
+                          <Icone nome="link" class="size-4" />
+                          Visitar o site
+                        </a>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))
+    }
+  </main>
+</Layout>
