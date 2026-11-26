@@ -47,6 +47,7 @@ export interface EventoDoBanco {
   produtor: string | null;
   local: string;
   endereco: string | null;
+  /** Endereço curto do bairro ("centro"), o mesmo id do catálogo público. */
   bairroId: string;
   dataInicio: string;
   dataFim: string;
@@ -66,7 +67,7 @@ export interface EventoDoBanco {
 
 const CAMPOS_EVENTO =
   "id, slug, nome, descricao, origem, produtor, local, endereco, bairro_id, data_inicio, data_fim, entrada, couvert_centavos, ingressos, " +
-  "aberto_ao_publico, classificacao, cadeira_de_praia, cooler, ruas_fechadas, cartaz_chave, anunciantes(id, slug, nome), cidades!inner(slug), " +
+  "aberto_ao_publico, classificacao, cadeira_de_praia, cooler, ruas_fechadas, cartaz_chave, anunciantes(id, slug, nome), cidades!inner(slug), bairros(slug), " +
   "programacao_evento(id, dia, inicio, fim, titulo, artista_id, artista_nome)";
 
 interface LinhaEvento {
@@ -79,6 +80,7 @@ interface LinhaEvento {
   local: string;
   endereco: string | null;
   bairro_id: string;
+  bairros: { slug: string } | null;
   data_inicio: string;
   data_fim: string;
   entrada: EventoDoBanco["entrada"];
@@ -114,7 +116,8 @@ function paraEvento(l: LinhaEvento): EventoDoBanco {
     produtor: l.produtor,
     local: l.local,
     endereco: l.endereco,
-    bairroId: l.bairro_id,
+    // O catálogo público identifica o bairro pelo endereço curto ("centro"), e não pelo código interno.
+    bairroId: l.bairros?.slug ?? l.bairro_id,
     dataInicio: l.data_inicio,
     dataFim: l.data_fim,
     entrada: l.entrada,
