@@ -4,11 +4,12 @@
 // no código e no banco continua patrocínio. Cotas, valores, vagas livres e regras,
 // abertos a todos (decisão de 22/10/2026), para vender a qualquer empresa,
 // inclusive pela internet. Sem nenhuma cota cadastrada, a página não existe.
+import { precoDoPatrocinio } from "@acheaqui/domain";
 import { Icone, classesBotao } from "@acheaqui/ui";
 import Topo from "@/components/anuncios/Topo.astro";
 import Abertura from "@/components/institucional/Abertura.astro";
 import BotaoContato from "@/components/institucional/BotaoContato.astro";
-import { hojeNaCidade, listarCategorias, listarCotasPatrocinio, obterRegrasCobranca } from "@/dados/consultas";
+import { listarCategorias, listarCotasPatrocinio } from "@/dados/consultas";
 import Layout from "@/layouts/Layout.astro";
 import { guardarNoCache } from "@/lib/cache";
 import { lerCotaPedida } from "@/lib/convitePatrocinio";
@@ -19,12 +20,10 @@ const cotas = await listarCotasPatrocinio();
 if (cotas.length === 0) return Astro.rewrite("/404");
 guardarNoCache(Astro);
 
-const regras = await obterRegrasCobranca();
 // Vindo do convite "Quer seu nome aqui?" (decisão de 29/10/2026).
 const pedida = lerCotaPedida(Astro.url, cotas.map((c) => c.cota), await listarCategorias());
-const prazo = formatarData(regras.prazoFundador);
-const precoFundadorValendo = hojeNaCidade() <= regras.prazoFundador;
-const menorValor = Math.min(...cotas.map((c) => (precoFundadorValendo ? c.valorFundadorCentavos : c.valorCentavos)));
+// Preço de Fundador sem data final, com o cheio riscado (decisão de 27/11/2026).
+const menorValor = Math.min(...cotas.map((c) => precoDoPatrocinio(c).valorCentavos));
 
 const ondeAparece = [
   { icone: "megafone" as const, titulo: "No fim de todas as páginas", texto: "Na faixa \"Parceiros do Ache Aqui\", com o logo do tamanho da sua cota." },
@@ -52,7 +51,7 @@ const regrasCombinadas = [
     <Abertura
       comAbertura
       chamada="Seja parceiro do Ache Aqui RO"
-      subtitulo={`A partir de ${formatarCentavos(menorValor)} por 12 meses, à vista.${precoFundadorValendo ? ` Preço de Parceiro Fundador para quem fechar até ${prazo}.` : ""}`}
+      subtitulo={`A partir de ${formatarCentavos(menorValor)} por 12 meses, à vista.`}
     >
       Sua marca vista por quem procura <span class="text-amarelo-400">serviço e comércio</span> em Rio das Ostras
       <Fragment slot="acoes">
@@ -70,6 +69,7 @@ const regrasCombinadas = [
             cotas.map((c) => {
               const esgotada = c.vagasLivres === 0;
               const formato = c.formatoLogo;
+              const preco = precoDoPatrocinio(c);
               const escolhida = pedida?.cota === c.cota;
               const alvo = escolhida ? pedida?.alvo : undefined;
               return (
@@ -95,14 +95,13 @@ const regrasCombinadas = [
                     </span>
                   </div>
                   <p class="mt-3">
-                    {precoFundadorValendo ? (
+                    {preco.riscadoCentavos ? (
                       <>
-                        <span class="font-display text-3xl font-extrabold text-vermelho-600">{formatarCentavos(c.valorFundadorCentavos)}</span>
-                        <span class="ml-1 text-sm text-slate-500 line-through">{formatarCentavos(c.valorCentavos)}</span>
-                        <span class="block text-xs font-bold text-vermelho-600">Preço de Fundador até {prazo}</span>
+                        <s class="block text-sm text-slate-500">{formatarCentavos(preco.riscadoCentavos)}</s>
+                        <span class="font-display text-3xl font-extrabold text-vermelho-600">{formatarCentavos(preco.valorCentavos)}</span>
                       </>
                     ) : (
-                      <span class="font-display text-3xl font-extrabold text-azul-900">{formatarCentavos(c.valorCentavos)}</span>
+                      <span class="font-display text-3xl font-extrabold text-azul-900">{formatarCentavos(preco.valorCentavos)}</span>
                     )}
                   </p>
                   <ul class="mt-4 mb-4 space-y-1.5 text-sm text-slate-700">

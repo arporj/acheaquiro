@@ -7,24 +7,24 @@
 // Master mais estreito para não ocupar a tela inteira.
 // Cada vaga sem parceiro é um quadro tracejado no tamanho do logo da cota, com
 // o preço dentro (decisão de 27/11/2026, no lugar da linha única sem parceiros
-// e do convite por cota): 1 Master, 3 Ouro e 6 Apoio com o rodapé vazio.
+// e do convite por cota): 1 Master, 3 Ouro e 6 Apoio com o rodapé vazio. O
+// preço cheio aparece riscado, com o de Fundador embaixo (precoDoPatrocinio).
 // Quantos quadros, em quadrosLivresNoRodape (packages/domain); cota esgotada
 // não tem quadro.
 import type { CotaPatrocinio } from "@acheaqui/types";
-import { quadrosLivresNoRodape, valorDoPatrocinio } from "@acheaqui/domain";
+import { precoDoPatrocinio, quadrosLivresNoRodape } from "@acheaqui/domain";
 import CartaoPatrocinador from "./CartaoPatrocinador.astro";
-import { hojeNaCidade, listarCotasPatrocinio, listarPatrocinadores, obterRegrasCobranca } from "@/dados/consultas";
+import { listarCotasPatrocinio, listarPatrocinadores } from "@/dados/consultas";
 import { linkConvitePatrocinio } from "@/lib/convitePatrocinio";
 import { formatarCentavos } from "@/lib/precos";
 
-const [todos, cotas, regras] = await Promise.all([listarPatrocinadores(), listarCotasPatrocinio(), obterRegrasCobranca()]);
-const hoje = hojeNaCidade();
+const [todos, cotas] = await Promise.all([listarPatrocinadores(), listarCotasPatrocinio()]);
 const coluna = (cota: CotaPatrocinio, titulo: string, grade: string) => {
   const itens = todos.filter((p) => p.cota === cota);
   const daCota = cotas.find((c) => c.cota === cota);
   const vagas = daCota
     ? Array.from({ length: quadrosLivresNoRodape(daCota, itens.length) }, () => ({
-        ...valorDoPatrocinio(daCota, hoje, regras.prazoFundador),
+        ...precoDoPatrocinio(daCota),
         formato: daCota.formatoLogo,
       }))
     : [];
@@ -67,17 +67,18 @@ const colunas = [
                 {coluna.vagas.map((vaga) => (
                   <a
                     href={linkConvitePatrocinio(coluna.cota)}
-                    aria-label={`Vaga livre na cota ${coluna.titulo}: ${formatarCentavos(vaga.valorCentavos)} por 12 meses${vaga.precoFundador ? ", preço de Parceiro Fundador" : ""}. Seja parceiro`}
+                    aria-label={`Vaga livre na cota ${coluna.titulo}: ${formatarCentavos(vaga.valorCentavos)} por 12 meses${vaga.riscadoCentavos ? `, no lugar de ${formatarCentavos(vaga.riscadoCentavos)}` : ""}. Seja parceiro`}
                     class="flex flex-col items-center justify-center gap-0.5 rounded-xl border-2 border-dashed border-slate-300 p-2 text-center leading-tight transition hover:border-azul-400 hover:bg-azul-50"
                     style={`aspect-ratio: ${vaga.formato.largura} / ${vaga.formato.altura}`}
                   >
                     <span class="text-[0.65rem] font-bold tracking-wider text-slate-500 uppercase">Vaga livre</span>
-                    <span class={`font-display font-extrabold text-azul-900 ${coluna.cota === "apoio" ? "text-sm" : "text-lg"}`}>
+                    {vaga.riscadoCentavos && <s class="text-[0.7rem] text-slate-500">{formatarCentavos(vaga.riscadoCentavos)}</s>}
+                    <span
+                      class={`font-display font-extrabold ${vaga.riscadoCentavos ? "text-vermelho-600" : "text-azul-900"} ${coluna.cota === "apoio" ? "text-sm" : "text-lg"}`}
+                    >
                       {formatarCentavos(vaga.valorCentavos)}
                     </span>
-                    <span class="text-[0.7rem] text-slate-500">
-                      por 12 meses{vaga.precoFundador ? " · Parceiro Fundador" : ""}
-                    </span>
+                    <span class="text-[0.7rem] text-slate-500">por 12 meses</span>
                     {coluna.cota === "master" && <span class="mt-2 text-sm font-bold text-azul-700">Seja parceiro</span>}
                   </a>
                 ))}

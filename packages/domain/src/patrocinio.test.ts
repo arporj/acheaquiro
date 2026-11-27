@@ -6,7 +6,7 @@ import {
   mostraConvitePatrocinio,
   novaVagaAPartirDe,
   quadrosLivresNoRodape,
-  valorDoPatrocinio,
+  precoDoPatrocinio,
   type PatrocinioParaRegra,
 } from "./patrocinio";
 
@@ -44,13 +44,18 @@ describe("diasASomarPorSiteForaDoAr", () => {
   });
 });
 
-describe("valorDoPatrocinio", () => {
-  const cota = { valorCentavos: 490000, valorFundadorCentavos: 400000 };
-  it("até o prazo, inclusive, vale o preço de Fundador", () => {
-    expect(valorDoPatrocinio(cota, "2026-11-26", "2026-11-26")).toEqual({ valorCentavos: 400000, precoFundador: true });
+describe("precoDoPatrocinio", () => {
+  it("vale o preço de Fundador, com o cheio riscado", () => {
+    expect(precoDoPatrocinio({ valorCentavos: 490000, valorFundadorCentavos: 400000 })).toEqual({
+      valorCentavos: 400000,
+      riscadoCentavos: 490000,
+    });
   });
-  it("depois do prazo, vale o preço cheio", () => {
-    expect(valorDoPatrocinio(cota, "2026-11-27", "2026-11-26")).toEqual({ valorCentavos: 490000, precoFundador: false });
+  it("com os dois preços iguais, não há preço riscado", () => {
+    expect(precoDoPatrocinio({ valorCentavos: 490000, valorFundadorCentavos: 490000 })).toEqual({ valorCentavos: 490000 });
+  });
+  it("nunca cobra mais que o preço cheio", () => {
+    expect(precoDoPatrocinio({ valorCentavos: 490000, valorFundadorCentavos: 500000 })).toEqual({ valorCentavos: 490000 });
   });
 });
 

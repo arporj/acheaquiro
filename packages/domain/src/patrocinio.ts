@@ -84,14 +84,18 @@ export function diasASomarPorSiteForaDoAr(periodos: { inicio: DataISO; fim: Data
   return total;
 }
 
-/** Valor do patrocínio fechado num dia: o de Fundador até o prazo (inclusive), o cheio depois. */
-export function valorDoPatrocinio(
-  cota: { valorCentavos: number; valorFundadorCentavos: number },
-  fechadoEm: DataISO,
-  prazoFundador: DataISO,
-): { valorCentavos: number; precoFundador: boolean } {
-  const fundador = fechadoEm <= prazoFundador;
-  return { valorCentavos: fundador ? cota.valorFundadorCentavos : cota.valorCentavos, precoFundador: fundador };
+/**
+ * Preço da cota à venda (decisão de 27/11/2026, no lugar do preço de Fundador
+ * só até o prazo): vale o de Fundador, sem data final, com o cheio riscado e
+ * sem dizer que é de Fundador. Para encerrar, a administração iguala os dois
+ * em /admin/patrocinadores; iguais, não há preço riscado.
+ */
+export function precoDoPatrocinio(cota: { valorCentavos: number; valorFundadorCentavos: number }): {
+  valorCentavos: number;
+  riscadoCentavos?: number;
+} {
+  if (cota.valorFundadorCentavos >= cota.valorCentavos) return { valorCentavos: cota.valorCentavos };
+  return { valorCentavos: cota.valorFundadorCentavos, riscadoCentavos: cota.valorCentavos };
 }
 
 /** Um patrocínio, só com o que importa para as regras de vaga. */
