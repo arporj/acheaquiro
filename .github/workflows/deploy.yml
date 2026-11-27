@@ -1,5 +1,5 @@
-# Publica os três sites (produção, teste e em-breve) a cada push na main
-# (decisão de 23/10/2026). O lint, a verificação de tipos (desde 31/10/2026) e
+# Publica os sites (produção e teste) a cada push na main (decisão de
+# 23/10/2026; o em-breve saiu na abertura, em 27/11/2026). O lint, a verificação de tipos (desde 31/10/2026) e
 # os testes rodam antes: se algum falhar, nada é publicado e os sites continuam
 # na versão anterior.
 # - O token da Cloudflare só publica Workers (modelo "Edit Cloudflare Workers").

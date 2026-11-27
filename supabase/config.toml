@@ -157,9 +157,9 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-# Ache Aqui RO: até 26/11/2026, o site real fica em prod.acheaquiro.com.br.
-# Em 27/11/2026, trocar para https://acheaquiro.com.br (CLAUDE.md).
-site_url = "https://prod.acheaquiro.com.br"
+# Ache Aqui RO: desde a abertura (27/11/2026), o site real fica em acheaquiro.com.br.
+# O prod. (endereço até a abertura) continua nos retornos abaixo, para os links já enviados.
+site_url = "https://acheaquiro.com.br"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
@@ -178,9 +178,9 @@ enable_refresh_token_rotation = true
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
-# Ache Aqui RO: fechado até o cadastro do anunciante existir (etapa 2). Até lá,
-# as contas entram só por convite (auth.admin.inviteUserByEmail, no servidor).
-enable_signup = false
+# Ache Aqui RO: aberto na abertura ao público, 27/11/2026 (decisão G6 de 24/11/2026),
+# para o cadastro próprio do anunciante (/criar-conta), com o Turnstile e o limite abaixo.
+enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts

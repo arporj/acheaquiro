@@ -14,8 +14,6 @@ const POR_CHAMADA = 40;
 const MAXIMO_TENTATIVAS = 5;
 const REMETENTE = { name: "Ache Aqui RO", email: "nao-responda@acheaquiro.com.br" };
 const SITE = "https://acheaquiro.com.br";
-/** Endereço da produção: até 26/11/2026, acheaquiro.com.br mostra só o "em breve"; depois, prod. redireciona. */
-const PRODUCAO = "https://prod.acheaquiro.com.br";
 /** WhatsApp da equipe: o mesmo de WHATSAPP_EQUIPE em apps/web/src/lib/contato.ts. */
 const WHATSAPP_EQUIPE = "5521988520666";
 
@@ -141,7 +139,7 @@ function montar(
         `Se quiser desistir, você pode pedir o dinheiro de volta até ${data(d.desistirAte)}, pelo WhatsApp da equipe.`,
         "Precisa de ajuda para conferir e aceitar? Fale com a equipe pelo WhatsApp.",
       ],
-      botao: { texto: "Conferir e aceitar", link: `${PRODUCAO}/anunciante` },
+      botao: { texto: "Conferir e aceitar", link: `${SITE}/anunciante` },
     };
   }
   if (aviso.tipo === "proposta") {
@@ -152,7 +150,7 @@ function montar(
         `Para ver os valores e aceitar, entre na sua conta pelo botão abaixo. A proposta vale até ${data(d.expiraEm)}, para aceitar e pagar.`,
         "Se não reconhece este pedido, é só não aceitar: nada muda no seu plano.",
       ],
-      botao: { texto: "Ver a proposta", link: `${PRODUCAO}/anunciante/proposta/${d.propostaId ?? ""}` },
+      botao: { texto: "Ver a proposta", link: `${SITE}/anunciante/proposta/${d.propostaId ?? ""}` },
     };
   }
   if (aviso.tipo === "termos_novos") {
@@ -167,7 +165,7 @@ function montar(
         }. O resto continua igual.`,
         "No próximo acesso à sua área, o site pede o aceite da versão nova.",
       ],
-      botao: { texto: "Ler os Termos de Uso", link: `${PRODUCAO}/termos/v${d.versao ?? ""}` },
+      botao: { texto: "Ler os Termos de Uso", link: `${SITE}/termos/v${d.versao ?? ""}` },
       rodape: "Você recebe este aviso porque tem conta no Ache Aqui RO e aceitou os Termos de Uso.",
     };
   }
@@ -190,7 +188,7 @@ function montar(
         `${d.nome ? `Olá, ${d.nome}. ` : ""}A sua conta no Ache Aqui RO será excluída em ${data(d.excluirEm)}, quando termina o período que você já pagou.`,
         "Até lá, o seu anúncio continua no site, e você não recebe lembretes de renovação. Se mudar de ideia, é só entrar na sua área e desistir da exclusão.",
       ],
-      botao: { texto: "Entrar na minha área", link: `${PRODUCAO}/anunciante/excluir` },
+      botao: { texto: "Entrar na minha área", link: `${SITE}/anunciante/excluir` },
       rodape: "Você recebe este aviso porque pediu a exclusão da sua conta no Ache Aqui RO.",
     };
   }
@@ -202,7 +200,7 @@ function montar(
         "O que mudou: a Política passa a explicar os dados dos comércios importados da Receita Federal e dos pedidos sobre esses perfis, o histórico de atendimento, os pagamentos no cartão e o que os representantes veem, e os dados dos eventos da Agenda: organizadores, artistas e barracas. O tratamento dos seus dados de anunciante continua o mesmo.",
         "No próximo acesso à sua área, o site pede o aceite da versão nova.",
       ],
-      botao: { texto: "Ler a Política de Privacidade", link: `${PRODUCAO}/privacidade/v${d.versao ?? ""}` },
+      botao: { texto: "Ler a Política de Privacidade", link: `${SITE}/privacidade/v${d.versao ?? ""}` },
       rodape: "Você recebe este aviso porque tem conta no Ache Aqui RO e aceitou a Política de Privacidade.",
     };
   }
@@ -213,7 +211,7 @@ function montar(
         `O perfil ${d.nome ?? ""} recebeu uma denúncia hoje, pelo motivo "${d.motivo ?? "não informado"}".`,
         "Novas denúncias deste perfil hoje entram direto na tela, sem outro e-mail.",
       ],
-      botao: { texto: "Ver as denúncias", link: `${PRODUCAO}/admin/denuncias` },
+      botao: { texto: "Ver as denúncias", link: `${SITE}/admin/denuncias` },
       rodape: "Você recebe este aviso porque é administrador do Ache Aqui RO.",
     };
   }
@@ -225,7 +223,7 @@ function montar(
         "As páginas do site já mostram a escala nova. Estes textos fixos não mudam sozinhos e precisam ser atualizados:",
         ...(d.documentos ?? []).map((doc) => `• ${doc}`),
       ],
-      botao: { texto: "Abrir o catálogo", link: `${PRODUCAO}/admin/catalogo` },
+      botao: { texto: "Abrir o catálogo", link: `${SITE}/admin/catalogo` },
       rodape: "Você recebe este aviso porque é administrador do Ache Aqui RO.",
     };
   }

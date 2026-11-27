@@ -1,8 +1,9 @@
 {
 	"$schema": "../../node_modules/wrangler/config-schema.json",
 	// Produção: o site real, com banco e login. Publicar com: npm run deploy:producao -w web
-	// Até a abertura fica em prod.acheaquiro.com.br; em 27/11/2026 recebe
-	// acheaquiro.com.br e www, e prod. passa a redirecionar para lá.
+	// Desde a abertura (27/11/2026), em acheaquiro.com.br. O www e o prod. (endereço
+	// até a abertura, usado nos e-mails já enviados) continuam ligados aqui, e as
+	// regras de redirecionamento da Cloudflare os levam ao domínio principal.
 	"name": "acheaqui",
 	// Conta da Cloudflare deste projeto, para nunca publicar em outra por engano.
 	"account_id": "cd8e8e7488aedefca9ee0ea9af58e349",
@@ -10,7 +11,11 @@
 	"dev": { "port": 3401, "inspector_port": 3402 },
 	"compatibility_date": "2026-10-01",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-	"routes": [{ "pattern": "prod.acheaquiro.com.br", "custom_domain": true }],
+	"routes": [
+		{ "pattern": "acheaquiro.com.br", "custom_domain": true },
+		{ "pattern": "www.acheaquiro.com.br", "custom_domain": true },
+		{ "pattern": "prod.acheaquiro.com.br", "custom_domain": true }
+	],
 	"cache": { "enabled": true },
 	// Versão do Worker nas etiquetas do cache (limpeza do cache a cada publicação).
 	"version_metadata": { "binding": "CF_VERSION_METADATA" },
@@ -37,17 +42,6 @@
 			"routes": [
 				{ "pattern": "exemplo.acheaquiro.com.br", "custom_domain": true },
 				{ "pattern": "teste.acheaquiro.com.br", "custom_domain": true }
-			],
-			"version_metadata": { "binding": "CF_VERSION_METADATA" },
-			"secrets": { "required": [] }
-		},
-		// Aviso "abre em 27/11" no domínio principal, até a abertura. Sem banco.
-		// Publicar com: npm run deploy:em-breve -w web. Apagar em 27/11/2026.
-		"em-breve": {
-			"name": "acheaqui-em-breve",
-			"routes": [
-				{ "pattern": "acheaquiro.com.br", "custom_domain": true },
-				{ "pattern": "www.acheaquiro.com.br", "custom_domain": true }
 			],
 			"version_metadata": { "binding": "CF_VERSION_METADATA" },
 			"secrets": { "required": [] }
