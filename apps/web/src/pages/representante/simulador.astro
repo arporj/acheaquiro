@@ -111,8 +111,8 @@ const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
               <span>
                 Vira Fundador: o valor já tem {percentualInicialFundador(regras)}% de desconto de Fundador no 1º ano
                 {hojeNaCidade() <= regras.prazoFundador
-                  ? ` (assinatura paga até ${formatarData(regras.prazoFundador)}).`
-                  : ", se ainda houver vaga de Fundador quando a equipe registrar o pagamento."}
+                  ? ` (anual pago até ${formatarData(regras.prazoFundador)}).`
+                  : " (anual), se ainda houver vaga de Fundador quando a equipe registrar o pagamento."}
               </span>
             </li>
           )}

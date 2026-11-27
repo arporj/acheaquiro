@@ -103,8 +103,9 @@ function calcular(valorMensalCentavos: number, meses: number, percentualDesconto
 }
 
 /**
- * O desconto de Fundador vale no mensal e no anual, pela mesma escala
- * (decisão de 26/11/2026, no lugar de "o Fundador renova sempre no anual").
+ * O desconto de Fundador no plano só existe no anual (decisão de 27/11/2026,
+ * que volta à regra de 20/10/2026). O único Fundador que paga o mensal é a
+ * exceção M1 (fundadorPeloMensal), e ele paga o preço cheio.
  */
 export function calcularCobrancaPlano(
   plano: ValoresPlano,
@@ -112,7 +113,8 @@ export function calcularCobrancaPlano(
   desconto: DescontoFundador,
 ): Cobranca {
   const meses = periodicidade === "anual" ? plano.mesesCobradosNoAnual : 1;
-  return calcular(plano.valorMensalCentavos, meses, desconto.fundador ? desconto.percentualFundador : 0);
+  const comDesconto = desconto.fundador && periodicidade === "anual";
+  return calcular(plano.valorMensalCentavos, meses, comDesconto ? desconto.percentualFundador : 0);
 }
 
 export interface ValoresExtra extends ValoresPlano {
@@ -153,18 +155,19 @@ export function vagasFundadorRestantes(vagas: VagasFundador): number {
 }
 
 /**
- * Vira Fundador quem paga a assinatura de um plano pago, mensal ou anual,
- * até o prazo, sem limite de quantidade (item 4.16; decisão de 26/11/2026, no
- * lugar de "só o anual"). Depois do prazo, só enquanto houver vaga: as vagas
- * vão para os primeiros pagamentos, na ordem em que são registrados (V1).
+ * Vira Fundador quem paga a assinatura anual de um plano pago até o prazo, sem
+ * limite de quantidade (item 4.16; decisão de 27/11/2026, que volta ao "só o
+ * anual"). Depois do prazo, só enquanto houver vaga: as vagas vão para os
+ * primeiros pagamentos anuais, na ordem em que são registrados (V1, M2).
  */
 export function tornaFundador(assinatura: {
+  periodicidade: Periodicidade;
   valorMensalPlanoCentavos: number;
   comprovanteEnviadoEm: DataISO;
   prazoFundador: DataISO;
   vagasDepoisDoPrazo: VagasFundador;
 }): boolean {
-  if (assinatura.valorMensalPlanoCentavos <= 0) return false;
+  if (assinatura.periodicidade !== "anual" || assinatura.valorMensalPlanoCentavos <= 0) return false;
   if (assinatura.comprovanteEnviadoEm <= assinatura.prazoFundador) return true;
   return vagasFundadorRestantes(assinatura.vagasDepoisDoPrazo) > 0;
 }
@@ -205,18 +208,25 @@ export function efeitoDoVencimento(tipo: TipoAnunciante, aprovado = true): "esco
 }
 
 /**
- * O Fundador perde a condição quando a assinatura vence e a renovação (mensal
- * ou anual) não é paga dentro da tolerância (decisão 9: 7 dias). Trocar entre
- * o mensal e o anual não tira a condição (decisão de 26/11/2026). A perda é
- * definitiva.
+ * O Fundador perde a condição quando a assinatura vence e a renovação não é
+ * paga dentro da tolerância (decisão 9: 7 dias), ou quando renova no mensal: a
+ * renovação do Fundador é sempre anual (decisão M3 de 27/11/2026, que volta à
+ * regra de 20/10/2026). A perda é definitiva. Exceção M1: quem virou Fundador
+ * pelo mensal enquanto valeu a regra de 26/11/2026 continua Fundador no
+ * mensal, pagando o preço cheio (calcularCobrancaPlano).
  */
 export function perdeCondicaoFundador(situacao: {
   venceuEm: DataISO;
   /** Data em que a renovação foi paga, se foi. */
   renovadaEm?: DataISO;
+  /** Período escolhido na renovação, se já foi escolhido. */
+  periodicidadeRenovacao?: Periodicidade;
+  /** Exceção M1: virou Fundador por um pagamento mensal. */
+  fundadorPeloMensal?: boolean;
   hoje: DataISO;
   toleranciaDias: number;
 }): boolean {
+  if (situacao.periodicidadeRenovacao === "mensal" && !situacao.fundadorPeloMensal) return true;
   const limite = somarDias(situacao.venceuEm, situacao.toleranciaDias);
   return (situacao.renovadaEm ?? situacao.hoje) > limite;
 }

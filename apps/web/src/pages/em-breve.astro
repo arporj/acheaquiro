@@ -54,7 +54,7 @@ const regras = await obterRegrasCobranca();
         <div class="mx-auto mt-8 flex max-w-xl gap-3 rounded-2xl bg-amarelo-200 p-4 text-left text-azul-900">
           <Icone nome="medalha" class="mt-0.5 size-6 shrink-0" />
           <p>
-            <strong>Quer anunciar?</strong> Quem paga a assinatura, mensal ou anual, até {formatarData(regras.prazoFundador)} vira
+            <strong>Quer anunciar?</strong> Quem paga a assinatura anual até {formatarData(regras.prazoFundador)} vira
             Fundador e tem {percentualInicialFundador(regras)}% de desconto já no primeiro ano.{" "}
             <a href={`${ENDERECO_EXEMPLO}/seu-anuncio`} class="font-bold underline underline-offset-2 hover:text-azul-700">
               Veja como fica o seu anúncio

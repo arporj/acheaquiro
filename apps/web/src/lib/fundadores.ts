@@ -1,6 +1,7 @@
-// Como virar Fundador hoje, para as páginas de venda (decisões de 26/11/2026):
-// até o prazo, quem paga a assinatura, mensal ou anual, sem limite; depois,
-// os primeiros que pagarem, enquanto houver vaga (vagas_fundador_depois_do_prazo).
+// Como virar Fundador hoje, para as páginas de venda (decisões de 26/11/2026,
+// com o "só o anual" de volta em 27/11/2026): até o prazo, quem paga a
+// assinatura anual, sem limite; depois, os primeiros que pagarem o anual,
+// enquanto houver vaga (vagas_fundador_depois_do_prazo).
 // A regra de quem vira Fundador fica em packages/domain (tornaFundador); aqui,
 // só o texto, num lugar só.
 import { somarDias, vagasFundadorRestantes, type VagasFundador } from "@acheaqui/domain";
@@ -27,9 +28,9 @@ export function textoVagasRestantes(restantes: number): string {
 
 /** Frase de como virar Fundador, para o topo das páginas e a prévia dos links. */
 export function textoComoVirarFundador(oferta: OfertaFundador): string {
-  if (oferta.tipo === "prazo") return `Pague a assinatura de um plano pago, mensal ou anual, até ${oferta.prazo}.`;
+  if (oferta.tipo === "prazo") return `Pague a assinatura anual de um plano pago até ${oferta.prazo}.`;
   if (oferta.tipo === "esgotada") return "As vagas de Fundador acabaram.";
   const quem = oferta.total === null ? "Os primeiros anunciantes" : `Os primeiros ${oferta.total.toLocaleString("pt-BR")} anunciantes`;
   const restam = oferta.restantes === null ? " enquanto houver vaga" : `. ${textoVagasRestantes(oferta.restantes)}`;
-  return `${quem} que pagarem um plano pago, mensal ou anual, a partir de ${oferta.inicio} viram Fundadores${restam}.`;
+  return `${quem} que pagarem a assinatura anual de um plano pago a partir de ${oferta.inicio} viram Fundadores${restam}.`;
 }

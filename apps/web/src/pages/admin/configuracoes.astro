@@ -47,7 +47,7 @@ const dica = "mt-1 text-xs text-slate-500";
       <div>
         <label for="prazoFundador" class={classesRotulo}>Último dia para virar Fundador</label>
         <input id="prazoFundador" name="prazoFundador" type="date" required value={valor("prazoFundador")} class={classesCampo} />
-        <p class={dica}>Quem paga a assinatura, mensal ou anual, até este dia vira Fundador. Aparece nas páginas Fundadores, Anuncie e Patrocine.</p>
+        <p class={dica}>Quem paga a assinatura anual até este dia vira Fundador. Aparece nas páginas Fundadores, Anuncie e Patrocine.</p>
         {campos.prazoFundador && <p class={classesErroCampo}>{campos.prazoFundador}</p>}
       </div>
       <div>

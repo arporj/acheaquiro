@@ -168,6 +168,8 @@ export interface ContextoPagamento {
     periodicidadeEscolhida: "mensal" | "anual" | null;
     fundadorDesde: string | null;
   };
+  /** Exceção M1 (27/11/2026): o pagamento que o tornou Fundador foi mensal. */
+  fundadorPeloMensal: boolean;
   assinatura: { ancora: string; venceEm: string; planoId: string; periodicidade: "mensal" | "anual" } | null;
   pagamentosValidos: number;
   algumAnual: boolean;
@@ -224,7 +226,7 @@ export async function lerContexto(supabase: SupabaseClient, anuncianteId: string
       .select("ancora, vence_em, plano_id, periodicidade, representante_id, plano_vendido_id, plano_seguinte_id")
       .eq("anunciante_id", anuncianteId)
       .maybeSingle(),
-    supabase.from("pagamentos").select("periodicidade").eq("anunciante_id", anuncianteId).eq("tipo", "plano").is("devolvido_em", null),
+    supabase.from("pagamentos").select("periodicidade, tornou_fundador").eq("anunciante_id", anuncianteId).eq("tipo", "plano").is("devolvido_em", null),
     supabase
       .from("upgrades")
       .select("id, representante_id, diferenca_mensal_centavos, parcelas_pagas, concluida, desconto_centavos")
@@ -301,6 +303,7 @@ export async function lerContexto(supabase: SupabaseClient, anuncianteId: string
       assinatura: assinatura.data
         ? { ancora: assinatura.data.ancora, venceEm: assinatura.data.vence_em, planoId: assinatura.data.plano_id, periodicidade: assinatura.data.periodicidade }
         : null,
+      fundadorPeloMensal: pagamentos.data.some((p) => p.tornou_fundador && p.periodicidade === "mensal"),
       pagamentosValidos: pagamentos.data.length,
       algumAnual: pagamentos.data.some((p) => p.periodicidade === "anual"),
       representante: venda ? { id: venda.id, codigo: venda.codigo, recebeComissao: venda.recebe_comissao } : null,
@@ -387,6 +390,7 @@ export async function calcular(contexto: ContextoPagamento, escolha: EscolhaPaga
         ? { ...contexto.assinatura, pagamentosAnteriores: contexto.pagamentosValidos, algumAnual: contexto.algumAnual }
         : null,
       fundadorDesde: contexto.anunciante.fundadorDesde,
+      fundadorPeloMensal: contexto.fundadorPeloMensal,
       representanteRecebeComissao: contexto.representante?.recebeComissao ?? false,
       carteira: contexto.carteira ? { percentual: contexto.carteira.percentual } : null,
     });

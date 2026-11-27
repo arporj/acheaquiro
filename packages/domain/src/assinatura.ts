@@ -112,6 +112,11 @@ export interface EntradaPagamentoPlano {
   assinatura: (AssinaturaAnterior & { pagamentosAnteriores: number; algumAnual: boolean }) | null;
   /** O anunciante já é Fundador, desde o início do primeiro período anual. */
   fundadorDesde: DataISO | null;
+  /**
+   * Exceção M1 (27/11/2026): virou Fundador por um pagamento mensal, enquanto
+   * valeu a regra de 26/11/2026. Continua Fundador no mensal, pelo preço cheio.
+   */
+  fundadorPeloMensal?: boolean;
   /** O representante que atendeu a venda recebe comissão (o sócio, por enquanto, não). */
   representanteRecebeComissao: boolean;
   /**
@@ -177,7 +182,7 @@ export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): Pagament
       ? precoDaRenovacao({ historico: entrada.historicoPlano, inicioPeriodo: periodo.inicio, periodicidade, hoje: entrada.confirmadoEm })
       : entrada.plano;
 
-  // Fundador: quem já é continua renovando, no mensal ou no anual, sem interrupção.
+  // Fundador: quem já é continua só renovando no anual, sem interrupção (menos a exceção M1).
   let fundadorDesde = entrada.fundadorDesde;
   let perdeu = false;
   let tornou = false;
@@ -187,6 +192,8 @@ export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): Pagament
       perdeCondicaoFundador({
         venceuEm: assinatura.venceEm,
         renovadaEm: pagoEm,
+        periodicidadeRenovacao: periodicidade,
+        fundadorPeloMensal: entrada.fundadorPeloMensal ?? false,
         hoje: pagoEm,
         toleranciaDias: regras.toleranciaVencimentoDias,
       });
@@ -194,6 +201,7 @@ export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): Pagament
   } else if (
     (!assinatura || assinatura.pagamentosAnteriores === 0) &&
     tornaFundador({
+      periodicidade,
       valorMensalPlanoCentavos: plano.valorMensalCentavos,
       comprovanteEnviadoEm: pagoEm,
       prazoFundador: regras.prazoFundador,
@@ -204,7 +212,8 @@ export function calcularPagamentoPlano(entrada: EntradaPagamentoPlano): Pagament
     tornou = true;
   }
 
-  const percentualFundador = fundadorDesde
+  // O desconto de Fundador no plano só vale no anual (a exceção M1 paga o mensal cheio).
+  const percentualFundador = fundadorDesde && periodicidade === "anual"
     ? percentualFundadorNoAno(regras.escalaDescontoFundador, anoComoFundador(fundadorDesde, periodo.inicio))
     : 0;
   const cobranca = calcularCobrancaPlano(plano, periodicidade, { fundador: fundadorDesde !== null, percentualFundador });
@@ -336,7 +345,9 @@ export interface PagamentoUpgradeCalculado {
  * paga entra na carteira como qualquer pagamento).
  */
 export function calcularPagamentoUpgrade(entrada: EntradaPagamentoUpgrade): PagamentoUpgradeCalculado {
-  const { periodicidade, percentualFundador } = entrada;
+  const { periodicidade } = entrada;
+  // O desconto de Fundador no plano só vale no anual (a exceção M1 paga o mensal cheio).
+  const percentualFundador = periodicidade === "anual" ? entrada.percentualFundador : 0;
   if (entrada.confirmadoEm < entrada.pagoEm) throw new RangeError("O pagamento não pode ser confirmado antes de ser feito.");
   const desconto = { fundador: percentualFundador > 0, percentualFundador };
   const valorCentavos = valorProporcionalUpgrade({

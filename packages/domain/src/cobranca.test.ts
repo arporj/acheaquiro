@@ -59,11 +59,11 @@ describe("calcularCobrancaPlano", () => {
     expect(calcularCobrancaPlano(basicoAutonomo, "anual", comFundador).valorDevidoCentavos).toBe(995);
   });
 
-  it("mensal com Fundador tem o mesmo desconto do anual (decisão de 26/11/2026)", () => {
+  it("mensal não tem desconto de Fundador: só o anual (decisão de 27/11/2026)", () => {
     expect(calcularCobrancaPlano(vitrine, "mensal", comFundador)).toEqual({
       valorCheioCentavos: 5990,
-      descontoFundadorCentavos: 2995,
-      valorDevidoCentavos: 2995,
+      descontoFundadorCentavos: 0,
+      valorDevidoCentavos: 5990,
     });
   });
 });
@@ -120,14 +120,22 @@ describe("calcularCobrancaExtra", () => {
 describe("tornaFundador", () => {
   const esgotadas = { total: 100, usadas: 100 };
   const pagoNoPrazo = {
+    periodicidade: "anual" as const,
     valorMensalPlanoCentavos: 5990,
     comprovanteEnviadoEm: "2026-11-26",
     prazoFundador: "2026-11-26",
     vagasDepoisDoPrazo: esgotadas,
   };
 
-  it("vira Fundador com o plano pago, mensal ou anual, até o último dia do prazo, mesmo sem vagas", () => {
+  it("vira Fundador com o anual pago até o último dia do prazo, mesmo sem vagas", () => {
     expect(tornaFundador(pagoNoPrazo)).toBe(true);
+  });
+
+  it("o mensal não vira Fundador, nem no prazo nem com vaga (decisões de 27/11/2026)", () => {
+    expect(tornaFundador({ ...pagoNoPrazo, periodicidade: "mensal" })).toBe(false);
+    expect(
+      tornaFundador({ ...pagoNoPrazo, periodicidade: "mensal", comprovanteEnviadoEm: "2026-11-27", vagasDepoisDoPrazo: { total: 100, usadas: 0 } }),
+    ).toBe(false);
   });
 
   it("depois do prazo, vira Fundador só enquanto houver vaga", () => {
@@ -206,6 +214,17 @@ describe("perdeCondicaoFundador", () => {
 
   it("mantém quando renova antes do vencimento", () => {
     expect(perdeCondicaoFundador({ ...base, renovadaEm: "2026-12-20", hoje: "2026-12-20" })).toBe(false);
+  });
+
+  it("perde quando renova no mensal, mesmo em dia (M3: a renovação do Fundador é sempre anual)", () => {
+    expect(perdeCondicaoFundador({ ...base, renovadaEm: "2026-12-20", periodicidadeRenovacao: "mensal", hoje: "2026-12-20" })).toBe(true);
+    expect(perdeCondicaoFundador({ ...base, renovadaEm: "2026-12-20", periodicidadeRenovacao: "anual", hoje: "2026-12-20" })).toBe(false);
+  });
+
+  it("exceção M1: quem virou Fundador pelo mensal mantém a condição no mensal, se pagar em dia", () => {
+    const m1 = { ...base, periodicidadeRenovacao: "mensal" as const, fundadorPeloMensal: true };
+    expect(perdeCondicaoFundador({ ...m1, renovadaEm: "2027-01-03", hoje: "2027-01-03" })).toBe(false);
+    expect(perdeCondicaoFundador({ ...m1, renovadaEm: "2027-01-04", hoje: "2027-01-04" })).toBe(true);
   });
 });
 

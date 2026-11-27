@@ -52,6 +52,8 @@ export interface ContextoProposta {
     status: Situacao;
     temConta: boolean;
     fundadorDesde: DataISO | null;
+    /** Exceção M1 (27/11/2026): virou Fundador por um pagamento mensal e continua Fundador no mensal, pelo preço cheio. */
+    fundadorPeloMensal: boolean;
     planoId: string | null;
   };
   assinatura: {
@@ -98,7 +100,7 @@ export interface ValoresProposta {
   descontoMaximoCentavos: number;
   /** Pagamento em que sai a 1ª parcela da comissão (e o desconto). */
   comissaoEm: "agora" | "proximo" | null;
-  /** Vira Fundador com este pagamento (assinatura, mensal ou anual, paga até o prazo); o valor já vem com o desconto de Fundador. */
+  /** Vira Fundador com este pagamento (assinatura anual paga até o prazo, ou com vaga depois dele); o valor já vem com o desconto de Fundador. */
   viraFundador: boolean;
   /** Só na assinatura: a conta do domínio, para a tela mostrar de onde vem a comissão (decisão de 02/11/2026). */
   conta: { cobranca: Cobranca; comissao: Comissao | null; numeroPagamento: number } | null;
@@ -131,6 +133,7 @@ export async function calcularProposta(
           ? { ancora: ctx.assinatura.ancora, venceEm: ctx.assinatura.venceEm, pagamentosAnteriores: ctx.pagamentosValidos, algumAnual: ctx.algumAnual }
           : null,
         fundadorDesde: ctx.anunciante.fundadorDesde,
+        fundadorPeloMensal: ctx.anunciante.fundadorPeloMensal ?? false,
         representanteRecebeComissao: escolha.recebeComissao,
         carteira: null,
       };
@@ -207,6 +210,7 @@ export async function calcularProposta(
         vagasFundador,
         assinatura: { ancora: s.ancora, venceEm: s.venceEm, pagamentosAnteriores: ctx.pagamentosValidos, algumAnual: ctx.algumAnual },
         fundadorDesde,
+        fundadorPeloMensal: ctx.anunciante.fundadorPeloMensal ?? false,
         representanteRecebeComissao: false,
         carteira: null,
         faixasUpgrade: agoraBruto.parcela?.comissao ? [] : [faixa(desconto)].filter((f) => f !== null),
@@ -277,7 +281,7 @@ export async function simularAssinatura(
   hoje = hojeNaCidade(),
 ): Promise<Resultado<ValoresProposta>> {
   const ctx: ContextoProposta = {
-    anunciante: { id: "", nome: "", slug: "", tipo: escolha.tipo, status: "rascunho", temConta: false, fundadorDesde: null, planoId: null },
+    anunciante: { id: "", nome: "", slug: "", tipo: escolha.tipo, status: "rascunho", temConta: false, fundadorDesde: null, fundadorPeloMensal: false, planoId: null },
     assinatura: null,
     pagamentosValidos: 0,
     algumAnual: false,

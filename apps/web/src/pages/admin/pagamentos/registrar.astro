@@ -152,7 +152,7 @@ const secao = "mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5";
                 {c.fundador.tornou && <li class="font-bold text-zap-700">Vira Fundador com este pagamento.</li>}
                 {c.fundador.perdeu && (
                   <li class="font-bold text-vermelho-700">
-                    Deixa de ser Fundador de vez com este pagamento (pago depois dos 7 dias do vencimento).
+                    Deixa de ser Fundador de vez com este pagamento ({valores.periodicidade === "mensal" ? "renovação no mensal" : "pago depois dos 7 dias do vencimento"}).
                   </li>
                 )}
                 <li>
