@@ -5,45 +5,40 @@
 // do outro e os de Apoio dois por linha, todos visíveis, sem revezamento. No
 // celular, as três partes ficam uma embaixo da outra, na mesma ordem, com o
 // Master mais estreito para não ocupar a tela inteira.
-// Sem nenhum parceiro no ar, só uma linha discreta com o convite (decisão de
-// 26/11/2026: os três quadros tracejados pareciam espaços de anúncio). Com
-// algum parceiro, cada coluna com vaga termina num convite, um por cota e não
-// por vaga (decisão de 29/10/2026); cota esgotada não convida.
+// Cada vaga sem parceiro é um quadro tracejado no tamanho do logo da cota, com
+// o preço dentro (decisão de 27/11/2026, no lugar da linha única sem parceiros
+// e do convite por cota): 1 Master, 3 Ouro e 6 Apoio com o rodapé vazio.
+// Quantos quadros, em quadrosLivresNoRodape (packages/domain); cota esgotada
+// não tem quadro.
 import type { CotaPatrocinio } from "@acheaqui/types";
-import { mostraConvitePatrocinio } from "@acheaqui/domain";
+import { quadrosLivresNoRodape, valorDoPatrocinio } from "@acheaqui/domain";
 import CartaoPatrocinador from "./CartaoPatrocinador.astro";
-import { listarCotasPatrocinio, listarPatrocinadores } from "@/dados/consultas";
-import { TEXTO_CONVITE, linkConvitePatrocinio } from "@/lib/convitePatrocinio";
+import { hojeNaCidade, listarCotasPatrocinio, listarPatrocinadores, obterRegrasCobranca } from "@/dados/consultas";
+import { linkConvitePatrocinio } from "@/lib/convitePatrocinio";
+import { formatarCentavos } from "@/lib/precos";
 
-const [todos, cotas] = await Promise.all([listarPatrocinadores(), listarCotasPatrocinio()]);
+const [todos, cotas, regras] = await Promise.all([listarPatrocinadores(), listarCotasPatrocinio(), obterRegrasCobranca()]);
+const hoje = hojeNaCidade();
 const coluna = (cota: CotaPatrocinio, titulo: string, grade: string) => {
   const itens = todos.filter((p) => p.cota === cota);
   const daCota = cotas.find((c) => c.cota === cota);
-  const convite = mostraConvitePatrocinio(daCota, daCota !== undefined && itens.length >= daCota.vagasTotais) ? daCota : undefined;
-  return { cota, titulo, grade, itens, convite };
+  const vagas = daCota
+    ? Array.from({ length: quadrosLivresNoRodape(daCota, itens.length) }, () => ({
+        ...valorDoPatrocinio(daCota, hoje, regras.prazoFundador),
+        formato: daCota.formatoLogo,
+      }))
+    : [];
+  return { cota, titulo, grade, itens, vagas };
 };
 const colunas = [
   coluna("master", "Master", "grid-cols-1 max-md:mx-auto max-md:w-3/5"),
   coluna("ouro", "Ouro", "grid-cols-1"),
   coluna("apoio", "Apoio", "grid-cols-2"),
-].filter((c) => c.itens.length > 0 || c.convite);
-const semParceiros = todos.length === 0;
+].filter((c) => c.itens.length > 0 || c.vagas.length > 0);
 ---
 
 {
-  semParceiros && colunas.length > 0 && (
-    <section aria-label="Parceiros do Ache Aqui" class="border-t border-slate-200 bg-white">
-      <p class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-4 text-sm">
-        <span class="text-xs font-extrabold tracking-[0.2em] text-slate-500 uppercase">Parceiros do Ache Aqui</span>
-        <a href="/seja-parceiro" class="inline-flex min-h-11 items-center font-bold text-azul-600 hover:underline">
-          {TEXTO_CONVITE}
-        </a>
-      </p>
-    </section>
-  )
-}
-{
-  !semParceiros && colunas.length > 0 && (
+  colunas.length > 0 && (
     <section aria-labelledby="parceiros-rodape" class="border-t border-slate-200 bg-white">
       <div class="mx-auto max-w-6xl px-4 py-8">
         <div class="mb-5 flex flex-wrap items-baseline justify-between gap-2">
@@ -51,8 +46,14 @@ const semParceiros = todos.length === 0;
             Parceiros do Ache Aqui
           </h2>
           <span class="flex gap-4 text-sm font-bold">
-            <a href="/parceiros" class="text-azul-600 hover:underline">Conheça os parceiros</a>
-            <a href="/seja-parceiro" class="text-azul-600 hover:underline">Seja parceiro</a>
+            {todos.length > 0 && (
+              <a href="/parceiros" class="text-azul-600 hover:underline">
+                Conheça os parceiros
+              </a>
+            )}
+            <a href="/seja-parceiro" class="text-azul-600 hover:underline">
+              Seja parceiro
+            </a>
           </span>
         </div>
         <div class="grid gap-6 md:grid-cols-3">
@@ -63,17 +64,23 @@ const semParceiros = todos.length === 0;
                 {coluna.itens.map((p) => (
                   <CartaoPatrocinador patrocinador={p} />
                 ))}
-                {coluna.convite && (
+                {coluna.vagas.map((vaga) => (
                   <a
                     href={linkConvitePatrocinio(coluna.cota)}
-                    class={`grid place-items-center rounded-xl border-2 border-dashed border-slate-300 p-2 text-center text-xs font-bold text-azul-700 transition hover:border-azul-400 hover:bg-azul-50 ${
-                      coluna.cota === "master" ? "md:w-3/5" : ""
-                    }`}
-                    style={`aspect-ratio: ${coluna.convite.formatoLogo.largura} / ${coluna.convite.formatoLogo.altura}`}
+                    aria-label={`Vaga livre na cota ${coluna.titulo}: ${formatarCentavos(vaga.valorCentavos)} por 12 meses${vaga.precoFundador ? ", preço de Parceiro Fundador" : ""}. Seja parceiro`}
+                    class="flex flex-col items-center justify-center gap-0.5 rounded-xl border-2 border-dashed border-slate-300 p-2 text-center leading-tight transition hover:border-azul-400 hover:bg-azul-50"
+                    style={`aspect-ratio: ${vaga.formato.largura} / ${vaga.formato.altura}`}
                   >
-                    {TEXTO_CONVITE}
+                    <span class="text-[0.65rem] font-bold tracking-wider text-slate-500 uppercase">Vaga livre</span>
+                    <span class={`font-display font-extrabold text-azul-900 ${coluna.cota === "apoio" ? "text-sm" : "text-lg"}`}>
+                      {formatarCentavos(vaga.valorCentavos)}
+                    </span>
+                    <span class="text-[0.7rem] text-slate-500">
+                      por 12 meses{vaga.precoFundador ? " · Parceiro Fundador" : ""}
+                    </span>
+                    {coluna.cota === "master" && <span class="mt-2 text-sm font-bold text-azul-700">Seja parceiro</span>}
                   </a>
-                )}
+                ))}
               </div>
             </div>
           ))}

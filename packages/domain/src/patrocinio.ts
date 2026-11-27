@@ -47,6 +47,18 @@ export function mostraConvitePatrocinio(cota: { vagasLivres: number } | undefine
 }
 
 /**
+ * Quantos quadros "vaga livre" a coluna da cota mostra no rodapé (decisão de
+ * 27/11/2026, no lugar de um convite por cota): um por vaga que sobra depois
+ * dos logos no ar, sem passar das vagas livres da cota. No site de
+ * apresentação, os parceiros fictícios ocupam os quadros, mas não as vagas.
+ * Cota fora do catálogo não mostra quadro.
+ */
+export function quadrosLivresNoRodape(cota: { vagasTotais: number; vagasLivres: number } | undefined, logosNoAr: number): number {
+  if (cota === undefined) return 0;
+  return Math.max(0, Math.min(cota.vagasLivres, cota.vagasTotais - logosNoAr));
+}
+
+/**
  * Último dia do patrocínio: 12 meses contados do dia em que o logo entrou no
  * ar, mais os dias somados por site fora do ar. Entrou em 27/11/2026, vai até
  * 26/11/2027.

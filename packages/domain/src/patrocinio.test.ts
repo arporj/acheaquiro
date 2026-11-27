@@ -5,6 +5,7 @@ import {
   impedimentoParaEntrarNoAr,
   mostraConvitePatrocinio,
   novaVagaAPartirDe,
+  quadrosLivresNoRodape,
   valorDoPatrocinio,
   type PatrocinioParaRegra,
 } from "./patrocinio";
@@ -111,5 +112,33 @@ describe("mostraConvitePatrocinio", () => {
 
   it("não convida com a cota fora do catálogo", () => {
     expect(mostraConvitePatrocinio(undefined, false)).toBe(false);
+  });
+});
+
+describe("quadrosLivresNoRodape", () => {
+  it("sem parceiro no ar, um quadro por vaga da cota", () => {
+    expect(quadrosLivresNoRodape({ vagasTotais: 6, vagasLivres: 6 }, 0)).toBe(6);
+  });
+
+  it("cada logo no ar ocupa um quadro", () => {
+    expect(quadrosLivresNoRodape({ vagasTotais: 3, vagasLivres: 2 }, 1)).toBe(2);
+  });
+
+  it("cota esgotada não mostra quadro", () => {
+    expect(quadrosLivresNoRodape({ vagasTotais: 1, vagasLivres: 0 }, 1)).toBe(0);
+  });
+
+  it("parceiros fictícios do site de apresentação ocupam os quadros, mas não as vagas", () => {
+    expect(quadrosLivresNoRodape({ vagasTotais: 6, vagasLivres: 6 }, 6)).toBe(0);
+    expect(quadrosLivresNoRodape({ vagasTotais: 6, vagasLivres: 6 }, 4)).toBe(2);
+  });
+
+  it("nunca passa das vagas livres nem fica negativo", () => {
+    expect(quadrosLivresNoRodape({ vagasTotais: 3, vagasLivres: 1 }, 0)).toBe(1);
+    expect(quadrosLivresNoRodape({ vagasTotais: 3, vagasLivres: 3 }, 5)).toBe(0);
+  });
+
+  it("cota fora do catálogo não mostra quadro", () => {
+    expect(quadrosLivresNoRodape(undefined, 0)).toBe(0);
   });
 });
