@@ -61,25 +61,6 @@ const regrasCombinadas = [
       </Fragment>
     </Abertura>
 
-    <section class="mx-auto max-w-6xl px-4 py-10">
-      <h2 class="font-display text-2xl font-bold text-azul-900">Onde a sua marca aparece</h2>
-      <ul class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {
-          ondeAparece.map((o) => (
-            <li class="flex gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
-              <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-azul-50 text-azul-600">
-                <Icone nome={o.icone} class="size-5" />
-              </span>
-              <span>
-                <span class="block font-bold text-azul-900">{o.titulo}</span>
-                <span class="text-sm text-slate-600">{o.texto}</span>
-              </span>
-            </li>
-          ))
-        }
-      </ul>
-    </section>
-
     <section id="cotas" class="bg-azul-50/60 py-10">
       <div class="mx-auto max-w-6xl px-4">
         <h2 class="font-display text-2xl font-bold text-azul-900">Cotas e valores</h2>
@@ -146,6 +127,25 @@ const regrasCombinadas = [
     </section>
 
     <section class="mx-auto max-w-6xl px-4 py-10">
+      <h2 class="font-display text-2xl font-bold text-azul-900">Onde a sua marca aparece</h2>
+      <ul class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {
+          ondeAparece.map((o) => (
+            <li class="flex gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+              <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-azul-50 text-azul-600">
+                <Icone nome={o.icone} class="size-5" />
+              </span>
+              <span>
+                <span class="block font-bold text-azul-900">{o.titulo}</span>
+                <span class="text-sm text-slate-600">{o.texto}</span>
+              </span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-4 pb-10">
       <h2 class="font-display text-2xl font-bold text-azul-900">Regras</h2>
       <ul class="mt-4 grid gap-2 md:grid-cols-2">
         {
