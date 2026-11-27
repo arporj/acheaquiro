@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agruparCategorias, categoriaCombinaComBusca, compararNomes } from "./categorias";
+import { agruparCategorias, categoriaCombinaComBusca, compararNomes, formasDaProfissao, nomeDaCategoriaPara, nomesDaCategoria } from "./categorias";
 
 const cat = (nome: string, grupo: string) => ({ nome, grupo });
 const nomes = (lista: { nome: string }[]) => lista.map((c) => c.nome);
@@ -89,5 +89,41 @@ describe("agruparCategorias", () => {
     agruparCategorias(lista, (c) => c.nome);
     expect(nomes(lista)).toEqual(["B", "A"]);
     expect(agruparCategorias([], (c: { grupo: string }) => c.grupo)).toEqual([]);
+  });
+});
+
+describe("forma da profissão", () => {
+  const advogado = { nome: "Advogado", nomeFeminino: "Advogada" };
+  const costureira = { nome: "Costureira", nomeMasculino: "Costureiro" };
+  const dentista = { nome: "Dentista" };
+
+  it("dá as duas formas quando a categoria tem a do outro gênero", () => {
+    expect(formasDaProfissao(advogado)).toEqual({ masculino: "Advogado", feminino: "Advogada" });
+    expect(formasDaProfissao(costureira)).toEqual({ masculino: "Costureiro", feminino: "Costureira" });
+  });
+
+  it("não dá escolha quando o nome serve aos dois", () => {
+    expect(formasDaProfissao(dentista)).toBeNull();
+  });
+
+  it("mostra a forma escolhida", () => {
+    expect(nomeDaCategoriaPara(advogado, "feminino")).toBe("Advogada");
+    expect(nomeDaCategoriaPara(advogado, "masculino")).toBe("Advogado");
+    expect(nomeDaCategoriaPara(costureira, "masculino")).toBe("Costureiro");
+    expect(nomeDaCategoriaPara(costureira, "feminino")).toBe("Costureira");
+  });
+
+  it("sem escolha, ou sem a outra forma, mostra o nome principal", () => {
+    expect(nomeDaCategoriaPara(advogado)).toBe("Advogado");
+    expect(nomeDaCategoriaPara(advogado, null)).toBe("Advogado");
+    expect(nomeDaCategoriaPara(costureira)).toBe("Costureira");
+    expect(nomeDaCategoriaPara(dentista, "feminino")).toBe("Dentista");
+  });
+
+  it("lista todos os nomes no singular para a busca", () => {
+    expect(nomesDaCategoria(advogado)).toEqual(["Advogado", "Advogada"]);
+    expect(nomesDaCategoria(costureira)).toEqual(["Costureira", "Costureiro"]);
+    expect(nomesDaCategoria(dentista)).toEqual(["Dentista"]);
+    expect(categoriaCombinaComBusca(nomesDaCategoria(advogado), "advogada")).toBe(true);
   });
 });

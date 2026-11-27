@@ -10,6 +10,9 @@ export type Selo = "nenhum" | "transparente" | "prata" | "ouro";
 
 export type FormaPagamento = "pix" | "cartao" | "dinheiro";
 
+/** Como a profissão aparece no anúncio ("Advogado" ou "Advogada"); não é o gênero da pessoa. */
+export type FormaProfissao = "masculino" | "feminino";
+
 export interface Cidade {
   id: string;
   nome: string;
@@ -25,7 +28,12 @@ export interface Bairro {
 
 export interface Categoria {
   id: string;
+  /** Nome principal, usado no menu e nas listas. */
   nome: string;
+  /** Forma feminina da profissão, quando diferente do nome principal ("Advogada"). */
+  nomeFeminino?: string;
+  /** Forma masculina, quando o nome principal está no feminino ("Costureiro"). */
+  nomeMasculino?: string;
   /** Usado nos títulos das listas: "Eletricistas em Rio das Ostras". */
   nomePlural: string;
   /** Link curto da busca: acheaquiro.com.br/eletricistas */
@@ -169,6 +177,8 @@ interface AnuncianteBase {
   nome: string;
   categoriaId: string;
   categoriasAdicionais: string[];
+  /** Sem escolha, aparece o nome principal da categoria (decisão Q3 de 26/11/2026). */
+  formaProfissao?: FormaProfissao;
   planoId: string;
   fundador: boolean;
   descricao: string;

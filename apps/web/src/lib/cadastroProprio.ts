@@ -5,7 +5,7 @@
 // em cada parte vem de situacaoDoCadastro (packages/domain). Tudo usa a sessão
 // do anunciante: o banco confere o dono, trava os campos da administração e,
 // no perfil publicado, marca "Para conferir" (migration 20261124125805).
-import { situacaoDoCadastro, podeEnviarCadastro, type ParteDoCadastro, type ResumoDoCadastro, type SituacaoDaParte } from "@acheaqui/domain";
+import { nomeDaCategoriaPara, situacaoDoCadastro, podeEnviarCadastro, type ParteDoCadastro, type ResumoDoCadastro, type SituacaoDaParte } from "@acheaqui/domain";
 import type { Resultado } from "@acheaqui/types";
 import { esquemaEtapaContato, esquemaEtapaOnde, esquemaEtapaSobre, esquemaHorario } from "@acheaqui/validation";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -115,6 +115,7 @@ async function salvarSobre(supabase: SupabaseClient, usuarioId: string, cadastro
     nome: String(form.get("nome") ?? "").slice(0, 3000),
     categoriaPrincipalId: String(form.get("categoriaPrincipalId") ?? ""),
     categoriasAdicionais: form.getAll("categoriasAdicionais").map(String),
+    formaProfissao: String(form.get("formaProfissao") ?? ""),
     descricao: String(form.get("descricao") ?? "").slice(0, 3000),
   });
   if (!lido.success) return errosDoEsquema(lido.error);
@@ -126,7 +127,7 @@ async function salvarSobre(supabase: SupabaseClient, usuarioId: string, cadastro
 
   const { data: cidade, error: erroCidade } = await supabase.from("cidades").select("id").eq("slug", CIDADE).single();
   if (erroCidade) return mensagemDoBanco(erroCidade, "salvarSobre: cidade");
-  const colunas = { nome: d.nome, categoria_principal_id: d.categoriaPrincipalId, descricao: d.descricao };
+  const colunas = { nome: d.nome, categoria_principal_id: d.categoriaPrincipalId, forma_profissao: d.formaProfissao, descricao: d.descricao };
 
   let id: string;
   if (cadastro) {
@@ -307,7 +308,8 @@ export function resumosDasPartes(
   opcoes: Opcoes | null,
   fotos: FotosDoCadastro | null,
 ): Partial<Record<ParteDoCadastro, string>> {
-  const categoria = opcoes?.categorias.find((c) => c.id === a.categoria_principal_id)?.nome ?? "";
+  const principal = opcoes?.categorias.find((c) => c.id === a.categoria_principal_id);
+  const categoria = principal ? nomeDaCategoriaPara(principal, a.forma_profissao) : "";
   const bairro = (id: string) => opcoes?.bairros.find((b) => b.id === id)?.nome ?? "";
   const endereco = a.enderecos.find((e) => e.principal) ?? a.enderecos[0];
   const atendidos = a.bairros.filter((b) => b.finalidade === "atendimento").map((b) => bairro(b.bairro_id));

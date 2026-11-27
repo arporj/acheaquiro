@@ -1,5 +1,5 @@
 ---
-import { fotoParaPrevia, resumirTexto } from "@acheaqui/domain";
+import { fotoParaPrevia, nomeDaCategoriaPara, resumirTexto } from "@acheaqui/domain";
 import { EtiquetaAberto, EtiquetaFundador, FotoMarcador, Icone, IconeCategoria, Selo } from "@acheaqui/ui";
 import type { Categoria, FormaPagamento } from "@acheaqui/types";
 import Topo from "@/components/anuncios/Topo.astro";
@@ -59,12 +59,14 @@ const semPagamentoNemRedes =
 const fundoMapa =
   "background-image: linear-gradient(90deg, #fff 0 6px, transparent 6px), linear-gradient(0deg, #fff 0 6px, transparent 6px), linear-gradient(35deg, transparent 48%, #fde68a 48% 52%, transparent 52%); background-size: 70px 70px, 90px 90px, 100% 100%";
 // O link compartilhado é propaganda do anunciante: a foto e o texto dele (packages/domain/previa.ts).
-const categoriaNaCidade = `${categoria.nome} em Rio das Ostras`;
+// Na forma da profissão escolhida pelo anunciante ("Advogada"; decisão Q3 de 26/11/2026).
+const nomeNoAnuncio = (c: Categoria) => nomeDaCategoriaPara(c, anunciante.formaProfissao);
+const categoriaNaCidade = `${nomeNoAnuncio(categoria)} em Rio das Ostras`;
 const resumo = resumirTexto(anunciante.descricao) || categoriaNaCidade;
 ---
 
 <Layout
-  titulo={`${anunciante.nome} · ${categoria.nome}`}
+  titulo={`${anunciante.nome} · ${nomeNoAnuncio(categoria)}`}
   descricao={resumo}
   previa={{ titulo: `${anunciante.nome} · ${categoriaNaCidade}`, descricao: resumo, imagem: fotoParaPrevia(anunciante.fotoPerfil.url) }}
 >
@@ -117,7 +119,7 @@ const resumo = resumirTexto(anunciante.descricao) || categoriaNaCidade;
                   }`}
                 >
                   <IconeCategoria nome={c.icone} class="size-4" />
-                  {c.nome}
+                  {nomeNoAnuncio(c)}
                 </a>
               ))
             }

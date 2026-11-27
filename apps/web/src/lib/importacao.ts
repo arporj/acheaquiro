@@ -216,20 +216,25 @@ export interface CategoriaAdmin {
   nome: string;
   tipo: "profissional" | "comercio" | "ambos";
   grupo: string;
-  /** Plural e sinônimos, para a busca de categoria no formulário do anunciante. */
+  /** Formas da profissão, para o anunciante escolher como aparece (decisão Q3 de 26/11/2026). */
+  nomeFeminino?: string;
+  nomeMasculino?: string;
+  /** Plural, sinônimos e a outra forma, para a busca de categoria no formulário do anunciante. */
   termosBusca: string[];
 }
 
 export async function listarCategoriasAdmin(supabase: SupabaseClient): Promise<Resultado<CategoriaAdmin[]>> {
   const { data, error } = await supabase
     .from("categorias")
-    .select("id, nome, nome_plural, tipo, grupos_categoria!inner(nome, ordem), sinonimos_categoria(termo)")
+    .select("id, nome, nome_feminino, nome_masculino, nome_plural, tipo, grupos_categoria!inner(nome, ordem), sinonimos_categoria(termo)")
     .eq("ativa", true)
     .order("nome");
   if (error) return mensagemDoBanco(error, "listarCategoriasAdmin");
   const linhas = data as unknown as {
     id: string;
     nome: string;
+    nome_feminino: string | null;
+    nome_masculino: string | null;
     nome_plural: string;
     tipo: CategoriaAdmin["tipo"];
     grupos_categoria: { nome: string; ordem: number };
@@ -244,7 +249,11 @@ export async function listarCategoriasAdmin(supabase: SupabaseClient): Promise<R
         nome: l.nome,
         tipo: l.tipo,
         grupo: l.grupos_categoria.nome,
-        termosBusca: [l.nome_plural, ...l.sinonimos_categoria.map((s) => s.termo)],
+        nomeFeminino: l.nome_feminino ?? undefined,
+        nomeMasculino: l.nome_masculino ?? undefined,
+        termosBusca: [l.nome_feminino, l.nome_masculino, l.nome_plural, ...l.sinonimos_categoria.map((s) => s.termo)].filter(
+          (t): t is string => Boolean(t),
+        ),
       })),
   };
 }

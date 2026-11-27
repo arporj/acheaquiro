@@ -5,7 +5,7 @@
 // comércio ficam desligados quando não servem, para não serem enviados. O
 // cadastro próprio e a área do anunciante mostram uma parte por vez (secoes),
 // gravada por salvarParte (src/lib/cadastroProprio.ts).
-import { agruparCategorias } from "@acheaqui/domain";
+import { agruparCategorias, formasDaProfissao } from "@acheaqui/domain";
 import { classesBotao } from "@acheaqui/ui";
 import { NOMES_DIAS } from "@acheaqui/validation";
 import { classesCampo, classesErroCampo, classesRotulo } from "@/components/conta/estilos";
@@ -34,6 +34,10 @@ const mostra = (s: SecaoFormulario) => !secoes || secoes.includes(s);
 const tipo = tipoFixo ?? v.tipo;
 
 const grupos = agruparCategorias(opcoes.categorias, (c) => c.nome, { gruposEmOrdemAlfabetica: true });
+// Forma da profissão (decisão Q3 de 26/11/2026): só aparece quando a categoria
+// principal tem as duas formas; o script troca os rótulos quando ela muda.
+const categoriaEscolhida = opcoes.categorias.find((c) => c.id === v.categoriaPrincipalId);
+const formasEscolhida = categoriaEscolhida ? formasDaProfissao(categoriaEscolhida) : null;
 const FORMAS = [
   { id: "pix", rotulo: "Pix" },
   { id: "cartao", rotulo: "Cartão" },
@@ -111,7 +115,15 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
               <p class={tituloGrupo}>{g.grupo}</p>
               {g.categorias.map((c) => (
                 <label class={opcaoMarcavel} data-tipo-categoria={c.tipo} data-busca={textoBusca(c)}>
-                  <input type="radio" name="categoriaPrincipalId" value={c.id} required checked={c.id === v.categoriaPrincipalId} />
+                  <input
+                    type="radio"
+                    name="categoriaPrincipalId"
+                    value={c.id}
+                    required
+                    checked={c.id === v.categoriaPrincipalId}
+                    data-forma-feminino={formasDaProfissao(c)?.feminino}
+                    data-forma-masculino={formasDaProfissao(c)?.masculino}
+                  />
                   {c.nome}
                 </label>
               ))}
@@ -122,6 +134,28 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
       </div>
     </fieldset>
     {erro("categoriaPrincipalId") && <p class={classesErroCampo}>{erro("categoriaPrincipalId")}</p>}
+
+    <fieldset class="mt-4" data-forma-profissao hidden={!formasEscolhida}>
+      <legend class="text-sm font-bold text-azul-900">Como a profissão aparece no anúncio</legend>
+      <p class="mt-1 text-xs text-slate-500">Vale para o card, o perfil e o link compartilhado. Sem escolha, aparece o nome da categoria.</p>
+      <div class="mt-1 flex flex-wrap gap-x-4">
+        {
+          (["feminino", "masculino"] as const).map((forma) => (
+            <label class={opcaoMarcavel}>
+              <input
+                type="radio"
+                name="formaProfissao"
+                value={forma}
+                checked={v.formaProfissao === forma}
+                disabled={!formasEscolhida}
+              />
+              <span data-rotulo-forma={forma}>{formasEscolhida?.[forma]}</span>
+            </label>
+          ))
+        }
+      </div>
+    </fieldset>
+    {erro("formaProfissao") && <p class={classesErroCampo}>{erro("formaProfissao")}</p>}
 
     <details class="mt-4" open={v.categoriasAdicionais.length > 0 || !!erro("categoriasAdicionais")}>
       <summary class="cursor-pointer text-sm font-bold text-azul-900">
@@ -440,6 +474,21 @@ const textoValor = textoValorPlano(opcoes.planos.find((p) => p.id === v.planoEsc
       const principal = form.querySelector<HTMLInputElement>('input[name="categoriaPrincipalId"]:checked:not(:disabled)');
       const escolhida = form.querySelector<HTMLElement>("[data-categoria-escolhida]");
       if (escolhida) escolhida.textContent = principal ? `Escolhida: ${principal.parentElement?.textContent?.trim() ?? ""}` : "Nenhuma escolhida ainda.";
+      mostrarFormaProfissao(principal);
+    };
+
+    // Forma da profissão: só com a categoria principal que tem as duas formas.
+    // Desligada, não vai no envio, e o anúncio mostra o nome da categoria.
+    const blocoForma = form.querySelector<HTMLElement>("[data-forma-profissao]");
+    const mostrarFormaProfissao = (principal: HTMLInputElement | null) => {
+      if (!blocoForma) return;
+      const formas = { feminino: principal?.dataset.formaFeminino, masculino: principal?.dataset.formaMasculino };
+      const temFormas = Boolean(formas.feminino && formas.masculino);
+      blocoForma.hidden = !temFormas;
+      for (const rotulo of blocoForma.querySelectorAll<HTMLElement>("[data-rotulo-forma]")) {
+        rotulo.textContent = formas[rotulo.dataset.rotuloForma as keyof typeof formas] ?? "";
+      }
+      for (const opcao of blocoForma.querySelectorAll<HTMLInputElement>("input")) opcao.disabled = !temFormas;
     };
     busca?.addEventListener("input", filtrarCategorias);
     // Enter na busca não envia o formulário.

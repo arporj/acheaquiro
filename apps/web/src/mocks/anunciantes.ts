@@ -151,7 +151,7 @@ const profissionais: AnuncianteProfissional[] = [
   },
   {
     id: "a09", slug: "fernanda-costa-advocacia", cidadeId, tipo: "profissional",
-    nome: "Fernanda Costa Advocacia", categoriaId: "advogado", categoriasAdicionais: [],
+    nome: "Fernanda Costa Advocacia", categoriaId: "advogado", categoriasAdicionais: [], formaProfissao: "feminino",
     planoId: "prof-nivel3", fundador: false,
     descricao: "Atuação em direito de família, previdenciário e do consumidor. Atendimento presencial no Centro e on-line.",
     whatsapp: zap(9),
@@ -164,7 +164,7 @@ const profissionais: AnuncianteProfissional[] = [
   },
   {
     id: "a10", slug: "dr-paulo-mendes", cidadeId, tipo: "profissional",
-    nome: "Dr. Paulo Mendes", categoriaId: "medico", categoriasAdicionais: [],
+    nome: "Dr. Paulo Mendes", categoriaId: "medico", categoriasAdicionais: [], formaProfissao: "masculino",
     planoId: "prof-nivel3", fundador: false,
     descricao: "Clínico geral. Consultas em consultório e atendimento domiciliar para idosos e acamados.",
     whatsapp: zap(10), telefone: zap(10),

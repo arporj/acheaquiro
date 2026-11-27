@@ -21,6 +21,46 @@ const cor = {
 
 type Opcoes ={ sinonimos?: string[]; conselho?: boolean; atalho?: boolean };
 
+// Formas da profissão, as mesmas da produção (migration 20261127021026_forma_da_profissao.sql).
+const FEMININOS: Record<string, string> = {
+  Advogado: "Advogada",
+  Maquiador: "Maquiadora",
+  Podólogo: "Podóloga",
+  Psicólogo: "Psicóloga",
+  Fonoaudiólogo: "Fonoaudióloga",
+  Adestrador: "Adestradora",
+  "Bombeiro hidráulico": "Bombeira hidráulica",
+  Borracheiro: "Borracheira",
+  Caseiro: "Caseira",
+  Chaveiro: "Chaveira",
+  "Corretor de imóveis": "Corretora de imóveis",
+  "Corretor de seguros": "Corretora de seguros",
+  "Cuidador de idosos": "Cuidadora de idosos",
+  Fotógrafo: "Fotógrafa",
+  Gesseiro: "Gesseira",
+  Jardineiro: "Jardineira",
+  Marceneiro: "Marceneira",
+  Mecânico: "Mecânica",
+  "Montador de móveis": "Montadora de móveis",
+  Médico: "Médica",
+  "Passeador de cães": "Passeadora de cães",
+  Pedreiro: "Pedreira",
+  Pintor: "Pintora",
+  Piscineiro: "Piscineira",
+  "Professor particular": "Professora particular",
+  Sapateiro: "Sapateira",
+  Serralheiro: "Serralheira",
+  "Técnico de ar-condicionado": "Técnica de ar-condicionado",
+  "Técnico de eletrodomésticos": "Técnica de eletrodomésticos",
+  Veterinário: "Veterinária",
+  Vidraceiro: "Vidraceira",
+};
+const MASCULINOS: Record<string, string> = {
+  Confeiteira: "Confeiteiro",
+  Costureira: "Costureiro",
+  Passadeira: "Passadeiro",
+};
+
 function c(
   id: string,
   nome: string,
@@ -33,6 +73,8 @@ function c(
   return {
     id,
     nome,
+    nomeFeminino: FEMININOS[nome],
+    nomeMasculino: MASCULINOS[nome],
     nomePlural,
     slugLista: paraSlug(nomePlural),
     grupo,
@@ -173,7 +215,7 @@ export const categorias: Categoria[] = [
   }),
   c("barbeiro", "Barbearia", "Barbearias", BELEZA, "scissors-line-dashed", cor.vermelho, { sinonimos: ["barbeiro", "barba"] }),
   c("manicure", "Manicure e pedicure", "Manicures e pedicures", BELEZA, "hand", cor.rosa),
-  c("maquiador", "Maquiador(a)", "Maquiadores", BELEZA, "brush", cor.rosa),
+  c("maquiador", "Maquiador", "Maquiadores", BELEZA, "brush", cor.rosa),
   c("esteticista", "Esteticista e clínica de estética", "Esteticistas e clínicas de estética", BELEZA, "sparkles", cor.roxo),
   c("massagista", "Massagista", "Massagistas", BELEZA, "hand-heart", cor.turquesa),
   c("tatuagem", "Estúdio de tatuagem", "Estúdios de tatuagem", BELEZA, "pen-tool", cor.grafite, { sinonimos: ["tatuador"] }),
@@ -192,11 +234,11 @@ export const categorias: Categoria[] = [
     atalho: true,
   }),
   c("dentista", "Dentista", "Dentistas", SAUDE, "smile", cor.azul, { conselho: true }),
-  c("podologo", "Podólogo(a)", "Podólogos", SAUDE, "footprints", cor.turquesa, { conselho: true }),
-  c("psicologo", "Psicólogo(a)", "Psicólogos", SAUDE, "brain", cor.roxo, { sinonimos: ["psicologia"], conselho: true }),
+  c("podologo", "Podólogo", "Podólogos", SAUDE, "footprints", cor.turquesa, { conselho: true }),
+  c("psicologo", "Psicólogo", "Psicólogos", SAUDE, "brain", cor.roxo, { sinonimos: ["psicologia"], conselho: true }),
   c("fisioterapia", "Fisioterapia", "Fisioterapia", SAUDE, "activity", cor.celeste, { conselho: true }),
   c("nutricionista", "Nutricionista", "Nutricionistas", SAUDE, "apple", cor.verde, { sinonimos: ["nutrição"], conselho: true }),
-  c("fonoaudiologo", "Fonoaudiólogo(a)", "Fonoaudiólogos", SAUDE, "ear", cor.turquesa, { conselho: true }),
+  c("fonoaudiologo", "Fonoaudiólogo", "Fonoaudiólogos", SAUDE, "ear", cor.turquesa, { conselho: true }),
   c("laboratorio", "Laboratório e exames", "Laboratórios e exames", SAUDE, "flask-conical", cor.azul),
   c("home-care", "Home care", "Home care", SAUDE, "house-plus", cor.vermelho),
   c("casa-de-repouso", "Casa de repouso", "Casas de repouso", SAUDE, "hand-heart", cor.vinho),
@@ -269,7 +311,7 @@ export const categorias: Categoria[] = [
   c("nautica", "Náutica: barcos e jet ski", "Náutica: barcos e jet ski", TURISMO, "ship", cor.celeste, { sinonimos: ["jet ski", "lancha"] }),
 
   // Serviços profissionais
-  c("advogado", "Advogado(a)", "Advogados", PROFISSIONAIS, "scale", cor.roxo, { sinonimos: ["advocacia", "advogada"], atalho: true }),
+  c("advogado", "Advogado", "Advogados", PROFISSIONAIS, "scale", cor.roxo, { sinonimos: ["advocacia", "advogada"], atalho: true }),
   c("contabilidade", "Contabilidade", "Contabilidade", PROFISSIONAIS, "calculator", cor.grafite, { sinonimos: ["contador"] }),
   c("imobiliaria", "Imobiliária", "Imobiliárias", PROFISSIONAIS, "key-round", cor.azul, {
     sinonimos: ["imóveis", "aluguel de imóveis", "venda de imóveis"],

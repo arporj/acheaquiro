@@ -22,7 +22,14 @@ const esquemaInstagram = z
   .transform((v) => (v ?? "").trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/\/.*$/, ""))
   .refine((v) => v === "" || /^[A-Za-z0-9._]{1,30}$/.test(v), "Instagram inválido: use só o nome do perfil, como @pizzariadoze.");
 
-const listaDeIds = z.array(z.uuid("Escolha inválida.")).max(200).transform((ids) => [...new Set(ids)]);
+/** Como a profissão aparece no anúncio (decisão Q3 de 26/11/2026); vazio: o nome principal da categoria. */
+export const FORMAS_PROFISSAO = ["masculino", "feminino"] as const;
+const esquemaFormaProfissao = z.preprocess(
+  (v) => (v === "" || v === undefined ? null : v),
+  z.enum(FORMAS_PROFISSAO, { error: "Escolha como a profissão aparece no anúncio." }).nullable(),
+);
+
+const listaDeIds =z.array(z.uuid("Escolha inválida.")).max(200).transform((ids) => [...new Set(ids)]);
 
 // Partes do perfil, uma por etapa do cadastro próprio (decisão G2 de 24/11/2026)
 // e por card da área do anunciante. O perfil completo é a soma delas.
@@ -30,6 +37,7 @@ const sobre = {
   nome: textoLimpo(2, 100, "o nome"),
   categoriaPrincipalId: z.uuid("Escolha a categoria principal."),
   categoriasAdicionais: listaDeIds,
+  formaProfissao: esquemaFormaProfissao,
   descricao: textoOpcional(2000, "Descrição"),
 };
 

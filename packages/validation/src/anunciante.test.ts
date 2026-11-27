@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { esquemaCadastroAssistido, esquemaMotivo, esquemaPerfilAnunciante } from "./anunciante";
+import { esquemaCadastroAssistido, esquemaEtapaSobre, esquemaMotivo, esquemaPerfilAnunciante } from "./anunciante";
 
 const CATEGORIA = "3f2b8c1e-5d4a-4e6f-9a7b-1c2d3e4f5a6b";
 const OUTRA = "4a3c9d2f-6e5b-4f7a-8b9c-2d3e4f5a6b7c";
@@ -59,6 +59,17 @@ describe("perfil do anunciante", () => {
     expect(mensagem(esquemaPerfilAnunciante.safeParse({ ...profissional, categoriaPrincipalId: "" }))).toBe("Escolha a categoria principal.");
     expect(mensagem(esquemaPerfilAnunciante.safeParse({ ...comercio, endereco: { ...comercio.endereco, bairroId: "x" } }))).toBe(
       "Escolha o bairro do endereço.",
+    );
+  });
+
+  it("forma da profissão: masculino, feminino ou vazio", () => {
+    expect(esquemaPerfilAnunciante.parse(profissional).formaProfissao).toBeNull();
+    expect(esquemaPerfilAnunciante.parse({ ...profissional, formaProfissao: "" }).formaProfissao).toBeNull();
+    expect(esquemaPerfilAnunciante.parse({ ...profissional, formaProfissao: "feminino" }).formaProfissao).toBe("feminino");
+    expect(esquemaPerfilAnunciante.parse({ ...comercio, formaProfissao: "masculino" }).formaProfissao).toBe("masculino");
+    expect(esquemaEtapaSobre.parse({ tipo: "profissional", ...base, formaProfissao: "feminino" }).formaProfissao).toBe("feminino");
+    expect(mensagem(esquemaPerfilAnunciante.safeParse({ ...profissional, formaProfissao: "outra" }))).toBe(
+      "Escolha como a profissão aparece no anúncio.",
     );
   });
 

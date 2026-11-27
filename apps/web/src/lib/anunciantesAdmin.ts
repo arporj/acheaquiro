@@ -286,6 +286,7 @@ export interface AnuncianteAdmin {
   periodicidade_escolhida: "mensal" | "anual" | null;
   motivo_correcao: string | null;
   categoria_principal_id: string;
+  forma_profissao: "masculino" | "feminino" | null;
   descricao: string;
   whatsapp: string | null;
   telefone: string | null;
@@ -320,7 +321,7 @@ export async function lerAnunciante(supabase: SupabaseClient, id: string): Promi
     .from("anunciantes")
     .select(
       "id, nome, slug, tipo, status, origem, fundador, fundador_desde, usuario_id, representante_id, email_convite, plano_id, plano_escolhido_id, " +
-        "periodicidade_escolhida, motivo_correcao, categoria_principal_id, descricao, whatsapp, telefone, instagram, formas_pagamento, registro_conselho, " +
+        "periodicidade_escolhida, motivo_correcao, categoria_principal_id, forma_profissao, descricao, whatsapp, telefone, instagram, formas_pagamento, registro_conselho, " +
         "site_proprio, atende_toda_cidade, faz_entrega, entrega_toda_cidade, aprovado_em, criado_em, importado_id, revisar, cadastrado_por, representante_indicado_id, " +
         "categorias:anunciante_categorias(categoria_id), bairros:anunciante_bairros(bairro_id, finalidade), " +
         "enderecos(id, logradouro, numero, complemento, bairro_id, principal), horarios(dia_semana, abre, fecha, endereco_id), " +
@@ -414,6 +415,7 @@ export function lerFormulario(form: FormData, tipoFixo?: "profissional" | "comer
     nome: texto("nome"),
     categoriaPrincipalId: texto("categoriaPrincipalId"),
     categoriasAdicionais: lista("categoriasAdicionais"),
+    formaProfissao: texto("formaProfissao"),
     descricao: texto("descricao"),
     whatsapp: texto("whatsapp"),
     telefone: texto("telefone"),
@@ -500,6 +502,7 @@ function colunasDoPerfil(perfil: PerfilAnunciante) {
   const comum = {
     nome: perfil.nome,
     categoria_principal_id: perfil.categoriaPrincipalId,
+    forma_profissao: perfil.formaProfissao,
     descricao: perfil.descricao,
     whatsapp: perfil.whatsapp || null,
     telefone: perfil.telefone || null,
@@ -845,6 +848,8 @@ export interface ValoresFormulario {
   nome: string;
   categoriaPrincipalId: string;
   categoriasAdicionais: string[];
+  /** Forma da profissão no anúncio; vazio: o nome principal da categoria. */
+  formaProfissao: "masculino" | "feminino" | "";
   descricao: string;
   whatsapp: string;
   telefone: string;
@@ -874,6 +879,7 @@ export const VALORES_VAZIOS: ValoresFormulario = {
   nome: "",
   categoriaPrincipalId: "",
   categoriasAdicionais: [],
+  formaProfissao: "",
   descricao: "",
   whatsapp: "",
   telefone: "",
@@ -913,6 +919,7 @@ export function valoresDoAnunciante(a: AnuncianteAdmin): ValoresFormulario {
     nome: a.nome,
     categoriaPrincipalId: a.categoria_principal_id,
     categoriasAdicionais: a.categorias.map((c) => c.categoria_id).filter((id) => id !== a.categoria_principal_id),
+    formaProfissao: a.forma_profissao ?? "",
     descricao: a.descricao,
     whatsapp: telefoneLegivel(a.whatsapp),
     telefone: telefoneLegivel(a.telefone),
@@ -937,6 +944,10 @@ export function valoresDoAnunciante(a: AnuncianteAdmin): ValoresFormulario {
   };
 }
 
+function formaDoEnvio(valor: string): ValoresFormulario["formaProfissao"] {
+  return valor === "masculino" || valor === "feminino" ? valor : "";
+}
+
 /** Repõe o que foi digitado quando o envio volta com erro. */
 export function valoresDoEnvio(form: FormData, tipoFixo?: "profissional" | "comercio"): ValoresFormulario {
   const texto = (nome: string) => String(form.get(nome) ?? "").slice(0, 3000);
@@ -947,6 +958,7 @@ export function valoresDoEnvio(form: FormData, tipoFixo?: "profissional" | "come
     nome: texto("nome"),
     categoriaPrincipalId: texto("categoriaPrincipalId"),
     categoriasAdicionais: lista("categoriasAdicionais"),
+    formaProfissao: formaDoEnvio(texto("formaProfissao")),
     descricao: texto("descricao"),
     whatsapp: texto("whatsapp"),
     telefone: texto("telefone"),

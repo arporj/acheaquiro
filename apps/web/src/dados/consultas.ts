@@ -4,7 +4,7 @@
 // anunciantes existirem (etapa 2), mostra a lista de anunciantes vazia. A
 // página "em breve" não acessa o banco: usa as regras de src/mocks/planos.ts.
 import type { Anunciante, Bairro, CatalogoPublico, Categoria, Cidade, DestaqueInicio, Extra, Foto, Patrocinador, CotaPatrocinio, CotaPatrocinioVenda, Plano, RegrasCobranca, Apresentacao, Artista, EventoAgenda, Selo, TipoAnunciante } from "@acheaqui/types";
-import { agruparCategorias, categoriaCombinaComBusca, dadosPublicosDoArtista, destaquesNoAr, diasDoEventoNoPeriodo, momentoLocal, novaVagaAPartirDe, somarDias, somarMeses as somarMesesData, type VagasFundador } from "@acheaqui/domain";
+import { agruparCategorias, categoriaCombinaComBusca, dadosPublicosDoArtista, nomeDaCategoriaPara, nomesDaCategoria, destaquesNoAr, diasDoEventoNoPeriodo, momentoLocal, novaVagaAPartirDe, somarDias, somarMeses as somarMesesData, type VagasFundador } from "@acheaqui/domain";
 import {
   codigoRepresentanteValido,
   criarClientePublico,
@@ -114,7 +114,10 @@ export interface ItemResultado {
   nome: string;
   /** Foto de perfil; sem ela, a interface mostra o ícone da categoria. */
   foto?: Foto;
+  /** Na forma da profissão escolhida pelo anunciante ("Advogada"). */
   categoriaNome: string;
+  /** Nome principal da categoria, igual para todos (filtro do Mural). */
+  categoriaPrincipal: string;
   icone: string;
   cor: string;
   selo: Selo;
@@ -241,7 +244,8 @@ function paraItem(c: CatalogoPublico, anunciante: Anunciante, destacado = false)
     tipo: anunciante.tipo,
     nome: anunciante.nome,
     foto: anunciante.fotoPerfil,
-    categoriaNome: categoria?.nome ?? "",
+    categoriaNome: categoria ? nomeDaCategoriaPara(categoria, anunciante.formaProfissao) : "",
+    categoriaPrincipal: categoria?.nome ?? "",
     icone: categoria?.icone ?? "map-pin",
     cor: categoria?.cor ?? "#2563EB",
     selo: planoEm(c, anunciante.planoId)?.selo ?? "nenhum",
@@ -327,7 +331,7 @@ export async function buscarPorTexto(termo: string): Promise<{ categorias: Categ
   }
 
   const categoriasEncontradas = c.categorias.filter((categoria) =>
-    categoriaCombinaComBusca([categoria.nome, categoria.nomePlural, ...categoria.sinonimos], termo),
+    categoriaCombinaComBusca([...nomesDaCategoria(categoria), categoria.nomePlural, ...categoria.sinonimos], termo),
   );
   const idsCategorias = new Set(categoriasEncontradas.map((categoria) => categoria.id));
 
